@@ -1,0 +1,25 @@
+# --- Tus datos: nunca se suben -------------------------------------------
+# Rutas de tu PC, tus cursos, la posición de la mascota…
+config.json
+config.json.tmp
+logs/
+# Notas personales que no son parte del proyecto
+prompt-mascota-escritorio.md
+
+# (La sesión del navegador, el historial de Canvas y los temporales viven en
+#  %LOCALAPPDATA%\Pandex, fuera de esta carpeta.)
+
+# --- Python --------------------------------------------------------------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.pytest_cache/
+
+# --- Editores y sistema --------------------------------------------------
+.vscode/
+.idea/
+.claude/
+desktop.ini
+Thumbs.db

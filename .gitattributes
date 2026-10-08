@@ -1,0 +1,6 @@
+# Código con fin de línea LF; los .bat necesitan CRLF para cmd.exe
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.ico binary
+*.webp binary
