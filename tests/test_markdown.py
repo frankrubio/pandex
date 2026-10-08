@@ -92,5 +92,26 @@ class Conversion(unittest.TestCase):
         self.assertIn(".md tuyos que no se pisaron", r["informe"])
 
 
+    def test_en_un_proceso_aparte_da_lo_mismo_y_no_carga_el_conversor_aqui(self):
+        import subprocess
+        import sys
+
+        from pandex.markdown import proceso
+
+        entrada = {"carpeta": self.carpeta, "filtro": "todos", "forzar": False}
+        ctx = CtxFalso({"ocr_local": False}, entrada)
+        avances = []
+        ctx.progreso = lambda n, t: avances.append((n, t))
+        r = proceso.convertir_aparte(ctx)
+        self.assertTrue(r["ok"], r)
+        self.assertIn("Cálculo", (self.carpeta / "notas.md").read_text(encoding="utf-8"))
+        self.assertEqual(r["carpeta"], str(self.carpeta))
+        self.assertTrue(avances, "el avance llega desde el proceso hijo")
+        # comprobado en un intérprete limpio: convertir aparte no carga MarkItDown en el padre
+        codigo = ("import sys, json; from pandex.markdown import proceso; "
+                  "print(json.dumps('markitdown' in sys.modules))")
+        salida = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True)
+        self.assertEqual(salida.stdout.strip(), "false")
+
 if __name__ == "__main__":
     unittest.main()

@@ -21,8 +21,16 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .archivos import AVISO_LOTE, SIN_IA, SOPORTADOS, listar, orden_natural, recorrer, ruta_md
 from ..ui import tema
+from .archivos import (
+    AVISO_LOTE,
+    SIN_IA,
+    SOPORTADOS,
+    listar,
+    orden_natural,
+    recorrer,
+    ruta_md,
+)
 from .clasificador import Clasificador
 
 ROL = Qt.ItemDataRole.UserRole

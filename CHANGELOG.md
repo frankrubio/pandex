@@ -17,6 +17,11 @@ cuando buscas actualizaciones desde el menú.
   respaldo de lo reemplazado. Tu configuración, tus cursos y tus tareas propias
   no se tocan.
 - **Más liviano.** La mascota es una imagen fija por estado: en reposo no usa CPU.
+  Arranca en la mitad de tiempo, el navegador y el programador de horarios se cargan
+  solo si se usan, y convertir a Markdown ya no deja ~130 MB ocupados hasta cerrar
+  Pandex (corre en un proceso aparte).
+- **Acceso directo fácil:** `Pandex.pyw` para abrir con doble clic, y el botón
+  Configuración → Comportamiento → Crear en el Escritorio.
 - **Registro con filtro**, y avisos y errores resaltados.
 - Correcciones: el menú del clic derecho ya no se acumula en memoria; el globo
   aparece en el monitor correcto; los cambios del personaje ahora sí llegan a

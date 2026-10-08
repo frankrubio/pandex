@@ -23,8 +23,6 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
-from playwright.sync_api import Error as PlaywrightError
-
 from ..rutas import DATOS
 from . import sesion
 from .cliente import Canvas, CanvasError, SinConexion
@@ -196,7 +194,7 @@ class Sincronizacion:
             )
         except CanvasError as exc:
             return {"ok": False, "resumen": str(exc), "detalle": [str(exc)]}
-        except PlaywrightError as exc:
+        except sesion.error_navegador() as exc:
             primera = str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__
             return {"ok": False, "resumen": sesion.mensaje_de_error(exc), "detalle": [primera]}
         self._fases["sesión"] = time.monotonic() - t

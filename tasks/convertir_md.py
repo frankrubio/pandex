@@ -5,7 +5,7 @@ La lógica vive en ``pandex/markdown/``; este archivo solo la conecta con Pandex
 
 from pandex.markdown.archivos import raices
 from pandex.markdown.clasificador import Clasificador
-from pandex.markdown.lote import convertir
+from pandex.markdown.proceso import convertir_aparte
 
 
 class Task:
@@ -29,4 +29,9 @@ class Task:
         return dialogo.resultado
 
     def run(self, ctx):
+        # en un proceso aparte: al terminar se libera la memoria del conversor (~110 MB)
+        if ctx.params.get("proceso_aparte", True):
+            return convertir_aparte(ctx)
+        from pandex.markdown.lote import convertir
+
         return convertir(ctx)

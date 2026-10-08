@@ -19,6 +19,7 @@ devuelven.
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque). |
 | `pandex/ui/` | `mascota.py` (la ventana, estática), `rusty.py` (el panda rojo en pixel art), `dibujo.py` (panda robot vectorial y el logo), `sprites.py`, `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
+| `pandex/markdown/proceso.py` | Corre la conversión a Markdown en un proceso hijo (la memoria del conversor se libera al terminar). |
 | `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. |
 | `pandex/canvas/` | Sincronizar Canvas → [sincronizar-canvas.md](sincronizar-canvas.md) |
 | `pandex/markdown/` | Convertir a Markdown → [convertir-markdown.md](convertir-markdown.md) |
@@ -140,6 +141,28 @@ manejado por código. Ninguna usa internet.
   solo la conecta. Para una función propia y pequeña basta un archivo en `tasks/`.
 
 ## Rendimiento
+
+Medido con `QT_QPA_PLATFORM=offscreen` (Linux; en Windows las cifras absolutas cambian, las
+proporciones no):
+
+| | Antes | Ahora |
+|---|---|---|
+| Arranque | 400 ms | 200 ms |
+| Memoria en reposo | 80 MB | 72 MB |
+| Hilos | 2 (interfaz + APScheduler) | 1 (APScheduler solo si hay horarios) |
+| CPU, repintados y temporizadores en reposo | 0 % · 0 · 0 | 0 % · 0 · 0 |
+| Memoria que queda tras convertir a Markdown | +131 MB, hasta cerrar Pandex | +0,6 MB |
+
+Qué se carga y cuándo:
+
+- **Al arrancar:** Qt, la mascota, el menú y las tareas (solo su parte liviana).
+- **`playwright`** (`canvas/sesion.py → _cargar`): al iniciar sesión en Canvas.
+- **`requests`** (`canvas/cliente.py`, `actualizar.py`): al sincronizar o buscar actualizaciones.
+- **APScheduler** (`programador.py`): solo si alguna tarea tiene horario.
+- **MarkItDown** (`markdown/proceso.py`): en un proceso hijo que se cierra al terminar; Python
+  no puede descargar módulos, así que es la única forma de recuperar esa memoria. Con
+  `tareas.convertir_md.proceso_aparte: false` se convierte dentro de Pandex.
+- **`asyncio`**: solo para el OCR de Windows.
 
 La mascota es **estática**: cada estado (reposo, feliz, trabajando, error) se pinta una
 sola vez y queda en caché (`rusty.imagen`, `dibujo.imagen`). No hay temporizadores de

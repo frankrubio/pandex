@@ -3,6 +3,7 @@
 from PyQt6.QtCore import QSize, Qt, QUrl
 from PyQt6.QtGui import QDesktopServices, QPainter
 from PyQt6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -247,6 +248,19 @@ class DialogoConfiguracion(QDialog):
         self.inicio.setChecked(accesos.arranca_con_windows())
         interno.addWidget(self.inicio)
         caja.addWidget(tarjeta)
+
+        caja.addSpacing(10)
+        acceso = _tarjeta()
+        fila = QHBoxLayout(acceso)
+        fila.setContentsMargins(16, 12, 16, 12)
+        texto = QLabel("<b>Acceso directo</b><br>Un ícono de Rusty en tu Escritorio: doble clic "
+                       "y aparece la mascota.")
+        texto.setWordWrap(True)
+        fila.addWidget(texto, 1)
+        crear = QPushButton(iconos.icono("descargar"), "Crear en el Escritorio")
+        crear.clicked.connect(self._crear_acceso)
+        fila.addWidget(crear)
+        caja.addWidget(acceso)
         caja.addStretch()
         return pagina
 
@@ -332,6 +346,17 @@ class DialogoConfiguracion(QDialog):
         caja.addLayout(botones)
         caja.addStretch()
         return pagina
+
+    def _crear_acceso(self):
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            ruta = accesos.crear_en_escritorio()
+        except Exception as exc:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.warning(self, "Acceso directo", f"No pude crearlo:\n{exc}")
+            return
+        QApplication.restoreOverrideCursor()
+        QMessageBox.information(self, "Acceso directo", f"Listo: «Pandex» está en tu Escritorio.\n{ruta}")
 
     def _buscar_actualizaciones(self):
         if self._al_buscar:

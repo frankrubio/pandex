@@ -1,9 +1,9 @@
 """El motor: MarkItDown local (sin plugins ni IA) y el OCR que trae Windows."""
 
-import asyncio
 import io
 
 from .archivos import TEXTO_PLANO
+
 
 def detectar_codificacion(muestra):
     """Reglas fijas en vez de adivinar.
@@ -97,6 +97,8 @@ class OcrLocal:
     def _esperar(self, corrutina):
         # un solo bucle para todo el lote: crear uno por página es lento y ruidoso
         if self._loop is None:
+            import asyncio  # solo con OCR: no se carga al abrir Pandex
+
             self._loop = asyncio.new_event_loop()
         return self._loop.run_until_complete(corrutina)
 

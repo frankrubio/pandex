@@ -36,7 +36,10 @@
 
 Pandex es una ventanita transparente que flota sobre tus programas: haces **clic** para
 saludar a Rusty, **clic derecho** para el menú, y te avisa con un globo cuando termina algo.
-Es **liviano**: Rusty es una imagen fija por estado, así que en reposo no usa CPU.
+Es **liviano**: Rusty es una imagen fija por estado, así que en reposo no usa CPU (0 %) ni
+repinta nada, y ocupa ~70 MB. Las librerías pesadas (navegador, conversor) se cargan solo
+al usarlas, y la conversión a Markdown corre en un proceso aparte que, al terminar, le
+devuelve su memoria a Windows.
 
 <p align="center">
   <picture>
@@ -64,6 +67,16 @@ Es **liviano**: Rusty es una imagen fija por estado, así que en reposo no usa C
 2. Haz doble clic en **`instalar.bat`**. Crea un entorno de Python propio (no toca el de tu PC),
    instala lo necesario y deja un acceso directo **Pandex** en tu Escritorio.
 3. Abre **Pandex** desde el Escritorio.
+
+**¿Perdiste el acceso directo?** En Pandex: **Configuración → Comportamiento → Crear en el
+Escritorio**. O haz doble clic en **`Pandex.pyw`** (en la carpeta del proyecto); para tenerlo
+a mano: clic derecho → *Enviar a → Escritorio (crear acceso directo)*. Si Pandex ya está
+abierto, la mascota solo se asoma.
+
+> **Windows 11 con «Control de aplicaciones inteligente»:** si descargaste el ZIP con el
+> navegador y Windows bloquea algún archivo, quítales la marca de «descargado de internet»
+> con PowerShell: `Get-ChildItem -Path "C:\ruta\a\pandex" -Recurse | Unblock-File`.
+> No desactives ese control: Windows no deja volver a activarlo.
 
 <details>
 <summary>Instalación manual (si prefieres la terminal)</summary>

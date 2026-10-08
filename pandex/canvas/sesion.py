@@ -9,14 +9,33 @@ cierra apenas la sesión es válida.
 
 import time
 
-from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import sync_playwright
-
 from ..rutas import DATOS
 from .cliente import CanvasError
 
 PERFIL = DATOS / "browser-profile"
 ESPERA_SSO = 20  # segundos para que un login institucional (SSO) termine solo
+
+
+# Playwright se carga al usarlo, no al abrir Pandex: son ~14 MB y ~0,1 s de arranque
+# que la mascota no necesita mientras no inicies sesión en Canvas.
+PlaywrightError = None
+sync_playwright = None
+
+
+def _cargar():
+    global PlaywrightError, sync_playwright
+    if PlaywrightError is None or sync_playwright is None:
+        from playwright.sync_api import Error
+        from playwright.sync_api import sync_playwright as abrir
+
+        PlaywrightError = PlaywrightError or Error
+        sync_playwright = sync_playwright or abrir
+
+
+def error_navegador():
+    """La clase de error de Playwright, para usarla en un ``except``."""
+    _cargar()
+    return PlaywrightError
 
 
 def _abrir_contexto(pw, headless, usar_chrome):
@@ -69,6 +88,7 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
     Primero prueba sin ventana (si ya hay una sesión guardada); si no alcanza,
     abre el navegador para que entres tú.
     """
+    _cargar()
     with sync_playwright() as pw:
         if invisible_primero and (PERFIL / "Default").exists():
             contexto = _abrir_contexto(pw, True, usar_chrome)
