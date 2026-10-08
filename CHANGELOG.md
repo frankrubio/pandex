@@ -5,9 +5,8 @@ cuando buscas actualizaciones desde el menú.
 
 ## 2.1.0
 
-- **Rusty, el panda rojo,** es el nuevo personaje: pixel art nítido a cualquier
-  tamaño, con una expresión para cada estado. El logo y el ícono también son
-  suyos. El panda robot sigue disponible en Configuración → Apariencia.
+- **Rusty, el panda rojo** (de LuoSKraD, en Codex Pets), es el nuevo personaje,
+  con una pose para cada estado. El logo y el ícono también son suyos. El panda robot sigue disponible en Configuración → Apariencia.
 - **Interfaz renovada.** Colores cálidos, tipografía más cuidada, esquinas
   redondeadas y modo oscuro que sigue a Windows. Menú con secciones e íconos.
 - **Configuración nueva**, con barra lateral, vista previa de la mascota y

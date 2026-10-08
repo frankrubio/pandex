@@ -252,7 +252,10 @@ En **Configuración → Apariencia → Personaje** eliges entre **Rusty** (el pa
 .venv\Scripts\python.exe herramientas/preparar_sprite.py mi_imagen.png assets/mi_mascota/spritesheet.png
 ```
 
-Le quita el fondo liso, la recorta y la guarda con transparencia. Luego, en `config.json`,
+Le quita el fondo liso, la recorta y la guarda con transparencia. Si tu mascota es un
+**GIF** (por ejemplo, de [Codex Pets](https://codex-pets.net)), conviértelo en un sprite
+sheet con `herramientas/gif_a_sprite.py mascota.gif assets/mi_mascota/spritesheet.png`
+(cuadros de 192×208, uno al lado del otro). Luego, en `config.json`,
 pon `"personaje": "pixel"` y apunta `spritesheet → archivo`, `frame_ancho` y `frame_alto` a
 ella. Con un sheet de varias poses, cada estado (`idle`, `feliz`, `trabajando`, `error`)
 lista su cuadro como `[fila, columna]`.
@@ -278,9 +281,9 @@ Para regenerar el ícono o las capturas del README:
 
 ## Créditos
 
-Hecho por Frank, estudiante de UTEC, junto con Claude. Rusty está inspirado en la mascota
-homónima de [Codex Pets](https://codex-pets.net/share/rusty); el personaje y el ícono se
-describen en [assets/CREDITS.md](assets/CREDITS.md). Los cambios de cada versión están en
+Hecho por Frank, estudiante de UTEC, junto con Claude. **Rusty** es obra de
+[LuoSKraD](https://codex-pets.net/users/luoskrad), publicado en
+[Codex Pets](https://codex-pets.net/share/rusty); el personaje y el ícono se describen en [assets/CREDITS.md](assets/CREDITS.md). Los cambios de cada versión están en
 [CHANGELOG.md](CHANGELOG.md). Usa
 [PyQt6](https://www.riverbankcomputing.com/software/pyqt/),
 [Playwright](https://playwright.dev/python/),

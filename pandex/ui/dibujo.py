@@ -330,7 +330,7 @@ def logo(painter, lado, mini=None):
         painter.drawRoundedRect(QRectF(2, 2, 96, 48), 24, 24)
 
     cara = rusty.cabeza()
-    ancho = 94 if mini else 80
+    ancho = 90 if mini else 76
     alto = ancho * cara.height() / cara.width()
     destino = QRectF(50 - ancho / 2, 54 - alto / 2 + (2 if mini else 0), ancho, alto)
     # sin suavizar cuando cada píxel del dibujo ocupa varios de la pantalla

@@ -1,16 +1,17 @@
 # Créditos de los recursos gráficos
 
-## Rusty, el panda rojo (personaje por defecto)
+## Rusty, el panda rojo (personaje por defecto): `rusty/spritesheet.png`
 
-Inspirado en **Rusty**, la mascota compartida en Codex Pets
-(<https://codex-pets.net/share/rusty>): «a tiny red panda coding companion with a ringed
-tail». Pandex no incluye esa imagen: lo redibuja píxel por píxel en código
-(`pandex/ui/rusty.py`), en una cuadrícula de 44×42, con expresiones propias para cada
-estado (reposo, feliz, trabajando y error).
+**Rusty** es obra de **LuoSKraD** y fue publicado en Codex Pets:
+<https://codex-pets.net/share/rusty> · autor: <https://codex-pets.net/users/luoskrad>.
+«A tiny red panda coding companion with a ringed tail».
+
+El sprite sheet son los 6 cuadros de su GIF original, puestos en fila sin modificar
+(`herramientas/gif_a_sprite.py`). Pandex usa un cuadro fijo por estado.
 
 ## Ícono de la app: `pandex.ico`, `pandex_256.png`, `logo.png`
 
-La cara de Rusty sobre un squircle azul. Se dibujan en `pandex/ui/dibujo.py → logo()` y se
+La cara de Rusty (recortada del sprite de LuoSKraD) sobre un squircle azul. Se dibujan en `pandex/ui/dibujo.py → logo()` y se
 exportan con `herramientas/crear_icono.py`.
 
 ## Panda robot

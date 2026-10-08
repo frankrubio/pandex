@@ -6,7 +6,7 @@ la ventana solo se vuelve a dibujar cuando cambia el estado o el tamaño. En rep
 no consume CPU.
 
 Personajes (``mascota.personaje``): ``"rusty"`` (por defecto, el panda rojo en pixel
-art de ``ui/rusty.py``), ``"vectorial"`` (el panda robot de ``ui/dibujo.py``) o
+art, ``ui/rusty.py``), ``"vectorial"`` (el panda robot de ``ui/dibujo.py``) o
 ``"pixel"`` (un sprite sheet, ``ui/sprites.py``).
 """
 
@@ -56,6 +56,8 @@ class Mascota(QWidget):
         m = self.config.mascota
         self.sprites = None
         self.personaje = m.get("personaje", "rusty")
+        if self.personaje == "rusty" and not rusty.disponible():
+            self.personaje = "vectorial"  # falta assets/rusty: el panda dibujado no necesita archivos
         if self.personaje == "pixel":
             sprites = Sprites(m.get("spritesheet"))
             if sprites.ok:
@@ -78,7 +80,7 @@ class Mascota(QWidget):
         if self.sprites:
             return self.sprites.tamano_ventana(lado)
         if self.personaje == "rusty":
-            return rusty.tamano(lado)  # múltiplo exacto de la cuadrícula: píxeles parejos
+            return rusty.tamano(lado)
         return lado, lado
 
     def _restaurar_posicion(self):
