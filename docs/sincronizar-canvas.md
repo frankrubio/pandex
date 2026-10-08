@@ -167,6 +167,17 @@ Ejemplo escrito a mano:
 ]
 ```
 
+## Problemas comunes
+
+| Qué pasa | Por qué / qué hacer |
+|---|---|
+| Se abre el navegador cada vez | Tu universidad pide iniciar sesión seguido. Entra y la ventana se cierra sola. |
+| *"No reconocí ninguno de tus cursos"* | Empezó otro ciclo: **Configurar Canvas…** |
+| Una semana o `Lab` queda vacía | Pandex solo ve los módulos **publicados** para alumnos. |
+| *"🔒 aún sin abrir en Canvas"* | El ítem tiene fecha de apertura futura; se baja solo cuando se abra. |
+| No me gustó cómo ordenó mi carpeta | **Configurar Canvas… → Deshacer el último reordenamiento.** |
+| Quiero empezar de cero | Borra `config.json` (y, si quieres, `%LOCALAPPDATA%\Pandex`) y abre Pandex. |
+
 ## Límites conocidos
 
 - Pandex ve lo mismo que tú como alumno: **lo que el docente no publicó, no existe** para él.

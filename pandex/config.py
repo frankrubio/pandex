@@ -48,6 +48,8 @@ DEFAULTS = {
         ],
     },
     "arrancar_con_windows": False,
+    # una consulta pequeña a GitHub al día; si hay versión nueva, Rusty avisa
+    "buscar_actualizaciones": True,
     "tareas": {},
 }
 

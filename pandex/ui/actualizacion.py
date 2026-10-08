@@ -4,7 +4,7 @@ La consulta y la copia corren en un hilo aparte: la mascota y la ventana respond
 mientras tanto. Nada se descarga hasta que pulsas «Actualizar ahora».
 """
 
-from PyQt6.QtCore import Qt, QThread, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
     QDialog,
@@ -49,12 +49,18 @@ class _Hilo(QThread):
 
 
 class DialogoActualizacion(QDialog):
-    """``reiniciar`` es la función de la app que cierra Pandex y lo vuelve a abrir."""
+    """``reiniciar`` es la función de la app que cierra Pandex y lo vuelve a abrir.
 
-    def __init__(self, reiniciar, parent=None):
+    Con ``info`` (lo que devolvió ``actualizar.buscar()``) no vuelve a consultar
+    GitHub; con ``aplicar_ya`` además actualiza enseguida y reinicia solo: es el
+    «un clic» cuando Rusty avisa que hay una versión nueva.
+    """
+
+    def __init__(self, reiniciar, parent=None, info=None, aplicar_ya=False):
         super().__init__(parent)
         self._reiniciar = reiniciar
         self._hilo = None
+        self._aplicar_ya = aplicar_ya
         self.setWindowTitle("Actualizar Pandex")
         self.setMinimumWidth(460)
 
@@ -99,7 +105,13 @@ class DialogoActualizacion(QDialog):
         caja.addSpacing(6)
         caja.addLayout(botones)
 
-        self._correr(lambda _aviso: actualizar.buscar(), self._al_buscar)
+        if info is None:
+            self._correr(lambda _aviso: actualizar.buscar(), self._al_buscar)
+        else:
+            self.barra.hide()
+            self._al_buscar(info)
+            if aplicar_ya and info.get("hay_nueva"):
+                self._actualizar()
 
     def showEvent(self, evento):
         super().showEvent(evento)
@@ -153,6 +165,9 @@ class DialogoActualizacion(QDialog):
         self.principal.setText("Reiniciar Pandex")
         self.principal.setEnabled(True)
         self.principal.clicked.connect(self._reiniciar_ya)
+        if self._aplicar_ya:  # un clic: no hace falta un segundo clic para reiniciar
+            self.titulo.setText("¡Listo! Reiniciando…")
+            QTimer.singleShot(1500, self._reiniciar_ya)
 
     def _reiniciar_ya(self):
         self.accept()

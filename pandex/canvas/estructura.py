@@ -25,6 +25,8 @@ class Item:
     seccion: str    # subencabezado vigente, o None si el archivo va antes de todos
     titulo: str     # como lo muestra el módulo
     file_id: int
+    bloqueado: bool = False  # el docente lo publicó pero aún no te deja abrirlo
+    abre: str = None         # cuándo se abre (ISO), si Canvas lo dice
 
 
 def items_de_modulos(modulos):
@@ -36,8 +38,10 @@ def items_de_modulos(modulos):
             if tipo == "SubHeader":
                 seccion = item.get("title") or ""
             elif tipo == "File" and item.get("content_id"):
+                detalles = item.get("content_details") or {}
                 yield Item(modulo.get("name") or "", seccion,
-                           (item.get("title") or "").strip(), item["content_id"])
+                           (item.get("title") or "").strip(), item["content_id"],
+                           bool(detalles.get("locked_for_user")), detalles.get("unlock_at"))
 
 
 # --------------------------------------------------------------------------

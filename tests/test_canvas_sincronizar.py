@@ -81,6 +81,25 @@ class ConfiguracionClasica(ConCarpetaTemporal):
         self.sincronizar(self.params)
         self.assertTrue(guia.exists(), "si borras algo que bajó Pandex, se revisa y vuelve")
 
+    def test_lo_que_aun_no_se_abre_no_cuenta_como_falla(self):
+        CanvasFalso.fallar, CanvasFalso.incompletos = set(), set()
+        CanvasFalso.modulos_[3] = [modulo("Semana 6", ("sub", "Material de clase"), ("file", "Clase 6.pdf", 101),
+                                          ("file", "Guia 6", 102))]
+        CanvasFalso.modulos_[1] = [modulo("Semana 7", ("bloqueado", "S7 Teoria.pdf", 301, "2099-01-05T05:00:00Z"))]
+        CanvasFalso.modulos_[2] = [modulo("Semana 6", ("file", "S6 Lab.pdf", 202))]
+        CanvasFalso.archivos[301] = ("S7 Teoria.pdf", 3000)
+        CanvasFalso.prohibidos = {202}
+        CanvasFalso.contar_cero()
+        r, _ = self.sincronizar(self.params)
+        self.assertTrue(r["ok"], "un archivo que aún no se abre no es un error")
+        self.assertIn("2 aún sin abrir", r["resumen"])
+        self.assertIn("se abre el", r["informe"])
+        self.assertEqual(CanvasFalso.llamadas["descargar"], 2, "el bloqueado ni se intenta; el 403 sí")
+        CanvasFalso.prohibidos = set()
+        r, _ = self.sincronizar(self.params)
+        self.assertTrue((self.ciclo / "Programacion_I" / "Sem 6" / "Laboratorio" / "S6 Lab.pdf").exists(),
+                        "cuando Canvas lo abre, se baja solo en la siguiente corrida")
+
     def test_sin_novedades_no_abre_ventana(self):
         self.params["cursos"] = self.params["cursos"][1:]
         self.sincronizar(self.params)

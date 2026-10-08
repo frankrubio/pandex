@@ -89,12 +89,18 @@ class Canvas:
         return self.api("/courses", {"enrollment_state": "active", "per_page": 100})
 
     def modulos(self, curso_id):
-        """Los módulos del curso con sus ítems (solo lo que el docente publicó)."""
-        modulos = self.api(f"/courses/{curso_id}/modules", {"include[]": "items", "per_page": 100})
+        """Los módulos del curso con sus ítems (solo lo que el docente publicó).
+
+        ``content_details`` trae si un ítem está bloqueado para ti y desde cuándo se
+        abre: así no se intenta bajar lo que el docente programó para más adelante.
+        """
+        modulos = self.api(f"/courses/{curso_id}/modules",
+                           {"include[]": ["items", "content_details"], "per_page": 100})
         for modulo in modulos:
             # con muchos ítems Canvas no los incluye: hay que pedirlos aparte
             if "items" not in modulo and modulo.get("items_url"):
-                modulo["items"] = self.api(modulo["items_url"], {"per_page": 100})
+                modulo["items"] = self.api(modulo["items_url"],
+                                           {"include[]": "content_details", "per_page": 100})
         return modulos
 
     def archivos_del_curso(self, curso_id):

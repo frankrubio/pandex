@@ -60,6 +60,12 @@ class Archivos(unittest.TestCase):
         self.assertEqual(conversion.detectar_codificacion("Año;Niño\n".encode("cp1252")), "cp1252")
 
 
+class LimpiarPdf(unittest.TestCase):
+    def test_tabulaciones_y_lineas_en_blanco(self):
+        crudo = "Fundamentos\tde\tCálculo  \n\n\n\n\tEjemplo:\ty\t=\tx²\n"
+        self.assertEqual(conversion.limpiar_pdf(crudo), "Fundamentos de Cálculo\n\nEjemplo: y = x²")
+
+
 class Conversion(unittest.TestCase):
     """Una conversión de verdad con MarkItDown (un CSV: rápido y sin OCR)."""
 

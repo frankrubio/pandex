@@ -86,7 +86,7 @@ class Navegador(QDialog):
             "Convierte solo material de estudio: clases, guías, resúmenes y lecturas.\n"
             "Deja fuera actividades previas, tareas, evaluaciones, preguías, HTML…"
         )
-        self.btn_estudio.setStyleSheet("QPushButton { font-weight: 600; }")
+        self.btn_estudio.setProperty("rol", "primario")
         self.btn_estudio.clicked.connect(lambda: self._elegir_carpeta("estudio"))
         self.btn_todos = QPushButton()
         self.btn_todos.setToolTip("Convierte todo lo convertible de la carpeta, sin filtrar.")

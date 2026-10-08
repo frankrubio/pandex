@@ -16,6 +16,9 @@ def modulo(nombre, *items):
     for item in items:
         if item[0] == "sub":
             salida.append({"type": "SubHeader", "title": item[1]})
+        elif item[0] == "bloqueado":  # publicado, pero se abre más adelante
+            salida.append({"type": "File", "title": item[1], "content_id": item[2],
+                           "content_details": {"locked_for_user": True, "unlock_at": item[3]}})
         else:
             salida.append({"type": "File", "title": item[1], "content_id": item[2]})
     return {"name": nombre, "items": salida}
@@ -32,6 +35,7 @@ class CanvasFalso:
     modulos_ = {}
     archivos = {}
     fallar = set()       # estas descargas fallan
+    prohibidos = set()   # Canvas responde 403 (el archivo aún no se abre)
     incompletos = set()  # estas llegan con menos bytes
     llamadas = {}
     _candado = threading.Lock()
@@ -42,7 +46,7 @@ class CanvasFalso:
     @classmethod
     def reiniciar(cls, cursos, modulos, archivos):
         cls.cursos_, cls.modulos_, cls.archivos = cursos, modulos, archivos
-        cls.fallar, cls.incompletos = set(), set()
+        cls.fallar, cls.incompletos, cls.prohibidos = set(), set(), set()
         cls.contar_cero()
 
     @classmethod
@@ -73,6 +77,8 @@ class CanvasFalso:
         self._contar("descargar")
         if file_id in self.fallar:
             raise CanvasError("Canvas devolvió una página, no el archivo")
+        if file_id in self.prohibidos:
+            raise CanvasError("Canvas devolvió 403", 403)
         tamano = self.archivos[file_id][1] - (100 if file_id in self.incompletos else 0)
         Path(destino_tmp).write_bytes(bytes([file_id % 251]) * tamano)
         return tamano
