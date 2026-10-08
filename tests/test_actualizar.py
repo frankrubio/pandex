@@ -91,7 +91,7 @@ class MigrarConfig(unittest.TestCase):
         self.ruta.write_text(json.dumps({"mascota": {"nombre": "Pygu", "spritesheet": SPRITE_PIXEL,
                                                      "animacion": True}}), encoding="utf-8")
         config = Config(self.ruta)
-        self.assertEqual(config.mascota["personaje"], "vectorial")
+        self.assertEqual(config.mascota["personaje"], "rusty")
         self.assertEqual(config.mascota["nombre"], "Pygu")
         self.assertNotIn("animacion", config.mascota)
         guardado = json.loads(self.ruta.read_text(encoding="utf-8"))

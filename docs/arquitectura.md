@@ -18,7 +18,8 @@ devuelven.
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque). |
-| `pandex/ui/` | `mascota.py` (la ventana), `globo.py`, `sprites.py`, `dibujo.py` (panda vectorial de respaldo) y los diálogos de configuración, informe y registro. |
+| `pandex/ui/` | `mascota.py` (la ventana, estática), `rusty.py` (el panda rojo en pixel art), `dibujo.py` (panda robot vectorial y el logo), `sprites.py`, `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
+| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. |
 | `pandex/canvas/` | Sincronizar Canvas → [sincronizar-canvas.md](sincronizar-canvas.md) |
 | `pandex/markdown/` | Convertir a Markdown → [convertir-markdown.md](convertir-markdown.md) |
 | `tasks/*.py` | Los plug-ins. Delgados: conectan una función de `pandex/` con el menú. |
@@ -87,17 +88,18 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
 {
   "mascota": {
     "nombre": "Pandex",
+    "personaje": "rusty",          // "rusty", "vectorial" (panda robot) o "pixel" (sprite sheet)
     "tamano": 120,                 // alto en píxeles
     "opacidad": 1.0,
-    "spritesheet": { ... },        // ver «Cambiar el personaje» en el README
+    "spritesheet": { ... },        // solo con "personaje": "pixel"; ver «Cambiar el personaje»
     "globo_activo": true,
     "globo_segundos": 5,
     "posicion": [1291, 695],       // se guarda sola al arrastrarla
     "siempre_encima": true,
-    "animacion": true,
     "frases_click": ["¿Qué tal?", "..."]
   },
   "arrancar_con_windows": false,
+  "version_config": 2,             // para poner al día un config.json viejo al actualizar
   "tareas": {
     "<id de la tarea>": {
       "activa": true,
@@ -136,3 +138,12 @@ manejado por código. Ninguna usa internet.
   deshacerlo.
 - **Plug-ins delgados.** La lógica vive en `pandex/` (probada y reutilizable); `tasks/`
   solo la conecta. Para una función propia y pequeña basta un archivo en `tasks/`.
+
+## Rendimiento
+
+La mascota es **estática**: cada estado (reposo, feliz, trabajando, error) se pinta una
+sola vez y queda en caché (`rusty.imagen`, `dibujo.imagen`). No hay temporizadores de
+animación; la ventana solo se repinta cuando cambia el estado. El único temporizador es
+un disparo único que la devuelve al reposo tras una reacción. Las transiciones (globo,
+apertura de ventanas) duran menos de 0,3 s y solo corren en ese momento. Los avances de
+una tarea refrescan el globo como mucho 4 veces por segundo.

@@ -44,8 +44,8 @@ def _pegar(painter, widget, x, y):
 
 
 def mascota(oscuro):
-    """Los cuatro estados del panda, cada uno con su globo."""
-    from pandex.ui import dibujo
+    """Los cuatro estados de Rusty, cada uno con su globo."""
+    from pandex.ui import rusty
     from pandex.ui.globo import Globo
 
     frases = (("idle", "¿Qué tal? Clic derecho para el menú.", "info", None),
@@ -65,7 +65,8 @@ def mascota(oscuro):
             globo.decir(texto, 5, tipo)
         globo.colocar(0, 0, globo.width() // 2)
         _pegar(p, globo, x + (250 - globo.width()) // 2, 150 - globo.height())
-        p.drawPixmap(x + 50, 150, dibujo.imagen(estado, 150, 150, 2))
+        pix = rusty.imagen(estado, 147, 2)
+        p.drawPixmap(x + (250 - round(pix.width() / 2)) // 2, 152, pix)
         globo.ocultar_ya()
         globo.deleteLater()
     p.end()
@@ -73,8 +74,6 @@ def mascota(oscuro):
 
 
 def menu(app_cfg, oscuro):
-    from PyQt6.QtWidgets import QMenu
-
     from pandex import tareas
     from pandex.app import PandexApp
 
@@ -118,6 +117,34 @@ def actualizacion(oscuro):
     return dlg.grab().toImage()
 
 
+def social():
+    """Vista previa para redes (1280×640): súbela en GitHub → Settings → Social preview."""
+    from PyQt6.QtCore import QRectF, Qt
+    from PyQt6.QtGui import QFont
+
+    from pandex.ui import dibujo, rusty, tema
+
+    img = QImage(1280, 640, QImage.Format.Format_ARGB32_Premultiplied)
+    img.fill(QColor(tema.CLARO["fondo"]))
+    p = QPainter(img)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    p.drawPixmap(96, 120, dibujo.pixmap_logo(88))
+    p.setPen(QColor(tema.CLARO["texto"]))
+    p.setFont(tema.fuente_titulo(54))
+    p.drawText(QRectF(96, 230, 700, 100), int(Qt.AlignmentFlag.AlignLeft), "Pandex")
+    p.setPen(QColor(tema.CLARO["texto_suave"]))
+    f = tema.fuente(20)
+    f.setWeight(QFont.Weight.Normal)
+    p.setFont(f)
+    p.drawText(QRectF(96, 340, 640, 160), int(Qt.TextFlag.TextWordWrap),
+               "Un panda rojo en tu escritorio que sincroniza Canvas y convierte tu material "
+               "a Markdown. Local, gratis y sin IA.")
+    pix = rusty.imagen("feliz", 420)
+    p.drawPixmap(1280 - pix.width() - 90, (640 - pix.height()) // 2, pix)
+    p.end()
+    return img
+
+
 def main():
     from pandex.ui import tema
 
@@ -133,6 +160,9 @@ def main():
             ruta = DESTINO / f"{nombre}{sufijo}.png"
             img.save(str(ruta))
             print(ruta.relative_to(RAIZ))
+    tema.aplicar(app, oscuro=False)
+    social().save(str(RAIZ / "assets" / "social.png"))
+    print("assets/social.png")
     return 0
 
 

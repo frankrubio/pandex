@@ -5,7 +5,7 @@ sola vez por tamaño y se guarda en caché (``imagen()``). Mientras no cambie el
 la mascota no vuelve a dibujar nada ni gasta CPU.
 
 Todo se dibuja en una caja lógica de 100×100 y luego se escala, así se ve nítido a
-80 px o a 300 px. El logo de la app (``logo()``) reutiliza la misma cabeza.
+80 px o a 300 px. El logo de la app (``logo()``) es la cara de Rusty (``ui/rusty.py``).
 """
 
 from functools import lru_cache
@@ -303,15 +303,17 @@ def _hocico(p, estado):
 
 
 def logo(painter, lado, mini=None):
-    """El logo: la cabeza del panda sobre un squircle azul.
+    """El logo: la cara de Rusty en pixel art sobre un squircle azul.
 
-    ``mini`` (por defecto, a 32 px o menos) quita los detalles que a ese tamaño
-    solo serían ruido: así se lee bien en la bandeja de Windows.
+    ``mini`` (por defecto, a 32 px o menos) agranda la cara y quita el brillo, para
+    que en la bandeja de Windows se lea a la primera.
     """
+    from . import rusty
+
     if mini is None:
         mini = lado <= 32
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.save()
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
     painter.scale(lado / 100.0, lado / 100.0)
 
     fondo = QLinearGradient(0, 0, 0, 100)
@@ -322,46 +324,20 @@ def logo(painter, lado, mini=None):
     painter.drawRoundedRect(QRectF(2, 2, 96, 96), 24, 24)
     if not mini:  # brillo sutil arriba
         brillo = QLinearGradient(0, 2, 0, 50)
-        brillo.setColorAt(0.0, QColor(255, 255, 255, 40))
+        brillo.setColorAt(0.0, QColor(255, 255, 255, 46))
         brillo.setColorAt(1.0, QColor(255, 255, 255, 0))
         painter.setBrush(QBrush(brillo))
         painter.drawRoundedRect(QRectF(2, 2, 96, 48), 24, 24)
 
-    painter.save()
-    if mini:
-        painter.translate(50, 54)
-        painter.scale(1.18, 1.18)
-        painter.translate(-50, -36.5)
-        _cabeza_mini(painter)
-    else:
-        painter.translate(50, 55)
-        painter.scale(1.05, 1.05)
-        painter.translate(-50, -36.5)
-        _cabeza(painter, "idle", contorno=False)
+    cara = rusty.cabeza()
+    ancho = 94 if mini else 80
+    alto = ancho * cara.height() / cara.width()
+    destino = QRectF(50 - ancho / 2, 54 - alto / 2 + (2 if mini else 0), ancho, alto)
+    # sin suavizar cuando cada píxel del dibujo ocupa varios de la pantalla
+    nitido = lado * ancho / 100 >= cara.width() * 2
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, not nitido)
+    painter.drawImage(destino, cara)
     painter.restore()
-    painter.restore()
-
-
-def _cabeza_mini(p):
-    """Cabeza simplificada: orejas, cráneo, manchas y ojos. Nada de 1 px."""
-    p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QBrush(GRAFITO))
-    for cx in (24, 76):
-        p.drawEllipse(QPointF(cx, 16), 11, 11)
-    p.setBrush(QBrush(MARFIL))
-    p.drawRoundedRect(QRectF(14, 9, 72, 54), 28, 26)
-    p.setBrush(QBrush(GRAFITO))
-    for cx, giro in ((35, -14), (65, 14)):
-        p.save()
-        p.translate(cx, 37)
-        p.rotate(giro)
-        p.drawEllipse(QPointF(0, 0), 11.5, 13)
-        p.restore()
-    p.setBrush(QBrush(LED))
-    for cx in (36, 64):
-        p.drawEllipse(QPointF(cx, 37.5), 5, 5.4)
-    p.setBrush(QBrush(GRAFITO))
-    p.drawEllipse(QPointF(50, 50), 4.2, 3)
 
 
 def pixmap_logo(lado, dpr=1.0):

@@ -5,8 +5,9 @@ imagen que se pinta una vez y queda en caché. No hay temporizadores de animaci�
 la ventana solo se vuelve a dibujar cuando cambia el estado o el tamaño. En reposo
 no consume CPU.
 
-El personaje por defecto es el panda vectorial de ``ui/dibujo.py``; con
-``mascota.personaje = "pixel"`` se usa un sprite sheet (``ui/sprites.py``).
+Personajes (``mascota.personaje``): ``"rusty"`` (por defecto, el panda rojo en pixel
+art de ``ui/rusty.py``), ``"vectorial"`` (el panda robot de ``ui/dibujo.py``) o
+``"pixel"`` (un sprite sheet, ``ui/sprites.py``).
 """
 
 import random
@@ -15,7 +16,7 @@ from PyQt6.QtCore import QPoint, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QGuiApplication, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
-from . import dibujo
+from . import dibujo, rusty
 from .globo import Globo
 from .sprites import Sprites
 
@@ -54,7 +55,8 @@ class Mascota(QWidget):
     def _cargar_personaje(self):
         m = self.config.mascota
         self.sprites = None
-        if m.get("personaje") == "pixel":
+        self.personaje = m.get("personaje", "rusty")
+        if self.personaje == "pixel":
             sprites = Sprites(m.get("spritesheet"))
             if sprites.ok:
                 self.sprites = sprites
@@ -73,7 +75,11 @@ class Mascota(QWidget):
     def _tamano(self):
         """Con sprite sheet, la ventana toma la proporción del personaje."""
         lado = int(self.config.mascota.get("tamano", 120))
-        return self.sprites.tamano_ventana(lado) if self.sprites else (lado, lado)
+        if self.sprites:
+            return self.sprites.tamano_ventana(lado)
+        if self.personaje == "rusty":
+            return rusty.tamano(lado)  # múltiplo exacto de la cuadrícula: píxeles parejos
+        return lado, lado
 
     def _restaurar_posicion(self):
         guardada = self.config.mascota.get("posicion")
@@ -156,6 +162,11 @@ class Mascota(QWidget):
                 painter.drawPixmap((self.width() - pix.width()) // 2,
                                    (self.height() - pix.height()) // 2, pix)
                 return
+        if self.personaje == "rusty":
+            pix = rusty.imagen(self._estado, self.height(), dpr)
+            painter.drawPixmap(round((self.width() - pix.width() / dpr) / 2),
+                               round((self.height() - pix.height() / dpr) / 2), pix)
+            return
         painter.drawPixmap(0, 0, dibujo.imagen(self._estado, self.width(), self.height(), dpr))
 
     # ---------- interacción ----------

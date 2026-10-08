@@ -1,0 +1,28 @@
+name: Algo falla
+description: Pandex hizo algo que no esperabas
+labels: [error]
+body:
+  - type: textarea
+    id: que_paso
+    attributes:
+      label: ¿Qué pasó?
+      description: Qué hiciste, qué esperabas y qué viste en su lugar.
+    validations:
+      required: true
+  - type: textarea
+    id: registro
+    attributes:
+      label: Registro
+      description: Clic derecho → Ver registro → «Solo avisos y errores». Pega aquí las líneas (revisa que no tengan datos personales).
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Versión
+      description: Clic derecho → Configuración → Acerca de.
+      placeholder: "2.1.0"
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows
+      options: ["Windows 11", "Windows 10"]

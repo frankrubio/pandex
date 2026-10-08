@@ -24,10 +24,11 @@ from PyQt6.QtWidgets import (
 )
 
 from .. import __version__, accesos
-from . import dibujo, iconos, tema
+from . import dibujo, iconos, rusty, tema
 from .sprites import Sprites
 
-PERSONAJES = (("vectorial", "Panda robot (nuevo)"), ("pixel", "Panda pixel art (clásico)"))
+PERSONAJES = (("rusty", "Rusty, el panda rojo"), ("vectorial", "Panda robot"),
+              ("pixel", "Panda robot pixel art (clásico)"))
 
 
 class VistaPrevia(QWidget):
@@ -36,7 +37,7 @@ class VistaPrevia(QWidget):
     def __init__(self, config, parent=None):
         super().__init__(parent)
         self.config = config
-        self.personaje = config.mascota.get("personaje", "vectorial")
+        self.personaje = config.mascota.get("personaje", "rusty")
         self.opacidad = float(config.mascota.get("opacidad", 1.0))
         self._sprites = None
         self.setFixedSize(150, 150)
@@ -64,6 +65,12 @@ class VistaPrevia(QWidget):
                 if pix is not None:
                     p.drawPixmap((self.width() - pix.width()) // 2, (self.height() - pix.height()) // 2, pix)
                     return
+        if self.personaje == "rusty":
+            pix = rusty.imagen("idle", 126, self.devicePixelRatioF())
+            ancho = round(pix.width() / pix.devicePixelRatio())
+            alto = round(pix.height() / pix.devicePixelRatio())
+            p.drawPixmap((self.width() - ancho) // 2, (self.height() - alto) // 2, pix)
+            return
         p.drawPixmap(15, 15, dibujo.imagen("idle", lado, lado, self.devicePixelRatioF()))
 
 
@@ -178,7 +185,7 @@ class DialogoConfiguracion(QDialog):
         self.personaje = QComboBox()
         for clave, texto in PERSONAJES:
             self.personaje.addItem(texto, clave)
-        self.personaje.setCurrentIndex(max(0, self.personaje.findData(m.get("personaje", "vectorial"))))
+        self.personaje.setCurrentIndex(max(0, self.personaje.findData(m.get("personaje", "rusty"))))
         self.personaje.currentIndexChanged.connect(lambda _i: self.vista.poner(self.personaje.currentData()))
         form.addRow("Personaje", self.personaje)
 

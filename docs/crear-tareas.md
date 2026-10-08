@@ -13,6 +13,7 @@ class Task:
     nombre = "Decir hola"               # lo que se ve en el menú
     descripcion = "Saluda y se va"      # tooltip y ventana de Configuración
     schedule = None                     # None = solo manual; "0 8 * * 1-5" = 8:00 de lunes a viernes
+    icono = "hola"                      # opcional: sincronizar, documento, hola, canvas, lista… (pandex/ui/iconos.py)
 
     def run(self, ctx):
         ctx.decir("¡Hola!")

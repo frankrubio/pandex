@@ -1,19 +1,27 @@
 <p align="center">
-  <img src="assets/pandex_256.png" width="128" alt="Pandex">
+  <img src="assets/logo.png" width="112" alt="Logo de Pandex: la cara de Rusty, un panda rojo en pixel art">
 </p>
 
 <h1 align="center">Pandex</h1>
 
 <p align="center">
-  Un panda robot que vive en tu escritorio, baja el material de tus cursos de <b>Canvas</b>,
-  lo ordena en carpetas y convierte tus PDFs y diapositivas a <b>Markdown</b>.<br>
+  <b>Rusty, un panda rojo que vive en tu escritorio</b>, baja el material de tus cursos de
+  <b>Canvas</b>, lo ordena en carpetas y convierte tus PDFs y diapositivas a <b>Markdown</b>.<br>
   Todo en tu computadora, gratis y sin IA.
 </p>
 
 <p align="center">
-  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6">
-  <img alt="Python 3.12+" src="https://img.shields.io/badge/Python-3.12%2B-3776AB">
-  <img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-green">
+  <a href="https://github.com/frankrubio/pandex/actions/workflows/pruebas.yml"><img alt="Pruebas" src="https://github.com/frankrubio/pandex/actions/workflows/pruebas.yml/badge.svg"></a>
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-3B6EA8">
+  <img alt="Python 3.12+" src="https://img.shields.io/badge/Python-3.12%2B-3B6EA8">
+  <img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-D97757">
+</p>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/mascota-oscuro.png">
+    <img src="docs/img/mascota.png" width="760" alt="Rusty en sus cuatro estados: saludando, trabajando con una barra de avance, contento al terminar y con un error">
+  </picture>
 </p>
 
 ---
@@ -27,7 +35,20 @@
 | **Tus propias tareas** | Cada función es un archivo `.py` en `tasks/`. Lo dejas ahí y aparece en el menú. Puedes programarlas con un horario. |
 
 Pandex es una ventanita transparente que flota sobre tus programas: haces **clic** para
-saludarlo, **clic derecho** para el menú, y te avisa con un globo de diálogo cuando termina algo.
+saludar a Rusty, **clic derecho** para el menú, y te avisa con un globo cuando termina algo.
+Es **liviano**: Rusty es una imagen fija por estado, así que en reposo no usa CPU.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/menu-oscuro.png">
+    <img src="docs/img/menu.png" width="250" alt="El menú del clic derecho">
+  </picture>
+  &nbsp;&nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/configuracion-oscuro.png">
+    <img src="docs/img/configuracion.png" width="520" alt="La ventana de Configuración">
+  </picture>
+</p>
 
 ---
 
@@ -55,6 +76,41 @@ py -3 -m venv .venv
 .venv\Scripts\pythonw.exe main.py                         # abrir Pandex
 ```
 </details>
+
+---
+
+## Actualizar Pandex
+
+**Clic derecho → Buscar actualizaciones…** (o **Configuración → Acerca de**). Pandex consulta
+GitHub solo cuando se lo pides, te muestra qué trae la versión nueva y, si aceptas:
+
+- si lo instalaste con `git clone`, hace `git pull`;
+- si bajaste el ZIP, descarga la versión nueva y copia encima, guardando antes una copia de
+  lo que reemplaza en `%LOCALAPPDATA%\Pandex\respaldos`.
+
+Tu `config.json` (tus cursos y ajustes), el registro, el entorno `.venv` y las tareas que
+agregaste en `tasks/` **no se tocan**. Si hacen falta dependencias nuevas, las instala. Al
+final, un botón reinicia Pandex.
+
+<details>
+<summary>¿Tienes la versión 2.0.0? (todavía no trae este botón)</summary>
+
+Actualiza una sola vez a mano; desde la 2.1 ya es un clic:
+
+- **Con git:** en la carpeta de Pandex, `git pull`.
+- **Con ZIP:** descarga el ZIP nuevo y descomprímelo **encima** de tu carpeta de Pandex
+  (acepta reemplazar). Tu `config.json` no viene en el ZIP, así que se queda como está.
+
+Luego abre Pandex: Rusty reemplaza al panda anterior (si habías puesto un personaje propio,
+se respeta) y puedes volver al de antes en **Configuración → Apariencia → Personaje**.
+</details>
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/img/actualizar-oscuro.png">
+    <img src="docs/img/actualizar.png" width="440" alt="La ventana Actualizar Pandex">
+  </picture>
+</p>
 
 ---
 
@@ -92,8 +148,10 @@ Nada se escribe en tu disco hasta que pulsas **Terminar**. Entonces empieza la p
   cada archivo y la carpeta donde quedó.
 - **Clic derecho → Convertir a Markdown.** Eliges una carpeta o archivos con el teclado y
   Pandex los convierte en segundo plano. → [Cómo funciona](docs/convertir-markdown.md)
-- **Configuración:** nombre y tamaño de la mascota, arrancar con Windows y el horario de cada tarea.
-- **Ver registro:** qué hizo Pandex y por qué (útil si algo falla).
+- **Configuración:** personaje, nombre, tamaño y opacidad de la mascota, el globo, arrancar
+  con Windows y el horario de cada tarea. Sigue el modo claro u oscuro de Windows.
+- **Ver registro:** qué hizo Pandex y por qué (útil si algo falla). Se puede filtrar y
+  resalta avisos y errores.
 - Si la ocultas, vuelve con el ícono del panda junto al reloj de Windows.
 
 ### Cómo quedan tus carpetas
@@ -125,8 +183,9 @@ renombrado o movido) y un archivo a medio bajar nunca llega a tu carpeta.
 
 - **Tu contraseña no la ve nadie.** Inicias sesión en una ventana del navegador; Pandex solo
   reutiliza esa sesión, guardada en un perfil propio en `%LOCALAPPDATA%\Pandex`.
-- **Nada sale de tu PC** salvo las consultas a tu propio Canvas. No hay servidores, ni
-  telemetría, ni IA en la nube: el conversor y el OCR son locales.
+- **Nada sale de tu PC** salvo las consultas a tu propio Canvas y, solo cuando lo pides,
+  la consulta a GitHub para buscar actualizaciones. No hay servidores, ni telemetría, ni IA
+  en la nube: el conversor y el OCR son locales.
 - **Tus datos no van al repositorio.** `config.json` (tus rutas y cursos) y `logs/` están en
   `.gitignore`; el historial y la sesión viven fuera de la carpeta del proyecto.
 - Pandex solo ve lo que Canvas le muestra a un alumno: lo que el docente aún no publicó, no.
@@ -141,14 +200,15 @@ pandex/                 el paquete
 ├── tareas.py           el contrato de los plug-ins: descubrir tareas y su contexto (ctx)
 ├── ejecutor.py         corre una tarea en un hilo aparte (la interfaz nunca se congela)
 ├── programador.py      horarios cron (APScheduler)
+├── actualizar.py       «Buscar actualizaciones…»: git pull o ZIP de GitHub, con respaldo
 ├── config.py · rutas.py · log.py · accesos.py
-├── ui/                 la mascota, el globo y los diálogos (PyQt6)
+├── ui/                 Rusty, el globo, el tema claro/oscuro y los diálogos (PyQt6)
 ├── canvas/             todo Sincronizar Canvas: cliente, sesión, estructura, destinos,
 │                       historial, sincronizar, adoptar (reordenar) y el asistente
 └── markdown/           todo Convertir a Markdown: clasificador, archivos, motor, lote, navegador
 tasks/                  los plug-ins: un .py por función (delgados; la lógica está en pandex/)
 tests/                  pruebas sin internet: Canvas falso, carpetas temporales, ventanas invisibles
-herramientas/           crear el ícono y preparar un sprite nuevo
+herramientas/           crear el ícono, las capturas del README y preparar un sprite nuevo
 docs/                   documentación detallada
 ```
 
@@ -185,17 +245,20 @@ class Task:
 
 ## Cambiar el personaje
 
-El personaje es un *sprite sheet* (una grilla de cuadros) definido en `config.json → mascota →
-spritesheet`. Para usar tu propia imagen:
+En **Configuración → Apariencia → Personaje** eliges entre **Rusty** (el panda rojo), el
+**panda robot** vectorial o el **panda robot en pixel art**. Para usar tu propia imagen:
 
 ```bash
 .venv\Scripts\python.exe herramientas/preparar_sprite.py mi_imagen.png assets/mi_mascota/spritesheet.png
 ```
 
-Le quita el fondo liso, la recorta y la guarda con transparencia. Luego apunta `archivo`,
-`frame_ancho` y `frame_alto` a ella. Con un sheet de varias poses, cada estado (`idle`,
-`feliz`, `trabajando`, `error`) lista sus cuadros como `[fila, columna]`. Si borras el
-`spritesheet`, Pandex dibuja un panda vectorial.
+Le quita el fondo liso, la recorta y la guarda con transparencia. Luego, en `config.json`,
+pon `"personaje": "pixel"` y apunta `spritesheet → archivo`, `frame_ancho` y `frame_alto` a
+ella. Con un sheet de varias poses, cada estado (`idle`, `feliz`, `trabajando`, `error`)
+lista su cuadro como `[fila, columna]`.
+
+Para regenerar el ícono o las capturas del README:
+`herramientas/crear_icono.py` y `herramientas/capturas.py`.
 
 ---
 
@@ -215,8 +278,10 @@ Le quita el fondo liso, la recorta y la guarda con transparencia. Luego apunta `
 
 ## Créditos
 
-Hecho por Frank, estudiante de UTEC, junto con Claude. El personaje y el ícono se
-describen en [assets/CREDITS.md](assets/CREDITS.md). Usa
+Hecho por Frank, estudiante de UTEC, junto con Claude. Rusty está inspirado en la mascota
+homónima de [Codex Pets](https://codex-pets.net/share/rusty); el personaje y el ícono se
+describen en [assets/CREDITS.md](assets/CREDITS.md). Los cambios de cada versión están en
+[CHANGELOG.md](CHANGELOG.md). Usa
 [PyQt6](https://www.riverbankcomputing.com/software/pyqt/),
 [Playwright](https://playwright.dev/python/),
 [MarkItDown](https://github.com/microsoft/markitdown) y

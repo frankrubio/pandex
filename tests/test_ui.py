@@ -31,6 +31,17 @@ class Interfaz(unittest.TestCase):
             self.assertFalse(pix.isNull())
             self.assertIs(pix, dibujo.imagen(estado, 120, 120), "la segunda vez sale de la caché")
 
+    def test_rusty_se_amplia_en_pixeles_enteros(self):
+        from pandex.ui import rusty
+
+        for estado in rusty.ESTADOS:
+            filas = rusty.cuadricula(estado)
+            self.assertEqual((len(filas[0]), len(filas)), (rusty.ANCHO, rusty.ALTO))
+        self.assertEqual(rusty.tamano(120), (132, 126), "120 px → factor 3")
+        pix = rusty.imagen("idle", 126, 1.5)
+        self.assertEqual((pix.width(), pix.height()), (176, 168), "al 150 %: factor entero 4, nítido aunque sobre un margen")
+        self.assertNotEqual(rusty.cuadricula("idle"), rusty.cuadricula("error"))
+
     def test_la_mascota_es_estatica(self):
         from PyQt6.QtCore import QTimer
 

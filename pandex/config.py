@@ -31,7 +31,8 @@ DEFAULTS = {
     "version_config": VERSION_CONFIG,
     "mascota": {
         "nombre": "Pandex",
-        "personaje": "vectorial",  # "vectorial" (panda dibujado) o "pixel" (sprite sheet)
+        # "rusty" (panda rojo pixel art), "vectorial" (panda robot) o "pixel" (sprite sheet)
+        "personaje": "rusty",
         "tamano": 120,
         "opacidad": 1.0,
         "spritesheet": SPRITE_PIXEL,
@@ -70,7 +71,7 @@ def migrar(datos):
 
     v1 → v2: el ``spritesheet`` se guardaba completo en tu config.json, así que un
     cambio de personaje nunca te llegaba. Ahora, si es el de fábrica, se quita (manda
-    el valor por defecto) y pasas al panda nuevo; si pusiste uno tuyo, se respeta.
+    el valor por defecto) y pasas a Rusty; si pusiste uno tuyo, se respeta.
     """
     version = int(datos.get("version_config", 1) or 1)
     if version >= VERSION_CONFIG:
@@ -81,7 +82,7 @@ def migrar(datos):
         mascota.setdefault("personaje", "pixel")  # un personaje propio: se queda
     else:
         mascota.pop("spritesheet", None)
-        mascota["personaje"] = "vectorial"
+        mascota["personaje"] = "rusty"
     for clave in _OBSOLETAS:
         mascota.pop(clave, None)
     datos["version_config"] = VERSION_CONFIG
