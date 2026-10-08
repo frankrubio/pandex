@@ -12,6 +12,7 @@ from datetime import datetime
 class Task:
     id = "ejemplo_saludo"
     nombre = "Saludar (ejemplo)"
+    icono = "hola"
     descripcion = "Tarea de prueba: cuenta hasta 3 y saluda"
     schedule = None  # None = solo manual. Ej: "0 19 * * 1-5" = 19:00 de lunes a viernes
 

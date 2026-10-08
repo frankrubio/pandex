@@ -20,7 +20,8 @@ LEGADO = "MascotaUTEC.lnk"  # nombre que usaban las primeras versiones
 
 
 def carpeta_inicio():
-    return Path(os.environ["APPDATA"]) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+    appdata = os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming"
+    return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
 
 
 def ruta_inicio():

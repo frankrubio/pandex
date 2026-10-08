@@ -52,6 +52,7 @@ from PyQt6.QtWidgets import (
 
 from ..log import get_logger
 from ..rutas import DATOS
+from ..ui import dibujo, tema
 from . import adoptar, sesion
 from .cliente import Canvas, CanvasError
 from .destinos import alias_semana, nombre_semana, resolver_subcarpeta
@@ -269,7 +270,7 @@ class PaginaBienvenida(QWizardPage):
         if estado.params.get("cursos"):
             caja.addSpacing(8)
             caja.addWidget(_texto(
-                "<span style='color:#b45309'>Ya tienes Canvas configurado. Si sigues, tu lista "
+                f"<span style='color:{tema.hex_('aviso')}'>Ya tienes Canvas configurado. Si sigues, tu lista "
                 "de cursos se reemplaza (la actual queda guardada en una copia).</span>"))
         if adoptar.ultimo_diario():
             deshacer = QPushButton("Deshacer el último reordenamiento de carpetas")
@@ -351,7 +352,7 @@ class PaginaConectar(QWizardPage):
     def _fallo(self, mensaje):
         self.barra.hide()
         self.reintentar.show()
-        self.mensaje.setText(f"<span style='color:#b91c1c'>{mensaje}</span>")
+        self.mensaje.setText(f"<span style='color:{tema.hex_('error')}'>{mensaje}</span>")
 
 
 class PaginaCursos(QWizardPage):
@@ -581,7 +582,7 @@ class PaginaReordenar(QWizardPage):
         self._trabajo = _Trabajo(self._planificar)
         self._trabajo.aviso.connect(self.mensaje.setText)
         self._trabajo.listo.connect(self._listo)
-        self._trabajo.fallo.connect(lambda m: self.mensaje.setText(f"<span style='color:#b91c1c'>{m}</span>"))
+        self._trabajo.fallo.connect(lambda m: self.mensaje.setText(f"<span style='color:{tema.hex_('error')}'>{m}</span>"))
         self._trabajo.start()
 
     def _planificar(self, avisar):
@@ -728,6 +729,7 @@ class AsistenteCanvas(QWizard):
         self.entrada = None
         self.setWindowTitle("Configurar Canvas · Pandex")
         self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
+        self.setPixmap(QWizard.WizardPixmap.LogoPixmap, dibujo.pixmap_logo(48))
         self.setOption(QWizard.WizardOption.NoBackButtonOnStartPage, True)
         self.setButtonText(QWizard.WizardButton.FinishButton, "Terminar")
         self.setButtonText(QWizard.WizardButton.NextButton, "Siguiente >")

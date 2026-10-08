@@ -6,7 +6,11 @@ Flujo de una tarea::
                  ─► hilo: tarea.run(ctx) ─► resultado ─► globo + ventana de informe
 """
 
-from PyQt6.QtCore import QObject, Qt, QTimer, pyqtSignal
+import sys
+import time
+from pathlib import Path
+
+from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
@@ -15,15 +19,18 @@ from .config import Config
 from .ejecutor import Ejecutor
 from .log import get_logger
 from .programador import Programador
-from .rutas import ICONO
+from .rutas import ICONO, RAIZ
 from .tareas import TaskContext
-from .ui import dibujo
+from .ui import dibujo, iconos
+from .ui.actualizacion import DialogoActualizacion
 from .ui.configuracion import DialogoConfiguracion
 from .ui.informe import DialogoInforme
 from .ui.mascota import Mascota
 from .ui.visor_registro import VisorRegistro
 
 log = get_logger("pandex.app")
+
+PROGRESO_CADA = 0.25  # s: el globo de avance se refresca como mucho 4 veces por segundo
 
 
 class PandexApp(QObject):
@@ -35,6 +42,8 @@ class PandexApp(QObject):
         self.config = Config()
         self.tareas = plugins.descubrir()
         self._dialogos = []
+        self._ultimo_progreso = 0.0
+        self.servidor = None  # canal de instancia única (lo pone main.py)
 
         self.mascota = Mascota(self.config)
         self.mascota.menu_pedido.connect(self._abrir_menu)
@@ -123,36 +132,62 @@ class PandexApp(QObject):
 
     def _construir_menu(self, parent):
         menu = QMenu(parent)
+        menu.setToolTipsVisible(True)
+        # sin sombra nativa cuadrada detrás de las esquinas redondeadas
+        menu.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
+        menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+
+        def accion(texto, icono, al_elegir, ayuda=None):
+            a = QAction(iconos.icono(icono), texto, menu)
+            a.triggered.connect(al_elegir)
+            if ayuda:
+                a.setToolTip(ayuda)
+            menu.addAction(a)
+            return a
+
+        def seccion(texto):
+            # Fusion no muestra el texto de addSection: un título deshabilitado sí se ve
+            titulo = QAction(texto.upper(), menu)
+            titulo.setEnabled(False)
+            fuente = titulo.font()
+            fuente.setPointSizeF(7.5)
+            fuente.setBold(True)
+            titulo.setFont(fuente)
+            menu.addAction(titulo)
+
+        seccion("Tareas")
         for tarea in self.tareas:
-            accion = QAction(tarea.nombre, menu)
-            accion.setToolTip(tarea.descripcion)
-            accion.triggered.connect(lambda _c=False, t=tarea: self.ejecutor.ejecutar(t))
-            menu.addAction(accion)
+            accion(tarea.nombre, tarea.icono, lambda _c=False, t=tarea: self.ejecutor.ejecutar(t),
+                   tarea.descripcion)
         if not self.tareas:
             vacio = QAction("No hay tareas en tasks/", menu)
             vacio.setEnabled(False)
             menu.addAction(vacio)
 
         configurables = [t for t in self.tareas if callable(getattr(t, "configurar", None))]
-        if configurables:
-            menu.addSeparator()
-            for tarea in configurables:
-                texto = getattr(tarea, "configurar_texto", None) or f"Configurar «{tarea.nombre}»…"
-                menu.addAction(QAction(texto, menu, triggered=lambda _c=False, t=tarea: self._configurar(t)))
+        for tarea in configurables:
+            texto = getattr(tarea, "configurar_texto", None) or f"Configurar «{tarea.nombre}»…"
+            accion(texto, "engranaje", lambda _c=False, t=tarea: self._configurar(t))
 
         menu.addSeparator()
-        menu.addAction(QAction("Recargar tareas", menu, triggered=self._recargar_tareas))
-        menu.addAction(QAction("Configuración", menu, triggered=self._abrir_configuracion))
-        menu.addAction(QAction("Ver registro", menu, triggered=self._abrir_registro))
+        seccion("Pandex")
+        accion("Configuración…", "engranaje", self._abrir_configuracion)
+        accion("Ver registro", "lista", self._abrir_registro)
+        accion("Recargar tareas", "recargar", self._recargar_tareas)
+        accion("Buscar actualizaciones…", "descargar", self.buscar_actualizaciones)
         menu.addSeparator()
-        menu.addAction(QAction("Ocultar", menu, triggered=self.mascota.hide))
-        menu.addAction(QAction("Mostrar", menu, triggered=self._mostrar_mascota))
-        menu.addSeparator()
-        menu.addAction(QAction("Salir", menu, triggered=self.salir))
+        if parent is None or self.mascota.isVisible():
+            accion("Ocultar", "ocultar", self.mascota.hide)
+        if parent is None or not self.mascota.isVisible():
+            accion("Mostrar", "mostrar", self._mostrar_mascota)
+        accion("Salir", "salir", self.salir)
         return menu
 
     def _abrir_menu(self, punto_global):
-        self._construir_menu(self.mascota).exec(punto_global)
+        menu = self._construir_menu(self.mascota)
+        # se libera al cerrarse: antes quedaba un QMenu huérfano por cada clic derecho
+        menu.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
+        menu.popup(punto_global)
 
     # ---------- tareas ----------
 
@@ -183,18 +218,25 @@ class PandexApp(QObject):
         return next((t.nombre for t in self.tareas if t.id == task_id), task_id)
 
     def _tarea_iniciada(self, task_id):
+        self._ultimo_progreso = 0.0
         self.mascota.set_estado("trabajando")
-        self.mascota.decir(f"Empecé: {self._nombre_de(task_id)}")
+        self.mascota.decir(f"Empecé: {self._nombre_de(task_id)}", tipo="progreso")
 
     def _tarea_progreso(self, hechos, total):
-        if total > 0:
-            self.mascota.decir(f"Voy {hechos}/{total}…")
+        if total <= 0:
+            return
+        ahora = time.monotonic()
+        # cientos de avances por segundo no deben repintar el globo cientos de veces
+        if hechos < total and ahora - self._ultimo_progreso < PROGRESO_CADA:
+            return
+        self._ultimo_progreso = ahora
+        self.mascota.progreso(f"Voy {hechos} de {total}…", hechos, total)
 
     def _tarea_terminada(self, task_id, resultado):
         ok = resultado["ok"]
         self.mascota.set_estado("feliz" if ok else "error", 4)
         resumen = resultado["resumen"] or ("Listo." if ok else "Algo falló.")
-        self.mascota.decir(resumen if ok else f"⚠ {resumen}")
+        self.mascota.decir(resumen, tipo="exito" if ok else "error")
 
         if resultado.get("informe"):
             dlg = DialogoInforme(self._nombre_de(task_id), resultado["informe"], resultado.get("carpeta"))
@@ -214,16 +256,50 @@ class PandexApp(QObject):
     # ---------- diálogos ----------
 
     def _abrir_configuracion(self):
-        dlg = DialogoConfiguracion(self.config, self.tareas)
+        dlg = DialogoConfiguracion(self.config, self.tareas, al_buscar_actualizaciones=self.buscar_actualizaciones)
         if dlg.exec():
             self.mascota.recargar_apariencia()
             self.programador.montar(self.tareas)
             self.bandeja.setIcon(self._icono())
             self.bandeja.setToolTip(self.config.mascota.get("nombre", "Pandex"))
-            self.mascota.decir("Configuración guardada.")
+            self.mascota.decir("Configuración guardada.", tipo="exito")
 
     def _abrir_registro(self):
         VisorRegistro().exec()
+
+    def tema_cambiado(self):
+        """Windows pasó a claro/oscuro: el menú de la bandeja se rehace con los colores nuevos."""
+        self._menu_bandeja = self._construir_menu(parent=None)
+        self.bandeja.setContextMenu(self._menu_bandeja)
+        self.mascota.globo.update()
+
+    # ---------- actualizar ----------
+
+    def buscar_actualizaciones(self):
+        abierto = next((d for d in self._dialogos if isinstance(d, DialogoActualizacion)), None)
+        if abierto:
+            abierto.raise_()
+            abierto.activateWindow()
+            return
+        dlg = DialogoActualizacion(self.reiniciar)
+        self._dialogos.append(dlg)
+        dlg.finished.connect(lambda _r, d=dlg: self._dialogos.remove(d))
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+
+    def reiniciar(self):
+        """Cierra Pandex y lo vuelve a abrir (después de actualizar)."""
+        if self.ejecutor.ocupado:
+            self.mascota.decir("Termino lo que estoy haciendo y luego reinicias.", tipo="error")
+            return
+        if self.servidor is not None:
+            self.servidor.close()  # libera el canal: si no, el nuevo creería que ya hay uno abierto
+        exe = Path(sys.executable)
+        if exe.with_name("pythonw.exe").exists():
+            exe = exe.with_name("pythonw.exe")  # sin ventana de consola
+        QProcess.startDetached(str(exe), [str(RAIZ / "main.py")], str(RAIZ))
+        self._cerrar()
 
     # ---------- salida ----------
 
@@ -236,6 +312,9 @@ class PandexApp(QObject):
             )
             if respuesta != QMessageBox.StandardButton.Yes:
                 return
+        self._cerrar()
+
+    def _cerrar(self):
         log.info("cerrando Pandex")
         self.programador.detener()
         self.mascota.globo.ocultar_ya()

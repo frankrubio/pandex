@@ -4,7 +4,7 @@ from collections import Counter
 from pathlib import Path
 
 from PyQt6.QtCore import QFileInfo, Qt
-from PyQt6.QtGui import QColor, QFont, QKeySequence, QShortcut
+from PyQt6.QtGui import QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -22,11 +22,11 @@ from PyQt6.QtWidgets import (
 )
 
 from .archivos import AVISO_LOTE, SIN_IA, SOPORTADOS, listar, orden_natural, recorrer, ruta_md
+from ..ui import tema
 from .clasificador import Clasificador
 
 ROL = Qt.ItemDataRole.UserRole
 SUBIR, INICIO, RAIZ, CARPETA, ARCHIVO, ULTIMA = range(6)
-GRIS = QColor("#9ca3af")
 
 
 class Navegador(QDialog):
@@ -58,12 +58,12 @@ class Navegador(QDialog):
         self.migas.setSpacing(0)
         self.migas.setContentsMargins(0, 0, 0, 0)
         self.lista = QListWidget()
-        self.lista.setFont(QFont("Segoe UI", 10))
+        self.lista.setFont(tema.fuente(10))
         self.lista.setUniformItemSizes(True)
         self.lista.itemActivated.connect(self._activar)
         self.lista.itemChanged.connect(self._al_marcar)
         self.estado = QLabel()
-        self.estado.setStyleSheet("color: #6b7280;")
+        self.estado.setProperty("rol", "suave")
 
         self.recursivo = QCheckBox("Incluir subcarpetas")
         self.recursivo.toggled.connect(self._refrescar_botones)
@@ -108,7 +108,8 @@ class Navegador(QDialog):
             "Ctrl+Enter convertir marcados\nCtrl+M material de estudio de la carpeta · "
             "Ctrl+T todos · Esc cancelar · en gris: lo que no es material de estudio"
         )
-        ayuda.setStyleSheet("color: #9ca3af; font-size: 8pt;")
+        ayuda.setProperty("rol", "suave")
+        ayuda.setStyleSheet("font-size: 8pt;")
 
         cuerpo = QVBoxLayout(self)
         contenedor_migas = QWidget()
@@ -163,7 +164,7 @@ class Navegador(QDialog):
             )
         item.setFlags(flags)
         if gris:
-            item.setForeground(GRIS)
+            item.setForeground(tema.color("texto_suave"))
         if ayuda:
             item.setToolTip(ayuda)
         return item
@@ -260,7 +261,7 @@ class Navegador(QDialog):
                 cadena = [cadena[0], ("…", cadena[-3][1]), cadena[-2], cadena[-1]]
             for texto, destino in cadena:
                 sep = QLabel("›")
-                sep.setStyleSheet("color: #9ca3af;")
+                sep.setProperty("rol", "suave")
                 self.migas.addWidget(sep)
                 boton(texto, destino)
         self.migas.addStretch()

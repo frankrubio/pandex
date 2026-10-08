@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import QApplication
 
 from pandex.app import PandexApp
 from pandex.rutas import ICONO
+from pandex.ui import tema
 
 ID_APP = "Pandex.Mascota"
 CANAL = f"Pandex-{getpass.getuser()}"
@@ -71,8 +72,10 @@ def main():
     if avisar_al_que_ya_corre():
         return 0  # un solo panda: el que ya estaba se asoma
 
+    tema.aplicar(qapp)
     app = PandexApp(qapp)
-    escuchar(app)
+    tema.seguir_al_sistema(qapp, app.tema_cambiado)
+    app.servidor = escuchar(app)
     app.iniciar()
     if "--test" in sys.argv:
         QTimer.singleShot(3000, app.salir)

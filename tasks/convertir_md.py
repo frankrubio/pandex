@@ -11,6 +11,7 @@ from pandex.markdown.lote import convertir
 class Task:
     id = "convertir_md"
     nombre = "Convertir a Markdown"
+    icono = "documento"
     descripcion = "Convierte PDF, Word, PowerPoint, Excel y más a .md, sin IA"
     schedule = None
 
