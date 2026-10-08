@@ -3,6 +3,21 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.2.0
+
+- **Actualizar con un clic:** Pandex revisa una vez al día, mientras está abierto, si
+  hay versión nueva (se puede apagar en Configuración → Comportamiento). Si la hay,
+  Rusty avisa y **un clic sobre él** la descarga, la aplica y reinicia Pandex.
+- **Archivos que el docente programó para más adelante:** Sincronizar Canvas ya no
+  los marca como error («Canvas devolvió 403»). Dice «🔒 aún sin abrir en Canvas», con la
+  fecha en que se abren si Canvas la informa, y los baja solo cuando se abren.
+- **PDF a Markdown más limpio:** las palabras ya no quedan separadas por tabulaciones
+  y se quitan las líneas en blanco de sobra.
+- **Interfaz pulida:** el menú ya no muestra esquinas negras detrás de los bordes
+  redondeados; los botones ya no cortan su texto; las casillas marcadas muestran ✓.
+- Corrige un cierre inesperado al cerrar una ventana mientras aparecía.
+- README más corto, con pasos claros para descargar e instalar y otras formas de hacerlo.
+
 ## 2.1.0
 
 - **Rusty, el panda rojo** (de LuoSKraD, en Codex Pets), es el nuevo personaje,
@@ -23,18 +38,7 @@ cuando buscas actualizaciones desde el menú.
 - **Acceso directo fácil:** `Pandex.pyw` para abrir con doble clic, y el botón
   Configuración → Comportamiento → Crear en el Escritorio.
 - **Registro con filtro**, y avisos y errores resaltados.
-- **Archivos que el docente programó para más adelante:** Sincronizar Canvas ya no
-  los marca como error («Canvas devolvió 403»). Dice «🔒 aún sin abrir en Canvas», con la
-  fecha en que se abren si Canvas la informa, y los baja solo cuando se abren.
-- **PDF a Markdown más limpio:** las palabras ya no quedan separadas por tabulaciones
-  y se quitan las líneas en blanco de sobra.
-- **Actualizar con un clic:** Pandex revisa una vez al día si hay versión nueva (se puede
-  apagar en Configuración → Comportamiento). Si la hay, Rusty avisa y **un clic sobre él**
-  la descarga, la aplica y reinicia Pandex.
-- Correcciones: el menú ya no muestra esquinas negras detrás de los bordes redondeados;
-  los botones ya no cortan su texto; las casillas marcadas muestran ✓; se corrigió un
-  cierre inesperado al cerrar un diálogo mientras aparecía; el menú del clic derecho ya no
-  se acumula en memoria; el globo
+- Correcciones: el menú del clic derecho ya no se acumula en memoria; el globo
   aparece en el monitor correcto; los cambios del personaje ahora sí llegan a
   quien actualiza.
 
