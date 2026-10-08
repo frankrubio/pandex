@@ -153,7 +153,7 @@ class Sincronizacion:
         self._indices = {}
         self._carpetas = {}
         self._fases = {}
-        self._res = {"nuevos": [], "fallidos": [], "sin_seccion": [], "ya": 0, "omitidos": 0,
+        self._res = {"nuevos": [], "fallidos": [], "bloqueados": [], "sin_seccion": [], "ya": 0, "omitidos": 0,
                      "coincidencias": [], "cursos_error": [], "sin_conexion": False}
 
     # ------------------------------------------------------------------ inicio
@@ -342,6 +342,12 @@ class Sincronizacion:
     # ------------------------------------------------------------------ fase 5
 
     def _descargar(self, canvas, descargas, historial):
+        # lo que el docente programó para más adelante no se intenta: se reintenta solo
+        # en la próxima sincronización (no queda en el historial)
+        for d in descargas:
+            if d.candidato.item.bloqueado:
+                self._res["bloqueados"].append((d, d.candidato.item.abre))
+        descargas = [d for d in descargas if not d.candidato.item.bloqueado]
         if not descargas:
             return
         self.ctx.decir(f"Encontré {len(descargas)} archivo(s) nuevo(s). Bajando…")
@@ -366,6 +372,11 @@ class Sincronizacion:
                 self.ctx.progreso(hechos, len(descargas))
                 tmp, escritos, error = futuro.result()
                 if error is not None:
+                    if getattr(error, "estado", None) == 403:
+                        # Canvas lo muestra pero no deja bajarlo todavía: no es una falla
+                        self._res["bloqueados"].append((d, None))
+                        self.ctx.log(f"«{d.nombre}» aún no está disponible (403)")
+                        continue
                     if isinstance(error, SinConexion):
                         self._res["sin_conexion"] = True
                     self._res["fallidos"].append((d, str(error)))
@@ -424,6 +435,8 @@ class Sincronizacion:
         if r["fallidos"] and not r["sin_conexion"]:
             n = len(r["fallidos"])
             resumen += f" · {n} no se pudo bajar" if n == 1 else f" · {n} no se pudieron bajar"
+        if r["bloqueados"] and not r["sin_conexion"]:
+            resumen += f" · {len(r['bloqueados'])} aún sin abrir en Canvas"
         if r["cursos_error"] and revisados and not r["sin_conexion"]:
             resumen += f" · {len(r['cursos_error'])} curso(s) sin leer"
 
@@ -459,6 +472,11 @@ class Sincronizacion:
             l.append(f"✗ {len(r['fallidos'])} no se pudo bajar (se reintenta la próxima vez)")
             l += [f"    {d.candidato.alias} · {d.nombre} — {m}" for d, m in r["fallidos"]]
             l.append("")
+        if r["bloqueados"]:
+            l.append(f"🔒 {len(r['bloqueados'])} aún sin abrir en Canvas (los bajo cuando se abran)")
+            l += [f"    {d.candidato.alias} · {d.nombre}" + (f" — se abre el {_fecha(abre)}" if abre else "")
+                  for d, abre in r["bloqueados"]]
+            l.append("")
         if r["sin_seccion"]:
             l.append(f"? {len(r['sin_seccion'])} sin sección reconocida (no se bajaron)")
             l += [f"    {c.alias} · {n} — sección «{c.item.seccion or c.item.modulo}»"
@@ -479,11 +497,21 @@ class Sincronizacion:
              f" · omitidos: {r['omitidos']}"]
         l += [f"nuevo · {d.candidato.alias} · {f}" for d, f in nuevos]
         l += [f"falló · {d.candidato.alias} · {d.nombre} — {m}" for d, m in r["fallidos"]]
+        l += [f"aún sin abrir · {d.candidato.alias} · {d.nombre}" + (f" (se abre {abre})" if abre else "")
+              for d, abre in r["bloqueados"]]
         l += [f"sin sección · {c.alias} · {n} («{c.item.seccion or c.item.modulo}»)"
               for c, n in r["sin_seccion"]]
         l += [f"ya lo tenías ({m}) · {c.alias} · {n} → {ruta}" for c, n, m, ruta in r["coincidencias"]]
         l += [f"error · {a} · {m}" for a, m in r["cursos_error"]]
         return l
+
+
+def _fecha(iso):
+    """``2026-10-12T05:00:00Z`` → ``12/10 00:00`` en tu hora local."""
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone().strftime("%d/%m %H:%M")
+    except (ValueError, AttributeError):
+        return iso
 
 
 def _duracion(segundos):

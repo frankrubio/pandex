@@ -23,6 +23,9 @@ cuando buscas actualizaciones desde el menú.
 - **Acceso directo fácil:** `Pandex.pyw` para abrir con doble clic, y el botón
   Configuración → Comportamiento → Crear en el Escritorio.
 - **Registro con filtro**, y avisos y errores resaltados.
+- **Archivos que el docente programó para más adelante:** Sincronizar Canvas ya no
+  los marca como error («Canvas devolvió 403»). Dice «🔒 aún sin abrir en Canvas», con la
+  fecha en que se abren si Canvas la informa, y los baja solo cuando se abren.
 - Correcciones: el menú del clic derecho ya no se acumula en memoria; el globo
   aparece en el monitor correcto; los cambios del personaje ahora sí llegan a
   quien actualiza.
