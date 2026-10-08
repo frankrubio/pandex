@@ -12,8 +12,6 @@ Hechos de Canvas que explican el diseño:
 import threading
 import time
 
-import requests
-
 
 class CanvasError(RuntimeError):
     def __init__(self, mensaje, estado=None):
@@ -42,6 +40,8 @@ class Canvas:
     def _sesion(self):
         s = getattr(self._local, "s", None)
         if s is None:
+            import requests  # al sincronizar, no al abrir Pandex (~17 MB menos en reposo)
+
             s = requests.Session()
             s.headers["User-Agent"] = self._ua
             for c in self._cookies:
@@ -51,6 +51,7 @@ class Canvas:
 
     def _get(self, url, params=None, stream=False, timeout=(10, 60)):
         """GET con reintentos si Canvas pide calma (límite de peticiones)."""
+        import requests  # se carga al sincronizar, no al abrir Pandex
         for intento in range(4):
             try:
                 resp = self._sesion().get(url, params=params, stream=stream, timeout=timeout)
@@ -119,6 +120,7 @@ class Canvas:
 
     def descargar(self, curso_id, file_id, destino_tmp, espera_html=False):
         """Baja el archivo a ``destino_tmp`` y devuelve cuántos bytes escribió."""
+        import requests
         url = f"{self.base}/courses/{curso_id}/files/{file_id}/download?download_frd=1"
         resp = self._get(url, stream=True, timeout=(10, 180))
         with resp:

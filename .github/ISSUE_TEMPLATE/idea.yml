@@ -1,0 +1,14 @@
+name: Idea
+description: Una tarea nueva o una mejora
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: ¿Qué te gustaría que hiciera Pandex?
+    validations:
+      required: true
+  - type: textarea
+    id: por_que
+    attributes:
+      label: ¿Para qué te serviría?

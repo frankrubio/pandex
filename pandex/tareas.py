@@ -7,6 +7,7 @@ Una tarea es un archivo ``tasks/<algo>.py`` con una clase ``Task``::
         nombre = "Mi tarea"             # lo que se ve en el menú
         descripcion = "Qué hace"        # tooltip y Configuración
         schedule = None                 # cron opcional, p. ej. "0 19 * * 1-5"
+        icono = "tarea"                 # opcional: el ícono del menú (ver pandex/ui/iconos.py)
 
         def run(self, ctx):             # corre en un hilo aparte: nada de ventanas aquí
             return {"ok": True, "resumen": "Listo."}
@@ -64,6 +65,7 @@ def descubrir(carpeta=TASKS_DIR):
             tarea.nombre = getattr(tarea, "nombre", None) or tarea.id
             tarea.descripcion = getattr(tarea, "descripcion", "")
             tarea.schedule = getattr(tarea, "schedule", None)
+            tarea.icono = getattr(tarea, "icono", None) or "tarea"
             vistos.add(tarea.id)
             encontradas.append(tarea)
             log.info("tarea cargada: %s (%s)", tarea.id, archivo.name)

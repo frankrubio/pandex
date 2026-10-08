@@ -1,23 +1,32 @@
 """La mascota: ventana sin marco, transparente, que se arrastra y habla.
 
-Dibuja el personaje desde un sprite sheet (``ui/sprites.py``). Si no hay ninguno,
-usa el panda vectorial de ``ui/dibujo.py``. Quieta no consume CPU: el
-temporizador de animación solo corre durante las reacciones cortas.
+Es **estática** a propósito: cada estado (reposo, feliz, trabajando, error) es una
+imagen que se pinta una vez y queda en caché. No hay temporizadores de animación;
+la ventana solo se vuelve a dibujar cuando cambia el estado o el tamaño. En reposo
+no consume CPU.
+
+Personajes (``mascota.personaje``): ``"rusty"`` (por defecto, el panda rojo en pixel
+art, ``ui/rusty.py``), ``"vectorial"`` (el panda robot de ``ui/dibujo.py``) o
+``"pixel"`` (un sprite sheet, ``ui/sprites.py``).
 """
 
-import math
 import random
-import time
 
 from PyQt6.QtCore import QPoint, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QCursor, QPainter
+from PyQt6.QtGui import QGuiApplication, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
-from . import dibujo
+from . import dibujo, rusty
 from .globo import Globo
 from .sprites import Sprites
 
-TICK_MS = 60
+ESTADOS = dibujo.ESTADOS
+
+
+def pantalla_de(widget):
+    """La pantalla donde está el widget (no siempre la principal)."""
+    centro = widget.geometry().center()
+    return QGuiApplication.screenAt(centro) or widget.screen() or QApplication.primaryScreen()
 
 
 class Mascota(QWidget):
@@ -27,28 +36,32 @@ class Mascota(QWidget):
         super().__init__(None)
         self.config = config
         self._estado = "idle"
-        self._estado_hasta = 0.0
-        self._t = 0.0
-        self._parpadeo = 0.0
-        self._prox_parpadeo = time.monotonic() + random.uniform(2.5, 6.0)
-        self._mirada = (0.0, 0.0)
         self._arrastrando = False
         self._offset = QPoint()
         self._movio = False
 
         self.globo = Globo()
-        self.sprites = Sprites(config.mascota.get("spritesheet"))
+        self._cargar_personaje()
         self._construir_ventana()
         self._restaurar_posicion()
 
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._tick)
+        # vuelve sola al reposo tras una reacción (un único disparo, no un bucle)
         self._fin_estado = QTimer(self)
         self._fin_estado.setSingleShot(True)
-        self._fin_estado.timeout.connect(self._volver_a_reposo)
-        self._actualizar_timer()
+        self._fin_estado.timeout.connect(lambda: self.set_estado("idle"))
 
     # ---------- construcción ----------
+
+    def _cargar_personaje(self):
+        m = self.config.mascota
+        self.sprites = None
+        self.personaje = m.get("personaje", "rusty")
+        if self.personaje == "rusty" and not rusty.disponible():
+            self.personaje = "vectorial"  # falta assets/rusty: el panda dibujado no necesita archivos
+        if self.personaje == "pixel":
+            sprites = Sprites(m.get("spritesheet"))
+            if sprites.ok:
+                self.sprites = sprites
 
     def _construir_ventana(self):
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowSystemMenuHint
@@ -64,7 +77,11 @@ class Mascota(QWidget):
     def _tamano(self):
         """Con sprite sheet, la ventana toma la proporción del personaje."""
         lado = int(self.config.mascota.get("tamano", 120))
-        return self.sprites.tamano_ventana(lado) if self.sprites.ok else (lado, lado)
+        if self.sprites:
+            return self.sprites.tamano_ventana(lado)
+        if self.personaje == "rusty":
+            return rusty.tamano(lado)
+        return lado, lado
 
     def _restaurar_posicion(self):
         guardada = self.config.mascota.get("posicion")
@@ -81,141 +98,78 @@ class Mascota(QWidget):
         return any(p.availableGeometry().contains(centro) for p in QApplication.screens())
 
     def recargar_apariencia(self):
-        self.sprites = Sprites(self.config.mascota.get("spritesheet"))
+        self._cargar_personaje()
         self.resize(*self._tamano())
         self.setWindowOpacity(float(self.config.mascota.get("opacidad", 1.0)))
+        self.setWindowTitle(self.config.mascota.get("nombre", "Pandex"))
         encima = self.config.mascota.get("siempre_encima", True)
         if bool(self.windowFlags() & Qt.WindowType.WindowStaysOnTopHint) != encima:
             visible = self.isVisible()
             self._construir_ventana()
             if visible:
                 self.show()
-        self._actualizar_timer()
         self.update()
 
     # ---------- estado y globo ----------
 
+    @property
+    def estado(self):
+        return self._estado
+
     def set_estado(self, estado, segundos=None):
         """idle | feliz | trabajando | error. Con ``segundos``, vuelve sola al reposo."""
-        self._estado = estado
-        self._estado_hasta = time.monotonic() + segundos if segundos else 0.0
+        if estado not in ESTADOS:
+            estado = "idle"
         if segundos:
             self._fin_estado.start(int(segundos * 1000))
         else:
             self._fin_estado.stop()
-        self._actualizar_timer()
-        self.update()
+        if estado != self._estado:
+            self._estado = estado
+            self.update()  # un solo repintado: la imagen ya está en caché
 
-    def _volver_a_reposo(self):
-        self._estado = "idle"
-        self._estado_hasta = 0.0
-        self._actualizar_timer()
-        self.update()
-
-    def _necesita_animar(self):
-        if not self.config.mascota.get("animacion", True) or not self.isVisible():
-            return False
-        if self.sprites.ok:
-            # reacciones cortas (saltito al saludar, temblor al fallar) o un sheet
-            # con varias poses para este estado; si no, la imagen queda fija
-            reaccion = self._estado in ("feliz", "error") and bool(self._estado_hasta)
-            return reaccion or self.sprites.cuadros(self._estado_dibujado()) > 1
-        return True  # el dibujo vectorial respira, parpadea y sigue el cursor
-
-    def _actualizar_timer(self):
-        if self._necesita_animar():
-            if not self._timer.isActive():
-                self._timer.start(TICK_MS)
-        else:
-            self._timer.stop()
-
-    def showEvent(self, evento):
-        super().showEvent(evento)
-        self._actualizar_timer()
-
-    def hideEvent(self, evento):
-        super().hideEvent(evento)
-        self._timer.stop()
-
-    def decir(self, texto):
+    def decir(self, texto, tipo=None, segundos=None):
         if not self.config.mascota.get("globo_activo", True):
             return
-        self.globo.decir(texto, self.config.mascota.get("globo_segundos", 5))
+        self.globo.decir(texto, segundos or self.config.mascota.get("globo_segundos", 5), tipo)
+        self._colocar_globo()
+
+    def progreso(self, texto, hechos, total):
+        """Actualiza el globo en su sitio, sin volver a animarlo."""
+        if not self.config.mascota.get("globo_activo", True):
+            return
+        self.globo.progreso(texto, hechos, total)
         self._colocar_globo()
 
     def _colocar_globo(self):
         if not self.globo.isVisible():
             return
+        area = pantalla_de(self).availableGeometry()
         x = self.x() + self.width() // 2 - self.globo.width() // 2
-        y = self.y() - self.globo.height() + 6
-        area = QApplication.primaryScreen().availableGeometry()
-        x = max(area.left() + 4, min(x, area.right() - self.globo.width() - 4))
-        if y < area.top() + 4:
-            y = self.y() + self.height() - 6
-        self.globo.move(x, y)
-
-    # ---------- animación ----------
-
-    def _tick(self):
-        if not self._necesita_animar():
-            self._timer.stop()
-            self.update()  # último cuadro, ya en reposo
-            return
-
-        ahora = time.monotonic()
-        self._t += TICK_MS / 1000.0
-        if ahora >= self._prox_parpadeo:
-            self._parpadeo = min(1.0, self._parpadeo + 0.34)
-            if self._parpadeo >= 1.0:
-                self._prox_parpadeo = ahora + random.uniform(2.5, 6.5)
-        elif self._parpadeo > 0:
-            self._parpadeo = max(0.0, self._parpadeo - 0.34)
-
-        sigue = self.config.mascota.get("ojos_siguen_cursor", True)
-        self._mirada = self._calcular_mirada() if sigue else (0.0, 0.0)
-        self.update()
-
-    def _calcular_mirada(self):
-        cursor = QCursor.pos()
-        centro = self.geometry().center()
-        alcance = max(180.0, self.width() * 2.2)
-        dx = (cursor.x() - centro.x()) / alcance
-        dy = (cursor.y() - centro.y()) / alcance
-        return max(-1.0, min(1.0, dx)), max(-1.0, min(1.0, dy))
-
-    def _movimiento(self):
-        """Solo las reacciones mueven al sprite; en reposo queda fijo."""
-        if not self._estado_hasta or not self.config.mascota.get("animacion", True):
-            return 0, 0
-        if self._estado == "error":
-            return round(math.sin(self._t * 24) * 2), 0
-        if self._estado == "feliz":
-            return 0, -round(abs(math.sin(self._t * 5.5)) * 6)
-        return 0, 0
-
-    def _estado_dibujado(self):
-        """En reposo, el parpadeo sustituye al cuadro normal un instante."""
-        if self._estado == "idle" and self._parpadeo > 0.5 and self.sprites.tiene("parpadeo"):
-            return "parpadeo"
-        return self._estado
+        y = self.y() - self.globo.height() + 4
+        x = max(area.left() + 6, min(x, area.right() - self.globo.width() - 6))
+        abajo = y < area.top() + 6
+        if abajo:
+            y = self.y() + self.height() - 4
+        self.globo.colocar(x, y, self.x() + self.width() // 2 - x, abajo)
 
     # ---------- pintado ----------
 
     def paintEvent(self, _evento):
         painter = QPainter(self)
-        if self.sprites.ok:
-            pix = self.sprites.frame(self._estado_dibujado(), self._t, self.width(), self.height())
+        dpr = self.devicePixelRatioF()
+        if self.sprites:
+            pix = self.sprites.frame(self._estado, 0.0, self.width(), self.height())
             if pix is not None:
-                dx, dy = self._movimiento()
-                painter.drawPixmap((self.width() - pix.width()) // 2 + dx,
-                                   (self.height() - pix.height()) // 2 + dy, pix)
+                painter.drawPixmap((self.width() - pix.width()) // 2,
+                                   (self.height() - pix.height()) // 2, pix)
                 return
-
-        velocidad = 3.2 if self._estado == "trabajando" else 1.7
-        dibujo.dibujar_panda(
-            painter, self.width(), self.height(), estado=self._estado, mirada=self._mirada,
-            parpadeo=self._parpadeo, respiracion=math.sin(self._t * velocidad),
-        )
+        if self.personaje == "rusty":
+            pix = rusty.imagen(self._estado, self.height(), dpr)
+            painter.drawPixmap(round((self.width() - pix.width() / dpr) / 2),
+                               round((self.height() - pix.height() / dpr) / 2), pix)
+            return
+        painter.drawPixmap(0, 0, dibujo.imagen(self._estado, self.width(), self.height(), dpr))
 
     # ---------- interacción ----------
 
@@ -232,7 +186,6 @@ class Mascota(QWidget):
             if (nueva - self.pos()).manhattanLength() > 2:
                 self._movio = True
             self.move(nueva)
-            self._colocar_globo()
             evento.accept()
 
     def mouseReleaseEvent(self, evento):
