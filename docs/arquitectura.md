@@ -140,6 +140,21 @@ manejado por código. Ninguna usa internet.
 - **Plug-ins delgados.** La lógica vive en `pandex/` (probada y reutilizable); `tasks/`
   solo la conecta. Para una función propia y pequeña basta un archivo en `tasks/`.
 
+## Personajes
+
+`mascota.personaje` en `config.json` (o **Configuración → Apariencia**): `"rusty"` (sprite de
+`assets/rusty/`, `ui/rusty.py`), `"vectorial"` (panda robot dibujado, `ui/dibujo.py`) o
+`"pixel"` (cualquier sprite sheet, `ui/sprites.py`). Para usar el tuyo:
+
+```bash
+.venv\Scripts\python.exe herramientas/preparar_sprite.py imagen.png assets/mio/spritesheet.png  # quita el fondo
+.venv\Scripts\python.exe herramientas/gif_a_sprite.py mascota.gif assets/mio/spritesheet.png    # GIF → sheet
+```
+
+Luego `"personaje": "pixel"` y `spritesheet → archivo, frame_ancho, frame_alto`; cada estado
+(`idle`, `feliz`, `trabajando`, `error`) lista su cuadro como `[fila, columna]`. El ícono y las
+capturas del README se regeneran con `herramientas/crear_icono.py` y `herramientas/capturas.py`.
+
 ## Rendimiento
 
 Medido con `QT_QPA_PLATFORM=offscreen` (Linux; en Windows las cifras absolutas cambian, las
