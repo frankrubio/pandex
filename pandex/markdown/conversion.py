@@ -162,6 +162,15 @@ class OcrLocal:
             return self._esperar(self._leer_png(self._png(imagen))).strip(), None
 
 
+def limpiar_pdf(texto):
+    """El texto de un PDF suele traer cada palabra separada por tabulaciones
+    (``Fundamentos\tde\tCálculo``) y muchas líneas en blanco: lo deja legible."""
+    import re
+
+    lineas = [re.sub(r"[ \t]+", " ", linea).strip() for linea in texto.splitlines()]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lineas)).strip()
+
+
 def motivo_legible(exc):
     """Una frase útil en vez de un traceback."""
     if isinstance(exc, PermissionError):

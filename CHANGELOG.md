@@ -26,6 +26,8 @@ cuando buscas actualizaciones desde el menú.
 - **Archivos que el docente programó para más adelante:** Sincronizar Canvas ya no
   los marca como error («Canvas devolvió 403»). Dice «🔒 aún sin abrir en Canvas», con la
   fecha en que se abren si Canvas la informa, y los baja solo cuando se abren.
+- **PDF a Markdown más limpio:** las palabras ya no quedan separadas por tabulaciones
+  y se quitan las líneas en blanco de sobra.
 - Correcciones: el menú del clic derecho ya no se acumula en memoria; el globo
   aparece en el monitor correcto; los cambios del personaje ahora sí llegan a
   quien actualiza.

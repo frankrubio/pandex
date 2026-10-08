@@ -27,7 +27,7 @@ from .archivos import (
     ruta_md,
 )
 from .clasificador import Clasificador
-from .conversion import OcrLocal, crear_markitdown, motivo_legible
+from .conversion import OcrLocal, crear_markitdown, limpiar_pdf, motivo_legible
 
 
 def convertir(ctx):
@@ -116,6 +116,8 @@ def convertir(ctx):
                     continue
 
                 via = "MarkItDown"
+                if archivo.suffix.lower() == ".pdf":
+                    texto = limpiar_pdf(texto)
                 if (len(texto.strip()) < umbral and ocr is not None and ocr.disponible
                         and archivo.suffix.lower() in CON_OCR):
                     # el OCR es un respaldo: si falla, vale lo que sacó MarkItDown
