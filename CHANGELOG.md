@@ -28,7 +28,13 @@ cuando buscas actualizaciones desde el menú.
   fecha en que se abren si Canvas la informa, y los baja solo cuando se abren.
 - **PDF a Markdown más limpio:** las palabras ya no quedan separadas por tabulaciones
   y se quitan las líneas en blanco de sobra.
-- Correcciones: el menú del clic derecho ya no se acumula en memoria; el globo
+- **Actualizar con un clic:** Pandex revisa una vez al día si hay versión nueva (se puede
+  apagar en Configuración → Comportamiento). Si la hay, Rusty avisa y **un clic sobre él**
+  la descarga, la aplica y reinicia Pandex.
+- Correcciones: el menú ya no muestra esquinas negras detrás de los bordes redondeados;
+  los botones ya no cortan su texto; las casillas marcadas muestran ✓; se corrigió un
+  cierre inesperado al cerrar un diálogo mientras aparecía; el menú del clic derecho ya no
+  se acumula en memoria; el globo
   aparece en el monitor correcto; los cambios del personaje ahora sí llegan a
   quien actualiza.
 

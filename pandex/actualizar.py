@@ -74,28 +74,35 @@ def novedades_de(changelog, version=None):
     return ""
 
 
-def _get(url, timeout=10, stream=False):
-    import requests  # al usarlo: no retrasa el arranque
+def _abrir(url, timeout=10):
+    """GET con la librería de Python (urllib): la revisión diaria no carga ``requests``
+    (~17 MB que quedarían en memoria hasta cerrar Pandex)."""
+    import urllib.error
+    import urllib.request
 
     try:
-        r = requests.get(url, timeout=timeout, stream=stream, headers={"User-Agent": "Pandex"})
-        r.raise_for_status()
-        return r
-    except requests.RequestException as exc:
+        return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Pandex"}),
+                                      timeout=timeout)
+    except (urllib.error.URLError, OSError) as exc:
         raise ErrorActualizacion(
             "No pude conectarme con GitHub. Revisa tu conexión a internet e inténtalo de nuevo."
         ) from exc
 
 
+def _texto(url):
+    with _abrir(url) as r:
+        return r.read().decode("utf-8", errors="replace")
+
+
 def buscar():
     """Consulta GitHub. Devuelve ``{"local", "remota", "hay_nueva", "novedades"}``."""
-    remota = leer_version(_get(URL_VERSION).text)
+    remota = leer_version(_texto(URL_VERSION))
     if not remota:
         raise ErrorActualizacion("No pude leer la versión publicada en GitHub.")
     novedades = ""
     if es_mas_nueva(remota, version_local()):
         try:
-            novedades = novedades_de(_get(URL_NOVEDADES).text, remota)
+            novedades = novedades_de(_texto(URL_NOVEDADES), remota)
         except ErrorActualizacion:
             pass  # sin novedades no pasa nada
     return {"local": version_local(), "remota": remota,
@@ -156,11 +163,13 @@ def _con_git(raiz, avisar):
 
 def _descargar_zip(destino, avisar):
     avisar("Descargando la versión nueva…")
-    respuesta = _get(URL_ZIP, timeout=30, stream=True)
     destino.parent.mkdir(parents=True, exist_ok=True)
-    with open(destino, "wb") as fh:
-        for trozo in respuesta.iter_content(64 * 1024):
-            fh.write(trozo)
+    try:
+        with _abrir(URL_ZIP, timeout=30) as respuesta, open(destino, "wb") as fh:
+            while trozo := respuesta.read(64 * 1024):
+                fh.write(trozo)
+    except OSError as exc:  # la conexión se cortó a mitad de la descarga
+        raise ErrorActualizacion("La descarga se cortó. Inténtalo de nuevo.") from exc
     return destino
 
 

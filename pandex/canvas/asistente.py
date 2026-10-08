@@ -730,6 +730,8 @@ class AsistenteCanvas(QWizard):
         self.setWindowTitle("Configurar Canvas · Pandex")
         self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
         self.setPixmap(QWizard.WizardPixmap.LogoPixmap, dibujo.pixmap_logo(48))
+        for boton in (QWizard.WizardButton.NextButton, QWizard.WizardButton.FinishButton):
+            tema.marcar_primario(self.button(boton))
         self.setOption(QWizard.WizardOption.NoBackButtonOnStartPage, True)
         self.setButtonText(QWizard.WizardButton.FinishButton, "Terminar")
         self.setButtonText(QWizard.WizardButton.NextButton, "Siguiente >")

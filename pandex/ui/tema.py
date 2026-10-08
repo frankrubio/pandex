@@ -6,6 +6,7 @@ nada animándose en segundo plano.
 """
 
 import sys
+from pathlib import Path
 
 from PyQt6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt
 from PyQt6.QtGui import QColor, QFont, QGuiApplication, QPalette
@@ -54,6 +55,9 @@ FUENTE_TITULO = "Georgia"  # serif editorial para los títulos
 FUENTE_MONO = "Cascadia Mono"
 
 _oscuro = None
+
+# el ✓ de las casillas (QSS no sabe dibujarlo: necesita una imagen)
+_UI = Path(__file__).resolve().parent.parent.parent / "assets" / "ui"
 
 
 def es_oscuro():
@@ -122,18 +126,21 @@ QGroupBox::title {{ subcontrol-origin: margin; left: 4px; top: 0px; padding: 0 4
 
 QPushButton {{
     background: {c['superficie']}; color: {c['texto']};
-    border: 1px solid {c['borde_fuerte']}; border-radius: 8px; padding: 6px 16px; min-height: 20px;
+    border: 1px solid {c['borde_fuerte']}; border-radius: 8px; padding: 6px 18px; min-height: 20px;
 }}
 QPushButton:hover {{ background: {c['superficie_2']}; }}
 QPushButton:pressed {{ background: {c['borde']}; }}
-QPushButton:disabled {{ color: {c['texto_suave']}; border-color: {c['borde']}; }}
-QPushButton:default, QPushButton[rol="primario"] {{
-    background: {c['acento']}; color: {c['sobre_acento']}; border-color: {c['acento']}; font-weight: 600;
-}}
-QPushButton:default:hover, QPushButton[rol="primario"]:hover {{
-    background: {c['acento_hover']}; border-color: {c['acento_hover']};
-}}
 QPushButton:focus {{ border-color: {c['acento']}; }}
+QPushButton:disabled {{ color: {c['texto_suave']}; border-color: {c['borde']}; }}
+/* solo el botón marcado a propósito es el principal (no el que tiene el foco), y sin
+   negrita: un cambio de grosor haría que el texto no quepa en el ancho calculado */
+QPushButton[rol="primario"] {{
+    background: {c['acento']}; color: {c['sobre_acento']}; border-color: {c['acento']};
+}}
+QPushButton[rol="primario"]:hover {{ background: {c['acento_hover']}; border-color: {c['acento_hover']}; }}
+QPushButton[rol="primario"]:focus {{ border-color: {c['texto']}; }}
+QPushButton[rol="primario"]:disabled {{ background: {c['borde']}; border-color: {c['borde']};
+    color: {c['texto_suave']}; }}
 
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTimeEdit, QPlainTextEdit, QTextEdit {{
     background: {c['superficie']}; border: 1px solid {c['borde_fuerte']}; border-radius: 8px;
@@ -151,6 +158,8 @@ QCheckBox::indicator, QRadioButton::indicator {{
 }}
 QCheckBox::indicator {{ border-radius: 5px; }}
 QRadioButton::indicator {{ border-radius: 9px; }}
+QCheckBox::indicator:checked {{ image: url("{(_UI / ('check-oscuro.svg' if c is OSCURO else 'check.svg')).as_posix()}"); }}
+QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {{ width: 0; border: none; }}
 QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
     background: {c['acento']}; border-color: {c['acento']};
 }}
@@ -273,23 +282,44 @@ def aplicar_ventana(ventana):
         pass
 
 
+def _animacion(ventana, propiedad, nombre):
+    """Una animación por ventana y propiedad, que vive y muere con la ventana.
+
+    No se usa ``DeleteWhenStopped``: si la ventana se destruye mientras la animación
+    corre (cerrar enseguida un diálogo recién abierto), Qt la liberaría dos veces y
+    la app se cerraría de golpe.
+    """
+    anim = getattr(ventana, nombre, None)
+    if anim is None:
+        anim = QPropertyAnimation(ventana, propiedad, ventana)
+        anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        setattr(ventana, nombre, anim)
+    anim.stop()
+    return anim
+
+
 def animar_entrada(ventana, desplazamiento=10, ms=170):
     """Aparece con un fundido y un leve ascenso. Una sola vez, al abrir: no cuesta nada después."""
     final = ventana.pos()
     ventana.setWindowOpacity(0.0)
-    opacidad = QPropertyAnimation(ventana, b"windowOpacity", ventana)
+    opacidad = _animacion(ventana, b"windowOpacity", "_pandex_fundido")
     opacidad.setDuration(ms)
     opacidad.setStartValue(0.0)
     opacidad.setEndValue(1.0)
-    opacidad.setEasingCurve(QEasingCurve.Type.OutCubic)
-    opacidad.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+    opacidad.start()
     if desplazamiento:
-        mover = QPropertyAnimation(ventana, b"pos", ventana)
+        mover = _animacion(ventana, b"pos", "_pandex_ascenso")
         mover.setDuration(ms + 40)
         mover.setStartValue(final + QPoint(0, desplazamiento))
         mover.setEndValue(final)
-        mover.setEasingCurve(QEasingCurve.Type.OutCubic)
-        mover.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        mover.start()
+
+
+def marcar_primario(boton):
+    """El botón principal de una ventana. Vale aunque el botón ya esté a la vista."""
+    boton.setProperty("rol", "primario")
+    boton.style().unpolish(boton)
+    boton.style().polish(boton)
 
 
 def preparar_dialogo(dialogo):

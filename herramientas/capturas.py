@@ -74,15 +74,19 @@ def mascota(oscuro):
 
 
 def menu(app_cfg, oscuro):
+    from types import SimpleNamespace
+
     from pandex import tareas
     from pandex.app import PandexApp
 
-    falsa = PandexApp.__new__(PandexApp)  # solo para usar su menú, sin bandeja ni reloj
-    falsa.tareas = tareas.descubrir()
-    falsa.mascota = type("M", (), {"isVisible": lambda s: True, "hide": lambda s: None})()
-    for nombre in ("ejecutor", "_configurar", "_abrir_configuracion", "_abrir_registro",
-                   "_recargar_tareas", "buscar_actualizaciones", "_mostrar_mascota", "salir"):
-        setattr(falsa, nombre, lambda *a: None)
+    nada = lambda *a: None  # noqa: E731
+    # lo justo para dibujar el menú, sin bandeja, reloj ni ventanas
+    falsa = SimpleNamespace(
+        tareas=tareas.descubrir(), _nueva=None, ejecutor=None,
+        mascota=SimpleNamespace(isVisible=lambda: True, hide=nada),
+        _configurar=nada, _abrir_configuracion=nada, _abrir_registro=nada, _recargar_tareas=nada,
+        buscar_actualizaciones=nada, actualizar_ya=nada, _mostrar_mascota=nada, salir=nada,
+    )
     m = PandexApp._construir_menu(falsa, None)
     m.adjustSize()
     img = _lienzo(m.width() + 40, m.height() + 40, oscuro)

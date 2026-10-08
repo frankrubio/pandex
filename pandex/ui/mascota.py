@@ -39,6 +39,7 @@ class Mascota(QWidget):
         self._arrastrando = False
         self._offset = QPoint()
         self._movio = False
+        self.al_clic = None  # función de la app; si devuelve True, el clic ya se atendió
 
         self.globo = Globo()
         self._cargar_personaje()
@@ -200,6 +201,9 @@ class Mascota(QWidget):
         evento.accept()
 
     def _saludar(self):
+        # la app puede reclamar el clic (p. ej. «hay una actualización: clic para instalarla»)
+        if callable(self.al_clic) and self.al_clic():
+            return
         if self._estado == "trabajando":
             self.decir("Estoy en algo, ya te aviso.")
             return

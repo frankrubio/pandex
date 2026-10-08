@@ -69,6 +69,26 @@ class Interfaz(unittest.TestCase):
                     VisorRegistro()):
             self.assertFalse(dlg.grab().isNull())
 
+    def test_actualizar_con_un_clic_aplica_y_reinicia_solo(self):
+        from PyQt6.QtCore import QEventLoop, QTimer
+
+        from pandex import actualizar
+        from pandex.ui.actualizacion import DialogoActualizacion
+
+        original = actualizar.aplicar
+        actualizar.aplicar = lambda avisar=None, **_k: {"modo": "zip", "archivos": 3, "respaldo": None}
+        reinicios = []
+        try:
+            info = {"local": "2.1.0", "remota": "2.2.0", "hay_nueva": True, "novedades": "## 2.2.0"}
+            dlg = DialogoActualizacion(lambda: reinicios.append(1), info=info, aplicar_ya=True)
+            espera = QEventLoop()
+            QTimer.singleShot(2500, espera.quit)
+            espera.exec()
+        finally:
+            actualizar.aplicar = original
+        self.assertEqual(reinicios, [1], "sin un segundo clic: aplica y reinicia solo")
+        dlg.deleteLater()
+
     def test_globo_de_progreso_no_se_reanima(self):
         from pandex.ui.globo import Globo
 

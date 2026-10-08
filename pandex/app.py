@@ -14,6 +14,7 @@ from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
+from . import actualizar
 from . import tareas as plugins
 from .config import Config
 from .ejecutor import Ejecutor
@@ -23,6 +24,7 @@ from .rutas import ICONO, RAIZ
 from .tareas import TaskContext
 from .ui import dibujo, iconos
 from .ui.actualizacion import DialogoActualizacion
+from .ui.actualizacion import _Hilo as HiloFondo
 from .ui.configuracion import DialogoConfiguracion
 from .ui.informe import DialogoInforme
 from .ui.mascota import Mascota
@@ -31,6 +33,8 @@ from .ui.visor_registro import VisorRegistro
 log = get_logger("pandex.app")
 
 PROGRESO_CADA = 0.25  # s: el globo de avance se refresca como mucho 4 veces por segundo
+REVISAR_TRAS = 45_000          # ms tras abrir: la primera revisión no frena el arranque
+REVISAR_CADA = 24 * 3600_000   # ms: una consulta pequeña a GitHub al día, como mucho
 
 
 class PandexApp(QObject):
@@ -44,9 +48,11 @@ class PandexApp(QObject):
         self._dialogos = []
         self._ultimo_progreso = 0.0
         self.servidor = None  # canal de instancia única (lo pone main.py)
+        self._nueva = None    # la versión nueva que encontró la revisión diaria
 
         self.mascota = Mascota(self.config)
         self.mascota.menu_pedido.connect(self._abrir_menu)
+        self.mascota.al_clic = self._clic_en_mascota
 
         self.ejecutor = Ejecutor(self.config)
         self.ejecutor.iniciada.connect(self._tarea_iniciada)
@@ -71,6 +77,11 @@ class PandexApp(QObject):
         self.mascota.decir(f"¡Hola! Soy {nombre}. Tengo {len(self.tareas)} tarea(s) listas.")
         log.info("Pandex iniciado con %d tarea(s)", len(self.tareas))
         QTimer.singleShot(1500, self._primera_vez)
+        # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
+        self._reloj_actualizaciones = QTimer(self)
+        self._reloj_actualizaciones.timeout.connect(self._revisar_actualizaciones)
+        self._reloj_actualizaciones.start(REVISAR_CADA)
+        QTimer.singleShot(REVISAR_TRAS, self._revisar_actualizaciones)
 
     def _primera_vez(self):
         """Abre el asistente de las tareas que aún no se configuraron (una sola vez)."""
@@ -107,6 +118,7 @@ class PandexApp(QObject):
         self.bandeja = QSystemTrayIcon(self._icono(), self.qapp)
         self.bandeja.setToolTip(self.config.mascota.get("nombre", "Pandex"))
         self.bandeja.activated.connect(self._click_bandeja)
+        self.bandeja.messageClicked.connect(self.actualizar_ya)
         # hay que guardar la referencia: setContextMenu no toma posesión del menú
         self._menu_bandeja = self._construir_menu(parent=None)
         self.bandeja.setContextMenu(self._menu_bandeja)
@@ -133,8 +145,10 @@ class PandexApp(QObject):
     def _construir_menu(self, parent):
         menu = QMenu(parent)
         menu.setToolTipsVisible(True)
-        # sin sombra nativa cuadrada detrás de las esquinas redondeadas
-        menu.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
+        # esquinas redondeadas de verdad: sin marco ni sombra nativa (rectangulares) y con
+        # fondo transparente; si no, Windows pinta de negro lo que queda fuera del borde
+        menu.setWindowFlags(menu.windowFlags() | Qt.WindowType.FramelessWindowHint
+                            | Qt.WindowType.NoDropShadowWindowHint)
         menu.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         def accion(texto, icono, al_elegir, ayuda=None):
@@ -154,6 +168,14 @@ class PandexApp(QObject):
             fuente.setBold(True)
             titulo.setFont(fuente)
             menu.addAction(titulo)
+
+        if self._nueva:
+            nueva = accion(f"Actualizar a la versión {self._nueva['remota']}", "descargar", self.actualizar_ya,
+                           "Descarga, aplica y reinicia Pandex. Tu configuración no se toca.")
+            fuente = nueva.font()
+            fuente.setBold(True)
+            nueva.setFont(fuente)
+            menu.addSeparator()
 
         seccion("Tareas")
         for tarea in self.tareas:
@@ -287,6 +309,58 @@ class PandexApp(QObject):
         dlg.show()
         dlg.raise_()
         dlg.activateWindow()
+
+    def _revisar_actualizaciones(self):
+        """Pregunta a GitHub en segundo plano si hay versión nueva (si no la apagaste)."""
+        if not self.config.datos.get("buscar_actualizaciones", True) or self._nueva:
+            return
+        ultima = float(self.config.datos.get("ultima_busqueda") or 0)
+        if time.time() - ultima < 20 * 3600:
+            return
+        self._hilo_busqueda = HiloFondo(lambda _aviso: actualizar.buscar())
+        self._hilo_busqueda.listo.connect(self._al_revisar)
+        self._hilo_busqueda.fallo.connect(lambda m: log.info("revisión de actualizaciones: %s", m))
+        self._hilo_busqueda.start()
+
+    def _al_revisar(self, info):
+        self.config.datos["ultima_busqueda"] = time.time()
+        self.config.guardar()
+        if not info.get("hay_nueva"):
+            return
+        self._nueva = info
+        log.info("hay una versión nueva: %s", info["remota"])
+        self._menu_bandeja = self._construir_menu(parent=None)
+        self.bandeja.setContextMenu(self._menu_bandeja)
+        self.mascota.set_estado("feliz", 3)
+        self.mascota.decir(f"¡Hay una versión nueva ({info['remota']})! Haz clic en mí para "
+                           "instalarla.", tipo="exito", segundos=15)
+        self.bandeja.showMessage("Pandex", f"Versión {info['remota']} disponible. Clic aquí para "
+                                 "instalarla.", self._icono(), 10_000)
+
+    def _clic_en_mascota(self):
+        """Con una actualización pendiente, el clic en Rusty la instala."""
+        if not self._nueva or self.ejecutor.ocupado:
+            return False
+        self.actualizar_ya()
+        return True
+
+    def actualizar_ya(self):
+        """Un clic: descarga, aplica y reinicia, sin más preguntas."""
+        if not self._nueva:
+            self.buscar_actualizaciones()
+            return
+        if self.ejecutor.ocupado:
+            self.mascota.decir("Termino lo que estoy haciendo y luego actualizo.")
+            return
+        abierto = next((d for d in self._dialogos if isinstance(d, DialogoActualizacion)), None)
+        if abierto:
+            abierto.raise_()
+            return
+        dlg = DialogoActualizacion(self.reiniciar, info=self._nueva, aplicar_ya=True)
+        self._dialogos.append(dlg)
+        dlg.finished.connect(lambda _r, d=dlg: self._dialogos.remove(d))
+        dlg.show()
+        dlg.raise_()
 
     def reiniciar(self):
         """Cierra Pandex y lo vuelve a abrir (después de actualizar)."""

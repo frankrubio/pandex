@@ -136,12 +136,14 @@ class DialogoConfiguracion(QDialog):
         cancelar = QPushButton("Cancelar")
         cancelar.clicked.connect(self.reject)
         botones = QHBoxLayout()
+        botones.setSpacing(10)
         botones.addStretch()
         botones.addWidget(cancelar)
         botones.addWidget(guardar)
 
         derecha = QVBoxLayout()
         derecha.setContentsMargins(18, 18, 22, 16)
+        derecha.setSpacing(12)  # si no, hereda el 0 de la ventana y todo queda pegado
         derecha.addWidget(self.paginas, 1)
         derecha.addLayout(botones)
 
@@ -247,6 +249,9 @@ class DialogoConfiguracion(QDialog):
         self.inicio = QCheckBox("Arrancar con Windows")
         self.inicio.setChecked(accesos.arranca_con_windows())
         interno.addWidget(self.inicio)
+        self.avisar_nuevas = QCheckBox("Avisarme cuando haya una versión nueva (revisa una vez al día)")
+        self.avisar_nuevas.setChecked(bool(self.config.datos.get("buscar_actualizaciones", True)))
+        interno.addWidget(self.avisar_nuevas)
         caja.addWidget(tarjeta)
 
         caja.addSpacing(10)
@@ -327,7 +332,7 @@ class DialogoConfiguracion(QDialog):
         fila.addWidget(logo)
         fila.addSpacing(12)
         texto = QLabel(
-            f"<b>Pandex {__version__}</b><br>Un panda robot que ordena tus cursos de Canvas "
+            f"<b>Pandex {__version__}</b><br>Un panda rojo que ordena tus cursos de Canvas "
             "y convierte tu material a Markdown. Todo en tu PC, gratis y sin IA.")
         texto.setWordWrap(True)
         fila.addWidget(texto, 1)
@@ -373,6 +378,7 @@ class DialogoConfiguracion(QDialog):
         m["globo_activo"] = self.globo.isChecked()
         m["globo_segundos"] = self.globo_segundos.value()
         m["siempre_encima"] = self.encima.isChecked()
+        self.config.datos["buscar_actualizaciones"] = self.avisar_nuevas.isChecked()
 
         for task_id, (activa, cron) in self.filas.items():
             opciones = self.config.tarea(task_id)
