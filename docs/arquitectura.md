@@ -99,7 +99,7 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
     "frases_click": ["¿Qué tal?", "..."]
   },
   "arrancar_con_windows": false,
-  "version_config": 2,             // para poner al día un config.json viejo al actualizar
+  "version_config": 3,             // para poner al día un config.json viejo al actualizar
   "tareas": {
     "<id de la tarea>": {
       "activa": true,

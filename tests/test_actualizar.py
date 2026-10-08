@@ -95,8 +95,35 @@ class MigrarConfig(unittest.TestCase):
         self.assertEqual(config.mascota["nombre"], "Pygu")
         self.assertNotIn("animacion", config.mascota)
         guardado = json.loads(self.ruta.read_text(encoding="utf-8"))
-        self.assertEqual(guardado["version_config"], 2)
+        self.assertEqual(guardado["version_config"], 3)
         self.assertNotIn("spritesheet", guardado["mascota"], "el de fábrica no se vuelve a guardar")
+
+    def test_el_de_fabrica_con_otros_valores_tambien_pasa_a_rusty(self):
+        viejo = {**SPRITE_PIXEL, "archivo": "assets\\panda_robot\\spritesheet.png", "frame_ancho": 192,
+                 "frame_alto": 208, "animaciones": {"idle": {"frames": [[0, 0], [0, 1]], "fps": 2}}}
+        self.ruta.write_text(json.dumps({"mascota": {"spritesheet": viejo, "posicion": [10, 20]},
+                                         "tareas": {"x": {"activa": False}}}), encoding="utf-8")
+        config = Config(self.ruta)
+        self.assertEqual(config.mascota["personaje"], "rusty")
+        self.assertEqual(config.mascota["posicion"], [10, 20])
+        self.assertFalse(config.tarea("x")["activa"])
+        self.assertNotIn("spritesheet", json.loads(self.ruta.read_text(encoding="utf-8"))["mascota"])
+
+    def test_quien_quedo_en_el_panda_viejo_con_la_v2_pasa_a_rusty(self):
+        viejo = {**SPRITE_PIXEL, "frame_ancho": 192}
+        self.ruta.write_text(json.dumps({"version_config": 2, "mascota": {
+            "personaje": "pixel", "spritesheet": viejo, "nombre": "Pygu"}}), encoding="utf-8")
+        config = Config(self.ruta)
+        self.assertEqual(config.mascota["personaje"], "rusty")
+        self.assertEqual(config.mascota["nombre"], "Pygu")
+
+    def test_un_sprite_propio_se_respeta_tambien_en_v2(self):
+        propio = {**SPRITE_PIXEL, "archivo": "assets/mi_gato/sheet.png"}
+        self.ruta.write_text(json.dumps({"version_config": 2, "mascota": {
+            "personaje": "pixel", "spritesheet": propio}}), encoding="utf-8")
+        config = Config(self.ruta)
+        self.assertEqual(config.mascota["personaje"], "pixel")
+        self.assertEqual(config.mascota["spritesheet"]["archivo"], "assets/mi_gato/sheet.png")
 
     def test_un_sprite_propio_se_respeta(self):
         propio = {**SPRITE_PIXEL, "archivo": "assets/mi_gato/sheet.png"}

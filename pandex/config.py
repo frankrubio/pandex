@@ -10,7 +10,7 @@ import json
 
 from .rutas import CONFIG_FILE
 
-VERSION_CONFIG = 2
+VERSION_CONFIG = 3
 
 # el sprite pixel art: personaje alternativo («personaje": "pixel")
 SPRITE_PIXEL = {
@@ -66,23 +66,41 @@ def _mezclar(base, extra):
 _OBSOLETAS = ("animacion", "ojos_siguen_cursor")
 
 
+def _es_de_fabrica(sprite):
+    """True si el sprite es el panda robot que trae Pandex (o no hay ninguno).
+
+    Se mira solo el archivo: un config.json de una versión anterior puede tener el
+    mismo dibujo con otros tamaños o animaciones, y sigue siendo el de fábrica.
+    """
+    if not sprite:
+        return True
+    archivo = str(sprite.get("archivo") or "").replace("\\", "/").lower()
+    while archivo.startswith("./"):
+        archivo = archivo[2:]
+    return archivo in ("", SPRITE_PIXEL["archivo"])
+
+
 def migrar(datos):
     """Pone al día un ``config.json`` de una versión anterior. Devuelve True si cambió algo.
 
-    v1 → v2: el ``spritesheet`` se guardaba completo en tu config.json, así que un
-    cambio de personaje nunca te llegaba. Ahora, si es el de fábrica, se quita (manda
-    el valor por defecto) y pasas a Rusty; si pusiste uno tuyo, se respeta.
+    El ``spritesheet`` se guardaba completo en tu config.json, así que un cambio de
+    personaje nunca te llegaba. Si es el de fábrica, se quita (manda el valor por
+    defecto) y pasas a Rusty; si pusiste uno tuyo (otro archivo), se respeta.
+
+    v2 → v3: la v2 comparaba el bloque entero y dejaba en el panda viejo a quien
+    tenía el de fábrica con otros valores; aquí se corrige.
     """
     version = int(datos.get("version_config", 1) or 1)
     if version >= VERSION_CONFIG:
         return False
     mascota = datos.setdefault("mascota", {})
     sprite = mascota.get("spritesheet")
-    if sprite and sprite != SPRITE_PIXEL:
-        mascota.setdefault("personaje", "pixel")  # un personaje propio: se queda
-    else:
+    if _es_de_fabrica(sprite):
+        if version < 2 or mascota.get("personaje", "pixel") == "pixel":
+            mascota["personaje"] = "rusty"
         mascota.pop("spritesheet", None)
-        mascota["personaje"] = "rusty"
+    elif version < 2:
+        mascota.setdefault("personaje", "pixel")  # un personaje propio: se queda
     for clave in _OBSOLETAS:
         mascota.pop(clave, None)
     datos["version_config"] = VERSION_CONFIG
@@ -113,7 +131,7 @@ class Config:
         self.ruta.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.ruta.with_suffix(".json.tmp")
         datos = self.datos
-        if datos.get("mascota", {}).get("spritesheet") == SPRITE_PIXEL:
+        if _es_de_fabrica(datos.get("mascota", {}).get("spritesheet")):
             # el de fábrica no se guarda: así una actualización del personaje sí te llega
             datos = {**datos, "mascota": {k: v for k, v in datos["mascota"].items() if k != "spritesheet"}}
         with open(tmp, "w", encoding="utf-8") as fh:
