@@ -24,6 +24,8 @@ DEFAULTS = {
         "personaje": "rusty",
         # ícono de la app: "personaje" (la cara del personaje elegido) o el id de otro
         "logo": "personaje",
+        # si el personaje trae movimientos, se mueve mientras trabaja o reacciona
+        "animar": True,
         "tamano": 120,
         "opacidad": 1.0,
         "globo_activo": True,

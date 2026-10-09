@@ -73,6 +73,10 @@ Sí: **Configuración → Apariencia → Añadir personaje…**, eliges la image
 
 Si la imagen tiene fondo blanco u otro color liso, Pandex lo quita. El personaje aparece en la lista con «(tuyo)». Pulsa **Guardar** para usarlo.
 
+- **¿Se mueve?** Si la mascota trae varios movimientos (como las de Codex Pets), se mueve mientras trabaja, al saludar y si algo falla; en reposo queda quieta. Si solo trae 4 poses, usa esas 4 fijas. Se puede apagar en **Configuración → Comportamiento**.
+- **¿Puedo borrar el archivo original?** Sí. Pandex guarda su propia copia en `%LOCALAPPDATA%\Pandex\personajes`.
+- **¿Y si lo añado dos veces?** No se duplica: Pandex reconoce que es la misma imagen y lo deja elegido.
+
 **¿Cómo lo cierro o lo escondo?**
 Clic derecho en Rusty → **Ocultar**, o **Salir**. Si lo ocultas, vuelve a aparecer al hacer clic en su ícono junto al reloj.
 

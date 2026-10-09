@@ -326,9 +326,10 @@ class DialogoConfiguracion(QDialog):
             return
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            ident, poses = personaje_nuevo.importar(ruta, nombre, ocupados=personajes.catalogo())
+            hecho = personaje_nuevo.importar(ruta, nombre, ocupados=personajes.catalogo())
             personajes.recargar()
-            logo.guardar_ico(ident)
+            if not hecho.ya_estaba:
+                logo.guardar_ico(hecho.ident)
         except personaje_nuevo.ErrorPersonaje as exc:
             QApplication.restoreOverrideCursor()
             self._avisar_propio(str(exc), "error")
@@ -338,10 +339,18 @@ class DialogoConfiguracion(QDialog):
             self._avisar_propio(f"No pude añadirlo: {exc}", "error")
             return
         QApplication.restoreOverrideCursor()
-        self._llenar_combos(ident, self.logo.currentData())
+        self._llenar_combos(hecho.ident, self.logo.currentData())
         self._personaje_cambiado()
-        detalle = ("la misma imagen para todos los estados" if poses == 1
-                   else f"{poses} poses: " + ", ".join(("normal", "trabajando", "feliz", "error")[:poses]))
+        if hecho.ya_estaba:
+            ya = personajes.catalogo()[hecho.ident].nombre
+            self._avisar_propio(f"Ya lo tenías como «{ya}»: lo dejé elegido, sin duplicarlo.")
+            return
+        if hecho.poses == 1:
+            detalle = "la misma imagen para todos los estados"
+        else:
+            detalle = f"{hecho.poses} poses: " + ", ".join(("normal", "trabajando", "feliz", "error")[:hecho.poses])
+        if hecho.animaciones:
+            detalle += f"; se mueve en {hecho.animaciones} estado(s)"
         self._avisar_propio(f"✓ Añadí «{nombre.strip()}» ({detalle}). Pulsa Guardar para usarlo.")
 
     def _quitar_personaje(self):
@@ -420,6 +429,11 @@ class DialogoConfiguracion(QDialog):
         self.encima = QCheckBox("Siempre encima de las demás ventanas")
         self.encima.setChecked(bool(m.get("siempre_encima", True)))
         interno.addWidget(self.encima)
+        self.animar = QCheckBox("Mover al personaje mientras trabaja o reacciona (si trae movimientos)")
+        self.animar.setToolTip("Solo para personajes con varias poses, como los de Codex Pets.\n"
+                               "En reposo siempre queda quieto y no gasta CPU.")
+        self.animar.setChecked(bool(m.get("animar", True)))
+        interno.addWidget(self.animar)
         self.inicio = QCheckBox("Arrancar con Windows")
         self.inicio.setChecked(accesos.arranca_con_windows())
         interno.addWidget(self.inicio)
@@ -559,6 +573,7 @@ class DialogoConfiguracion(QDialog):
         m["globo_activo"] = self.globo.isChecked()
         m["globo_segundos"] = self.globo_segundos.value()
         m["siempre_encima"] = self.encima.isChecked()
+        m["animar"] = self.animar.isChecked()
         self.config.datos["buscar_actualizaciones"] = self.avisar_nuevas.isChecked()
 
         for task_id, (activa, cron) in self.filas.items():

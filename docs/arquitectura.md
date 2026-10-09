@@ -169,12 +169,12 @@ un archivo por personaje y `construir.py`, que genera la carpeta completa). La s
 | Una sola figura | Usa la misma imagen para todos los estados. |
 | Varias poses del mismo tamaño, en fila (como Rusty) | Las separa solo, por las columnas transparentes entre poses. Orden: normal, trabajando, feliz, error; si faltan, usa la normal. |
 | Un GIF animado | Toma cada cuadro como una pose, en ese orden. |
-| Una mascota de Codex Pets (el `.zip`, su `pet.json` o su `spritesheet.webp`) | Reconoce el atlas de 8 columnas × 192×208 y toma: normal = fila 0 (*idle*), trabajando = fila 8 (*review*), feliz = fila 3 (*waving*), error = fila 5 (*failed*). El nombre sale de `displayName`. |
+| Una mascota de Codex Pets (el `.zip`, su `pet.json` o su `spritesheet.webp`) | Reconoce el atlas de 8 columnas × 192×208 y toma: normal = fila 0 (*idle*), trabajando = fila 8 (*review*), feliz = fila 3 (*waving*), error = fila 5 (*failed*). Además guarda esas tres filas completas como animación (`animaciones` en `personaje.json`, hasta 8 cuadros, 140-150 ms). El nombre sale de `displayName`. |
 
 Si no tiene transparencia y el fondo es de un solo color, lo quita. El nombre que escribes es
 el que aparece en el selector, con «(tuyo)». Se guarda en `%LOCALAPPDATA%\Pandex\personajes\<id>\`
 (con su `personaje.json` e `icono.ico`), así que sobrevive a las actualizaciones; **Quitar** lo
-borra de ahí. Un `config.json` antiguo con `"personaje": "pixel"` pasa a Rusty y conserva su
+borra de ahí. Pandex guarda su propia copia (el original se puede borrar) y anota la huella SHA-256 de la imagen (`origen`): añadir la misma mascota otra vez no la duplica. Un `config.json` antiguo con `"personaje": "pixel"` pasa a Rusty y conserva su
 bloque `spritesheet`, para que puedas añadir esa imagen con el botón.
 
 ## Rendimiento
@@ -201,8 +201,10 @@ Qué se carga y cuándo:
   `tareas.convertir_md.proceso_aparte: false` se convierte dentro de Pandex.
 - **`asyncio`**: solo para el OCR de Windows.
 
-La mascota es **estática**: cada estado (reposo, feliz, trabajando, error) se pinta una
-sola vez y queda en caché (`personajes.imagen`). No hay temporizadores de
+La mascota es **estática** en reposo: cada estado se pinta una sola vez y queda en caché
+(`personajes.imagen`). Los personajes con `animaciones` (p. ej. de Codex Pets) se mueven
+solo mientras trabajan o reaccionan, con cuadros escalados en caché; al volver al reposo
+el temporizador se apaga (`mascota.animar` lo desactiva). En reposo no hay temporizadores de
 animación; la ventana solo se repinta cuando cambia el estado. El único temporizador es
 un disparo único que la devuelve al reposo tras una reacción. Las transiciones (globo,
 apertura de ventanas) duran menos de 0,3 s y solo corren en ese momento. Los avances de

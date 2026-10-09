@@ -162,8 +162,8 @@ class PersonajesPropios(unittest.TestCase):
             tira.paste(self._pose(color), (i * 60, 0))
         ruta = self.carpeta / "mi_gato.png"
         tira.save(ruta)
-        ident, poses = personaje_nuevo.importar(ruta, "Mi gato", self.destino, ocupados={"rusty"})
-        self.assertEqual((ident, poses), ("mi_gato", 4))
+        ident, poses, animaciones, _ = personaje_nuevo.importar(ruta, "Mi gato", self.destino, ocupados={"rusty"})
+        self.assertEqual((ident, poses, animaciones), ("mi_gato", 4, 0), "4 poses: se queda con las 4, sin moverse")
         datos = json.loads((self.destino / ident / "personaje.json").read_text(encoding="utf-8"))
         self.assertEqual(datos["cuadros"], {"idle": 0, "trabajando": 1, "feliz": 2, "error": 3})
         self.assertEqual(datos["nombre"], "Mi gato")
@@ -175,7 +175,7 @@ class PersonajesPropios(unittest.TestCase):
 
         ruta = self.carpeta / "dibujo.jpg"
         self._pose((200, 40, 40, 255), fondo=(255, 255, 255, 255)).convert("RGB").save(ruta, quality=95)
-        ident, poses = personaje_nuevo.importar(ruta, "Dibujo", self.destino)
+        ident, poses, *_ = personaje_nuevo.importar(ruta, "Dibujo", self.destino)
         self.assertEqual(poses, 1)
         hoja = Image.open(self.destino / ident / "spritesheet.png")
         self.assertEqual(hoja.getpixel((0, 0))[3], 0, "el fondo blanco ya no está")
@@ -186,7 +186,7 @@ class PersonajesPropios(unittest.TestCase):
         ruta = self.carpeta / "rusty.gif"
         cuadros = [self._pose(c).convert("RGB") for c in ("red", "blue", "green")]
         cuadros[0].save(ruta, save_all=True, append_images=cuadros[1:], duration=100)
-        ident, poses = personaje_nuevo.importar(ruta, "Rusty", self.destino, ocupados={"rusty"})
+        ident, poses, *_ = personaje_nuevo.importar(ruta, "Rusty", self.destino, ocupados={"rusty"})
         self.assertEqual((ident, poses), ("rusty_2", 3), "no pisa a un personaje de Pandex")
 
     def test_el_catalogo_lo_muestra_y_se_puede_quitar(self):
@@ -197,7 +197,7 @@ class PersonajesPropios(unittest.TestCase):
 
         ruta = self.carpeta / "zorro.png"
         self._pose("orange").save(ruta)
-        ident, _ = personaje_nuevo.importar(ruta, "Zorro", self.destino)
+        ident = personaje_nuevo.importar(ruta, "Zorro", self.destino).ident
         with mock.patch.object(personajes, "PERSONAJES_PROPIOS", self.destino):
             personajes.recargar()
             try:
@@ -236,10 +236,12 @@ class PersonajesPropios(unittest.TestCase):
         self._atlas_codex(11).save(ruta, lossless=True)
         (self.carpeta / "pet.json").write_text(json.dumps({"displayName": "Patito"}), encoding="utf-8")
         self.assertEqual(personaje_nuevo.nombre_desde_archivo(ruta), "Patito")
-        ident, poses = personaje_nuevo.importar(ruta, "Patito", self.destino)
-        self.assertEqual(poses, 4)
+        ident, poses, animaciones, _ = personaje_nuevo.importar(ruta, "Patito", self.destino)
+        self.assertEqual((poses, animaciones), (4, 3), "trabajando, feliz y error se mueven")
+        datos = json.loads((self.destino / ident / "personaje.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(datos["animaciones"]["feliz"]["cuadros"]), 6, "toda la fila de saludar")
         hoja = Image.open(self.destino / ident / "spritesheet.png")
-        ancho = hoja.width // 4
+        ancho = datos["cuadro"][0]
         rojo = [hoja.getpixel((i * ancho + ancho // 2, hoja.height // 2))[0] for i in range(4)]
         # normal = fila 0, trabajando = fila 8 (revisar), feliz = fila 3 (saludar), error = fila 5
         self.assertEqual(rojo, [0, 200, 75, 125])
@@ -255,8 +257,15 @@ class PersonajesPropios(unittest.TestCase):
                                                     "spritesheetPath": "spritesheet.webp"}))
             z.write(imagen, "duck/spritesheet.webp")
         self.assertEqual(personaje_nuevo.nombre_desde_archivo(ruta), "Pato programador")
-        ident, poses = personaje_nuevo.importar(ruta, "Pato programador", self.destino)
-        self.assertEqual((ident, poses), ("pato_programador", 4))
+        hecho = personaje_nuevo.importar(ruta, "Pato programador", self.destino)
+        self.assertEqual((hecho.ident, hecho.poses, hecho.ya_estaba), ("pato_programador", 4, False))
+        # la misma mascota otra vez (ahora por su imagen suelta): no se duplica
+        otra_vez = personaje_nuevo.importar(imagen, "Otro nombre", self.destino)
+        self.assertEqual((otra_vez.ident, otra_vez.ya_estaba), ("pato_programador", True))
+        # y Pandex guardó su propia copia: el original se puede borrar
+        ruta.unlink()
+        imagen.unlink()
+        self.assertTrue((self.destino / "pato_programador" / "spritesheet.png").exists())
 
     def test_elegir_el_pet_json_tambien_sirve(self):
         from pandex import personaje_nuevo
@@ -266,7 +275,7 @@ class PersonajesPropios(unittest.TestCase):
         manifiesto.write_text(json.dumps({"displayName": "Duck", "spritesheetPath": "spritesheet.webp"}),
                               encoding="utf-8")
         self.assertEqual(personaje_nuevo.nombre_desde_archivo(manifiesto), "Duck")
-        ident, poses = personaje_nuevo.importar(manifiesto, "Duck", self.destino)
+        ident, poses, *_ = personaje_nuevo.importar(manifiesto, "Duck", self.destino)
         self.assertEqual((ident, poses), ("duck", 4))
 
     def test_un_pet_json_que_apunta_fuera_de_su_carpeta_se_rechaza(self):
@@ -276,6 +285,43 @@ class PersonajesPropios(unittest.TestCase):
         manifiesto.write_text(json.dumps({"spritesheetPath": "../../secreto.png"}), encoding="utf-8")
         with self.assertRaises(personaje_nuevo.ErrorPersonaje):
             personaje_nuevo.importar(manifiesto, "X", self.destino)
+
+    def test_se_mueve_solo_mientras_trabaja_y_vuelve_a_quedarse_quieta(self):
+        from unittest import mock
+
+        from PyQt6.QtCore import QTimer
+
+        from pandex import personaje_nuevo
+        from pandex.config import Config
+        from pandex.ui import personajes
+        from pandex.ui.mascota import Mascota
+
+        ruta = self.carpeta / "spritesheet.webp"
+        self._atlas_codex().save(ruta, lossless=True)
+        ident = personaje_nuevo.importar(ruta, "Patito", self.destino).ident
+        with mock.patch.object(personajes, "PERSONAJES_PROPIOS", self.destino):
+            personajes.recargar()
+            try:
+                config = Config(self.carpeta / "config.json")
+                config.mascota["personaje"] = ident
+                m = Mascota(config)
+                m.show()
+                activos = lambda: [t for t in m.findChildren(QTimer) if t.isActive()]  # noqa: E731
+                self.assertEqual(activos(), [], "en reposo: quieta, sin temporizadores")
+                m.set_estado("trabajando")
+                self.assertEqual(len(m._cuadros), 6)
+                self.assertEqual(len(activos()), 1, "solo el de la animación")
+                primero = m._cuadro
+                m._siguiente_cuadro()
+                self.assertNotEqual(m._cuadro, primero)
+                m.grab()
+                m.set_estado("idle")
+                self.assertEqual(activos(), [], "al volver al reposo se apaga")
+                config.mascota["animar"] = False
+                m.set_estado("trabajando")
+                self.assertEqual(activos(), [], "con las animaciones apagadas, queda fija")
+            finally:
+                personajes.recargar()
 
     def test_lo_que_no_es_imagen_da_un_mensaje_claro(self):
         from pandex import personaje_nuevo

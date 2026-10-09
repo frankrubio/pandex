@@ -46,6 +46,15 @@ class Personaje:
         self.cuadro = tuple(int(v) for v in datos.get("cuadro", (192, 208)))
         cuadros = datos.get("cuadros") or {}
         self.cuadros = {e: int(cuadros.get(e, cuadros.get("idle", 0))) for e in ESTADOS}
+        # opcional: {estado: {"cuadros": [i, …], "ms": 150}} para moverse mientras trabaja o reacciona
+        self.animaciones = {}
+        for estado, anim in (datos.get("animaciones") or {}).items():
+            try:
+                indices = [int(i) for i in anim["cuadros"]]
+                if estado in ESTADOS and len(indices) > 1:
+                    self.animaciones[estado] = (indices, max(60, int(anim.get("ms", 150))))
+            except (KeyError, TypeError, ValueError):
+                continue
         self.recorte = QRect(*_caja(datos.get("recorte"), self.cuadro))
         self.cabeza_caja = QRect(*_caja(datos.get("cabeza"), self.cuadro))
         fondo = datos.get("fondo_logo") or FONDO_LOGO
@@ -86,7 +95,7 @@ def catalogo():
 
 def recargar():
     """Después de añadir o quitar uno: vuelve a leer las carpetas y vacía las cachés."""
-    for funcion in (catalogo, _hoja, _imagen, cabeza):
+    for funcion in (catalogo, _hoja, _imagen, _animados, cabeza):
         funcion.cache_clear()
 
 
@@ -107,7 +116,7 @@ def elegir(ident):
     return todos.get(POR_DEFECTO) or next(iter(todos.values()), None)
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=2)  # la hoja entera solo hace falta mientras se recortan sus cuadros
 def _hoja(ident):
     p = catalogo().get(ident)
     if p is None:
@@ -155,6 +164,32 @@ def _imagen(ident, estado, alto, dpr):
         pix = QPixmap.fromImage(_escalar(cuadro, round(ancho * dpr), round(alto_ * dpr)))
     pix.setDevicePixelRatio(dpr)
     return pix
+
+
+def ritmo(ident, estado):
+    """Milisegundos por cuadro si ese estado tiene animación; si no, None."""
+    p = elegir(ident)
+    anim = p.animaciones.get(estado) if p else None
+    return anim[1] if anim else None
+
+
+@lru_cache(maxsize=6)
+def _animados(ident, estado, alto, dpr):
+    p = elegir(ident)
+    ancho, alto_ = tamano(ident, alto)
+    salida = []
+    for indice in p.animaciones[estado][0]:
+        pix = QPixmap.fromImage(_escalar(_cuadro(p, indice, p.recorte), round(ancho * dpr), round(alto_ * dpr)))
+        pix.setDevicePixelRatio(dpr)
+        salida.append(pix)
+    return tuple(salida)
+
+
+def cuadros(ident, estado, alto, dpr=1.0):
+    """Los cuadros de la animación de ese estado (ya escalados, en caché), o ``()``."""
+    if ritmo(ident, estado) is None:
+        return ()
+    return _animados(ident, estado, int(alto), round(float(dpr), 2))
 
 
 def imagen(ident, estado, alto, dpr=1.0):

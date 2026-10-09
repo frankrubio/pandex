@@ -18,6 +18,7 @@ ejemplo), se quita solo. El resultado queda en ``%LOCALAPPDATA%\\Pandex\\persona
 así sobrevive a las actualizaciones. Pillow se carga solo aquí.
 """
 
+import hashlib
 import io
 import json
 import re
@@ -25,6 +26,7 @@ import shutil
 import unicodedata
 import zipfile
 from pathlib import Path
+from typing import NamedTuple
 
 from .rutas import PERSONAJES_PROPIOS
 
@@ -43,6 +45,16 @@ MAX_ZIP = 40 * 1024 * 1024  # un ZIP de mascota pesa pocos KB; más que esto no 
 CODEX_COLUMNAS = 8
 CODEX_PROPORCION = 208 / 192
 CODEX_POSES = {"idle": (0, 0), "trabajando": (8, 0), "feliz": (3, 1), "error": (5, 2)}
+# los estados que se animan con toda su fila, y cuánto dura cada cuadro (como en Codex)
+CODEX_MS = {"trabajando": 150, "feliz": 140, "error": 140}
+MAX_ANIMACION = 8
+
+
+class Importado(NamedTuple):
+    ident: str
+    poses: int        # poses fijas (una por estado, o menos)
+    animaciones: int  # estados con movimiento (0 si la imagen no lo trae)
+    ya_estaba: bool   # esa misma imagen ya la habías añadido: no se duplicó
 
 
 class ErrorPersonaje(Exception):
@@ -185,35 +197,52 @@ def _rejilla_codex(img, con_manifiesto=False):
 
 
 def _poses_codex(img, ancho, alto):
+    """Las 4 poses fijas y, para trabajando, feliz y error, todos los cuadros de su fila."""
+    filas = max(1, round(img.height / alto))
+
     def celda(fila, columna):
         caja = (round(columna * ancho), round(fila * alto), round((columna + 1) * ancho), round((fila + 1) * alto))
         return img.crop(caja)
 
-    poses = []
+    def llena(pose):
+        return pose.getchannel("A").getbbox() is not None
+
+    poses, animaciones = [], {}
     for estado in ESTADOS:
         fila, columna = CODEX_POSES[estado]
+        if fila >= filas:
+            fila, columna = 0, 0
         pose = celda(fila, columna)
-        if pose.getchannel("A").getbbox() is None:  # fila más corta: su primer cuadro
+        if not llena(pose):  # fila más corta: su primer cuadro
             pose = celda(fila, 0)
-        if pose.getchannel("A").getbbox() is None:  # fila vacía: la normal
+        if not llena(pose):  # fila vacía: la normal
             pose = celda(0, 0)
         poses.append(pose)
-    return poses
+        if estado in CODEX_MS and fila:
+            cuadros = [c for c in (celda(fila, k) for k in range(CODEX_COLUMNAS)) if llena(c)]
+            if len(cuadros) > 1:
+                animaciones[estado] = (cuadros[:MAX_ANIMACION], CODEX_MS[estado])
+    return poses, animaciones
 
 
-def _poses(ruta):
+def _leer(ruta):
+    """``(poses, animaciones, huella)``. ``poses``: una por estado (o menos);
+    ``animaciones``: ``{estado: ([cuadros], ms)}``; ``huella``: SHA-256 de la imagen."""
     from PIL import Image, ImageSequence, UnidentifiedImageError
 
+    fuente = _abrir(ruta)
     try:
-        with Image.open(_abrir(ruta)) as im:
+        datos = fuente.getvalue() if isinstance(fuente, io.BytesIO) else Path(fuente).read_bytes()
+        with Image.open(io.BytesIO(datos)) as im:
+            huella = hashlib.sha256(datos).hexdigest()
             if getattr(im, "n_frames", 1) > 1:
                 poses = [c.convert("RGBA") for _, c in zip(range(MAX_POSES), ImageSequence.Iterator(im))]
-                return [_quitar_fondo(p) for p in poses]
+                return [_quitar_fondo(p) for p in poses], {}, huella
             img = im.convert("RGBA")
             rejilla = _rejilla_codex(img, con_manifiesto=bool(_manifiesto(ruta)))
             if rejilla:
-                return _poses_codex(img, *rejilla)
-            return _partir(_quitar_fondo(img))
+                return (*_poses_codex(img, *rejilla), huella)
+            return _partir(_quitar_fondo(img)), {}, huella
     except (OSError, UnidentifiedImageError) as exc:
         raise ErrorPersonaje("No pude leer esa imagen. Prueba con un PNG, un GIF o el ZIP de "
                              "Codex Pets.") from exc
@@ -228,35 +257,61 @@ def _caja_comun(poses):
             max(c[2] for c in cajas), max(c[3] for c in cajas))
 
 
+def ya_existe(huella, destino=PERSONAJES_PROPIOS):
+    """El id de un personaje tuyo hecho con esa misma imagen, o None."""
+    for json_ in destino.glob("*/personaje.json"):
+        try:
+            if json.loads(json_.read_text(encoding="utf-8")).get("origen") == huella:
+                return json_.parent.name
+        except (OSError, ValueError):
+            continue
+    return None
+
+
 def importar(ruta, nombre, destino=PERSONAJES_PROPIOS, ocupados=()):
-    """Crea la carpeta del personaje y devuelve ``(id, cantidad_de_poses)``."""
+    """Crea la carpeta del personaje. Devuelve un ``Importado``.
+
+    Pandex guarda **su propia copia** (sprite sheet, ficha e ícono): después puedes borrar
+    o mover el archivo original. Si esa misma imagen ya la añadiste antes, no la duplica:
+    devuelve el que ya existe con ``ya_estaba=True``.
+    """
     from PIL import Image
 
     ruta = Path(ruta)
     if ruta.suffix.lower() not in EXTENSIONES:
         raise ErrorPersonaje("Usa una imagen PNG, GIF, WEBP o JPG, o el ZIP o el pet.json de "
                              "Codex Pets.")
-    poses = _poses(ruta)
-    x0, y0, x1, y1 = _caja_comun(poses)
-    poses = [p.crop((x0, y0, x1, y1)) for p in poses]
-    w, h = poses[0].size
+    poses, animaciones, huella = _leer(ruta)
+    igual = ya_existe(huella, destino)
+    if igual:
+        return Importado(igual, len(poses), len(animaciones), True)
+
+    # todas las imágenes en una fila: primero las poses fijas, después las animaciones
+    cuadros = list(poses)
+    indices = {}
+    for estado, (lista, _ms) in animaciones.items():
+        indices[estado] = list(range(len(cuadros), len(cuadros) + len(lista)))
+        cuadros.extend(lista)
+    x0, y0, x1, y1 = _caja_comun(cuadros)  # una caja común: la figura no salta entre poses
+    cuadros = [c.crop((x0, y0, x1, y1)) for c in cuadros]
+    w, h = cuadros[0].size
     if h > ALTO_MAX:  # se reduce: pixel art sin suavizar, lo demás suavizado
         escala = ALTO_MAX / h
-        pocos_colores = poses[0].getcolors(256) is not None
+        pocos_colores = cuadros[0].getcolors(256) is not None
         filtro = Image.Resampling.NEAREST if pocos_colores else Image.Resampling.LANCZOS
         w, h = max(1, round(w * escala)), ALTO_MAX
-        poses = [p.resize((w, h), filtro) for p in poses]
+        cuadros = [c.resize((w, h), filtro) for c in cuadros]
 
     cw, ch = w + 2 * MARGEN, h + 2 * MARGEN
-    hoja = Image.new("RGBA", (cw * len(poses), ch), (0, 0, 0, 0))
-    for i, pose in enumerate(poses):
-        hoja.paste(pose, (i * cw + MARGEN, MARGEN))
+    hoja = Image.new("RGBA", (cw * len(cuadros), ch), (0, 0, 0, 0))
+    for i, cuadro in enumerate(cuadros):
+        hoja.paste(cuadro, (i * cw + MARGEN, MARGEN))
 
     ident = id_para(nombre, set(ocupados) | _existentes(destino))
     carpeta = destino / ident
     carpeta.mkdir(parents=True, exist_ok=True)
     try:
-        hoja.save(carpeta / "spritesheet.png", optimize=True)
+        hoja.save(carpeta / "spritesheet.png", compress_level=6)  # optimize tarda 4× más por un 2 % menos
         # para el logo: la parte de arriba si es alto (la cabeza), o todo si es ancho
         alto_cabeza = round(ch * 0.6) if ch > cw * 1.15 else ch
         datos = {
@@ -264,16 +319,18 @@ def importar(ruta, nombre, destino=PERSONAJES_PROPIOS, ocupados=()):
             "autor": f"Añadido desde {ruta.name}",
             "cuadro": [cw, ch],
             "cuadros": {e: (i if i < len(poses) else 0) for i, e in enumerate(ESTADOS)},
+            "animaciones": {e: {"cuadros": indices[e], "ms": ms} for e, (_l, ms) in animaciones.items()},
             "recorte": [0, 0, cw, ch],
             "cabeza": [0, 0, cw, alto_cabeza],
             "orden": 100,
+            "origen": huella,
         }
         (carpeta / "personaje.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2),
                                                 encoding="utf-8")
     except OSError as exc:
         shutil.rmtree(carpeta, ignore_errors=True)
         raise ErrorPersonaje(f"No pude guardarlo: {exc}") from exc
-    return ident, len(poses)
+    return Importado(ident, len(poses), len(animaciones), False)
 
 
 def _existentes(destino):
