@@ -13,7 +13,8 @@ cuando buscas actualizaciones desde el menú.
   el acceso directo del Escritorio.
 - **Tu propio personaje:** Configuración → Apariencia → **Añadir personaje…** Elige una
   imagen PNG, GIF o JPG, ponle nombre y aparece en la lista. Entiende una imagen sola,
-  varias poses en fila (normal, trabajando, feliz, error) o un GIF, y quita el fondo liso.
+  varias poses en fila (normal, trabajando, feliz, error), un GIF o una mascota de
+  Codex Pets (su ZIP o su spritesheet), y quita el fondo liso.
 - **Explorador de archivos renovado** en Convertir a Markdown: columnas de estado, tipo,
   tamaño y fecha, ordenar con un clic, buscar en la carpeta (Ctrl+F), abrir en el
   Explorador de Windows, y tu carpeta de cursos de Canvas y el Escritorio en el inicio.

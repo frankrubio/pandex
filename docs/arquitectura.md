@@ -169,6 +169,7 @@ un archivo por personaje y `construir.py`, que genera la carpeta completa). La s
 | Una sola figura | Usa la misma imagen para todos los estados. |
 | Varias poses del mismo tamaño, en fila (como Rusty) | Las separa solo, por las columnas transparentes entre poses. Orden: normal, trabajando, feliz, error; si faltan, usa la normal. |
 | Un GIF animado | Toma cada cuadro como una pose, en ese orden. |
+| Una mascota de Codex Pets (`.zip` con `pet.json`, o su `spritesheet.webp`) | Reconoce el atlas de 8 columnas × 192×208 y toma: normal = fila 0 (*idle*), trabajando = fila 8 (*review*), feliz = fila 3 (*waving*), error = fila 5 (*failed*). El nombre sale de `displayName`. |
 
 Si no tiene transparencia y el fondo es de un solo color, lo quita. El nombre que escribes es
 el que aparece en el selector, con «(tuyo)». Se guarda en `%LOCALAPPDATA%\Pandex\personajes\<id>\`

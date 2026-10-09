@@ -272,8 +272,9 @@ class DialogoConfiguracion(QDialog):
         caja.setContentsMargins(16, 12, 16, 12)
         caja.setSpacing(6)
         caja.addWidget(QLabel("<b>Tu propio personaje</b>"))
-        ayuda = QLabel("Una imagen PNG, GIF o JPG. Si tiene varias poses en fila, van en este orden: "
-                       "normal, trabajando, feliz y error. El fondo liso se quita solo.")
+        ayuda = QLabel("Una imagen PNG, GIF o JPG, o una mascota de Codex Pets (su ZIP o su "
+                       "spritesheet). Si tiene varias poses en fila, van en este orden: normal, "
+                       "trabajando, feliz y error. El fondo liso se quita solo.")
         ayuda.setProperty("rol", "suave")
         ayuda.setWordWrap(True)
         caja.addWidget(ayuda)
@@ -316,7 +317,7 @@ class DialogoConfiguracion(QDialog):
     def _anadir_personaje(self):
         ruta, _ = QFileDialog.getOpenFileName(
             self, "Elige la imagen de tu personaje", "",
-            "Imágenes (*.png *.gif *.webp *.jpg *.jpeg)")
+            "Imágenes o Codex Pets (*.png *.gif *.webp *.jpg *.jpeg *.zip)")
         if not ruta:
             return
         nombre, ok = QInputDialog.getText(self, "Añadir personaje", "¿Cómo se llama?",

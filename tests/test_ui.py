@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -213,6 +214,49 @@ class PersonajesPropios(unittest.TestCase):
                 personajes.recargar()
         with self.assertRaises(personaje_nuevo.ErrorPersonaje):
             personaje_nuevo.quitar("rusty", self.destino)
+
+    def _atlas_codex(self, filas=9):
+        """Un atlas como los de Codex Pets: 8 columnas de 192×208, un color por fila."""
+        from PIL import Image, ImageDraw
+
+        atlas = Image.new("RGBA", (8 * 192, filas * 208))
+        dibujo = ImageDraw.Draw(atlas)
+        for fila in range(filas):
+            for columna in range(6):
+                x, y = columna * 192, fila * 208
+                dibujo.ellipse((x + 40, y + 30, x + 150, y + 190), fill=(fila * 25, 100, columna * 40, 255))
+        return atlas
+
+    def test_un_atlas_de_codex_pets_usa_la_fila_de_cada_estado(self):
+        from PIL import Image
+
+        from pandex import personaje_nuevo
+
+        ruta = self.carpeta / "spritesheet.webp"
+        self._atlas_codex(11).save(ruta, lossless=True)
+        (self.carpeta / "pet.json").write_text(json.dumps({"displayName": "Patito"}), encoding="utf-8")
+        self.assertEqual(personaje_nuevo.nombre_desde_archivo(ruta), "Patito")
+        ident, poses = personaje_nuevo.importar(ruta, "Patito", self.destino)
+        self.assertEqual(poses, 4)
+        hoja = Image.open(self.destino / ident / "spritesheet.png")
+        ancho = hoja.width // 4
+        rojo = [hoja.getpixel((i * ancho + ancho // 2, hoja.height // 2))[0] for i in range(4)]
+        # normal = fila 0, trabajando = fila 8 (revisar), feliz = fila 3 (saludar), error = fila 5
+        self.assertEqual(rojo, [0, 200, 75, 125])
+
+    def test_el_zip_de_codex_pets_se_abre_directo(self):
+        from pandex import personaje_nuevo
+
+        imagen = self.carpeta / "tmp.webp"
+        self._atlas_codex().save(imagen, lossless=True)
+        ruta = self.carpeta / "duck.zip"
+        with zipfile.ZipFile(ruta, "w") as z:
+            z.writestr("duck/pet.json", json.dumps({"id": "duck", "displayName": "Pato programador",
+                                                    "spritesheetPath": "spritesheet.webp"}))
+            z.write(imagen, "duck/spritesheet.webp")
+        self.assertEqual(personaje_nuevo.nombre_desde_archivo(ruta), "Pato programador")
+        ident, poses = personaje_nuevo.importar(ruta, "Pato programador", self.destino)
+        self.assertEqual((ident, poses), ("pato_programador", 4))
 
     def test_lo_que_no_es_imagen_da_un_mensaje_claro(self):
         from pandex import personaje_nuevo
