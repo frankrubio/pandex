@@ -20,6 +20,8 @@ __pycache__/
 # --- Editores y sistema --------------------------------------------------
 .vscode/
 .idea/
-.claude/
+# de .claude/ solo se suben las skills del proyecto (p. ej. skin-pixel-art)
+.claude/*
+!.claude/skills/
 desktop.ini
 Thumbs.db

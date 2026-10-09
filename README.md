@@ -105,9 +105,11 @@ paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-v
 - **Clic derecho** sobre Rusty → **Sincronizar Canvas**: baja solo lo nuevo y lo ordena así:
   `Curso / Sem 3 / Material de clase / Clase 3.pdf`. Nunca borra ni pisa nada tuyo.
 - **Clic derecho → Convertir a Markdown**: eliges una carpeta y convierte PDF, Word,
-  PowerPoint y Excel a `.md`.
-- **Clic derecho → Configuración**: personaje, tamaño, horario automático, arrancar con
-  Windows y crear el acceso directo.
+  PowerPoint y Excel a `.md`. El explorador te dice qué es material de estudio y qué ya
+  convertiste.
+- **Clic derecho → Configuración**: personaje (Rusty, BMO, Robot… o **el tuyo**, desde una
+  imagen o un GIF), logo de la app, tamaño, horario automático, arrancar con Windows y crear
+  el acceso directo.
 - **Clic** sobre Rusty para saludarlo. **Arrástralo** para moverlo.
 
 <p align="center">
@@ -153,7 +155,7 @@ pandex/        núcleo: app, tareas (contrato de plug-ins), ejecutor (hilos), pr
 └── markdown/  Convertir a Markdown: clasificador, lote, proceso aparte, navegador
 tasks/         los plug-ins (delgados: la lógica vive en pandex/)
 tests/         pruebas sin internet (Canvas falso, carpetas temporales)
-herramientas/  ícono, capturas del README, sprites y GIF → sprite sheet
+herramientas/  íconos, capturas del README y skins/ (personajes en el estilo de Rusty)
 ```
 
 Una tarea nueva es un archivo en `tasks/`. Aparece en el menú al pulsar **Recargar tareas**:

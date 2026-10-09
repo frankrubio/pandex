@@ -17,10 +17,12 @@ devuelven.
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
-| `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque). |
-| `pandex/ui/` | `mascota.py` (la ventana, estática), `rusty.py` (el panda rojo en pixel art), `dibujo.py` (panda robot vectorial y el logo), `sprites.py`, `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
+| `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque) y su ícono. |
+| `pandex/horas.py` | Horas y fechas para el usuario, en formato de 12 horas (*7:05 p. m.*). |
+| `pandex/personaje_nuevo.py` | «Añadir personaje…»: convierte una imagen o un GIF en un personaje (Pillow, solo al usarlo). |
+| `pandex/ui/` | `mascota.py` (la ventana, estática), `personajes.py` (el catálogo de `assets/personajes/`), `logo.py` (el logo y los íconos), `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
 | `pandex/markdown/proceso.py` | Corre la conversión a Markdown en un proceso hijo (la memoria del conversor se libera al terminar). |
-| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. |
+| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. Al arrancar aparta los archivos que dejaron versiones anteriores (`OBSOLETOS`), porque el ZIP solo agrega y reemplaza. |
 | `pandex/canvas/` | Sincronizar Canvas → [sincronizar-canvas.md](sincronizar-canvas.md) |
 | `pandex/markdown/` | Convertir a Markdown → [convertir-markdown.md](convertir-markdown.md) |
 | `tasks/*.py` | Los plug-ins. Delgados: conectan una función de `pandex/` con el menú. |
@@ -89,10 +91,10 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
 {
   "mascota": {
     "nombre": "Pandex",
-    "personaje": "rusty",          // "rusty", "vectorial" (panda robot) o "pixel" (sprite sheet)
+    "personaje": "rusty",          // uno de assets/personajes/ o uno que añadiste
+    "logo": "personaje",           // ícono de la app: el del personaje o el id de otro
     "tamano": 120,                 // alto en píxeles
     "opacidad": 1.0,
-    "spritesheet": { ... },        // solo con "personaje": "pixel"; ver «Cambiar el personaje»
     "globo_activo": true,
     "globo_segundos": 5,
     "posicion": [1291, 695],       // se guarda sola al arrastrarla
@@ -100,11 +102,11 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
     "frases_click": ["¿Qué tal?", "..."]
   },
   "arrancar_con_windows": false,
-  "version_config": 3,             // para poner al día un config.json viejo al actualizar
+  "version_config": 4,             // para poner al día un config.json viejo al actualizar
   "tareas": {
     "<id de la tarea>": {
       "activa": true,
-      "schedule": "0 19 * * *",    // cron opcional; null = solo manual
+      "schedule": "0 19 * * *",    // cron (Configuración → Tareas lo arma por ti); null = solo manual
       ...                          // lo propio de cada tarea
     }
   }
@@ -142,18 +144,38 @@ manejado por código. Ninguna usa internet.
 
 ## Personajes
 
-`mascota.personaje` en `config.json` (o **Configuración → Apariencia**): `"rusty"` (sprite de
-`assets/rusty/`, `ui/rusty.py`), `"vectorial"` (panda robot dibujado, `ui/dibujo.py`) o
-`"pixel"` (cualquier sprite sheet, `ui/sprites.py`). Para usar el tuyo:
+Cada personaje es una carpeta de `assets/personajes/<id>/` y aparece solo en **Configuración →
+Apariencia** (`ui/personajes.py` la lee):
 
-```bash
-.venv\Scripts\python.exe herramientas/preparar_sprite.py imagen.png assets/mio/spritesheet.png  # quita el fondo
-.venv\Scripts\python.exe herramientas/gif_a_sprite.py mascota.gif assets/mio/spritesheet.png    # GIF → sheet
-```
+| Archivo | Qué es |
+|---|---|
+| `spritesheet.png` | Los cuadros en fila, todos del mismo tamaño (los nuevos, 192×208). |
+| `personaje.json` | `nombre`, `cuadros` (qué cuadro usa cada estado), `recorte` (la caja común, para que la figura no salte), `cabeza` (lo que va en el logo), `fondo_logo` y `orden`. |
+| `icono.ico` | El ícono de la app con su cara (`herramientas/crear_icono.py <id>`). |
 
-Luego `"personaje": "pixel"` y `spritesheet → archivo, frame_ancho, frame_alto`; cada estado
-(`idle`, `feliz`, `trabajando`, `error`) lista su cuadro como `[fila, columna]`. El ícono y las
-capturas del README se regeneran con `herramientas/crear_icono.py` y `herramientas/capturas.py`.
+Hoy trae `rusty`, `bmo`, `robot` y `panda_clasico`. **El logo** (`mascota.logo`) sigue al
+personaje o queda fijo en otro; al cambiarlo, Pandex cambia el ícono de las ventanas, de la
+bandeja y de los accesos directos que existan (`accesos.cambiar_icono`).
+
+**Un personaje nuevo para incluir en Pandex** se dibuja en código con `herramientas/skins/` (librería `pixelart.py`,
+un archivo por personaje y `construir.py`, que genera la carpeta completa). La skill
+`.claude/skills/skin-pixel-art` tiene las reglas del estilo de Rusty y el paso a paso.
+
+**Un personaje tuyo**, sin tocar código: **Configuración → Apariencia → Añadir personaje…**
+(`pandex/personaje_nuevo.py`). Acepta PNG, GIF, WEBP o JPG:
+
+| Si la imagen es… | Pandex… |
+|---|---|
+| Una sola figura | Usa la misma imagen para todos los estados. |
+| Varias poses del mismo tamaño, en fila (como Rusty) | Las separa solo, por las columnas transparentes entre poses. Orden: normal, trabajando, feliz, error; si faltan, usa la normal. |
+| Un GIF animado | Toma cada cuadro como una pose, en ese orden. |
+| Una mascota de Codex Pets (el `.zip`, su `pet.json` o su `spritesheet.webp`) | Reconoce el atlas de 8 columnas × 192×208 y toma: normal = fila 0 (*idle*), trabajando = fila 8 (*review*), feliz = fila 3 (*waving*), error = fila 5 (*failed*). Además guarda esas tres filas completas como animación (`animaciones` en `personaje.json`, hasta 8 cuadros, 140-150 ms). El nombre sale de `displayName`. |
+
+Si no tiene transparencia y el fondo es de un solo color, lo quita. El nombre que escribes es
+el que aparece en el selector, con «(tuyo)». Se guarda en `%LOCALAPPDATA%\Pandex\personajes\<id>\`
+(con su `personaje.json` e `icono.ico`), así que sobrevive a las actualizaciones; **Quitar** lo
+borra de ahí. Pandex guarda su propia copia (el original se puede borrar) y anota la huella SHA-256 de la imagen (`origen`): añadir la misma mascota otra vez no la duplica. Un `config.json` antiguo con `"personaje": "pixel"` pasa a Rusty y conserva su
+bloque `spritesheet`, para que puedas añadir esa imagen con el botón.
 
 ## Rendimiento
 
@@ -179,8 +201,10 @@ Qué se carga y cuándo:
   `tareas.convertir_md.proceso_aparte: false` se convierte dentro de Pandex.
 - **`asyncio`**: solo para el OCR de Windows.
 
-La mascota es **estática**: cada estado (reposo, feliz, trabajando, error) se pinta una
-sola vez y queda en caché (`rusty.imagen`, `dibujo.imagen`). No hay temporizadores de
+La mascota es **estática** en reposo: cada estado se pinta una sola vez y queda en caché
+(`personajes.imagen`). Los personajes con `animaciones` (p. ej. de Codex Pets) se mueven
+solo mientras trabajan o reaccionan, con cuadros escalados en caché; al volver al reposo
+el temporizador se apaga (`mascota.animar` lo desactiva). En reposo no hay temporizadores de
 animación; la ventana solo se repinta cuando cambia el estado. El único temporizador es
 un disparo único que la devuelve al reposo tras una reacción. Las transiciones (globo,
 apertura de ventanas) duran menos de 0,3 s y solo corren en ese momento. Los avances de

@@ -23,25 +23,39 @@ terminar abre un resumen.
 | **Todos** *(`Ctrl+T`)* | Todo lo convertible de la carpeta, sin filtrar. |
 
 Los dos respetan *Incluir subcarpetas* y *Forzar reconversión*, y muestran cuántos archivos
-entran. En la lista, lo que no es material de estudio sale **en gris con su motivo**
-(`AP4-Sem5.pdf · no: actividad previa`). Si **marcas un archivo a mano**, se convierte siempre.
+entran. Si **marcas un archivo a mano** (su casilla o doble clic), se convierte siempre.
+
+La lista es una tabla como la del Explorador de Windows:
+
+| Columna | Qué muestra |
+|---|---|
+| **Nombre** | Con el ícono de Windows. Lo que no es material de estudio sale en gris. |
+| **Estado** | *Material de estudio*, *✓ Ya en .md* o el motivo por el que queda fuera (*No: actividad previa*). |
+| **Tipo** | PDF, Word, PowerPoint, Excel… |
+| **Tamaño** y **Modificado** | La fecha en formato de 12 horas (*08/10/2026 7:56 p. m.*). |
+
+Un clic en el encabezado ordena por esa columna (por ejemplo, lo más nuevo primero); las
+carpetas siempre quedan arriba. **Buscar aquí** (`Ctrl+F`) filtra la carpeta mientras escribes,
+y el botón de carpeta (arriba a la derecha) la abre en el Explorador de Windows.
 
 ### Teclado
 
 | Tecla | Qué hace |
 |---|---|
-| `1` `2` `3` | En el inicio: OneDrive institucional, Descargas, Documentos |
-| **Enter** | Entrar a una carpeta · marcar/desmarcar un archivo |
+| `1` `2` `3`… | En el inicio: Mis cursos (Canvas), OneDrive institucional, Escritorio, Descargas, Documentos |
+| **Enter** o doble clic | Entrar a una carpeta · marcar/desmarcar un archivo |
 | **Espacio** | Marcar y bajar al siguiente |
-| **Retroceso** | Subir un nivel |
+| **Retroceso** o **Alt+↑** | Subir un nivel |
+| **Ctrl+F** | Buscar en la carpeta (Esc borra la búsqueda; ↓ vuelve a la lista) |
 | Escribir letras | Salta al nombre que empieza así |
 | **Ctrl+A** | Marcar el material de estudio de la carpeta (otra vez: desmarcar) |
 | **Ctrl+Enter** | Convertir los marcados |
 | **Ctrl+M** / **Ctrl+T** | Convertir el material de estudio / todo de esta carpeta |
 | **Esc** | Cancelar |
 
-Las migas de arriba (`Inicio › OneDrive › … › Sem 6`) son clicables, la primera opción del
-inicio es la última carpeta que usaste, y lo marcado se conserva al cambiar de carpeta.
+Las migas de arriba (`Inicio › Mis cursos › … › Sem 6`) son clicables, el inicio ofrece tu
+carpeta de cursos de Canvas (si la configuraste) y la última carpeta que usaste, y lo marcado
+se conserva al cambiar de carpeta.
 
 ## Cómo decide qué es material de estudio
 

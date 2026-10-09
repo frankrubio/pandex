@@ -8,7 +8,11 @@ import zipfile
 from pathlib import Path
 
 from pandex import actualizar
-from pandex.config import SPRITE_PIXEL, Config
+from pandex.config import PANDA_VIEJO, Config
+
+# el bloque que las versiones 1.x y 2.x guardaban en config.json
+SPRITE_PIXEL = {"archivo": PANDA_VIEJO, "frame_ancho": 346, "frame_alto": 355,
+                "animaciones": {"idle": {"frames": [[0, 0]], "fps": 1}}}
 
 
 class Versiones(unittest.TestCase):
@@ -95,7 +99,7 @@ class MigrarConfig(unittest.TestCase):
         self.assertEqual(config.mascota["nombre"], "Pygu")
         self.assertNotIn("animacion", config.mascota)
         guardado = json.loads(self.ruta.read_text(encoding="utf-8"))
-        self.assertEqual(guardado["version_config"], 3)
+        self.assertEqual(guardado["version_config"], 4)
         self.assertNotIn("spritesheet", guardado["mascota"], "el de fábrica no se vuelve a guardar")
 
     def test_el_de_fabrica_con_otros_valores_tambien_pasa_a_rusty(self):
@@ -117,20 +121,46 @@ class MigrarConfig(unittest.TestCase):
         self.assertEqual(config.mascota["personaje"], "rusty")
         self.assertEqual(config.mascota["nombre"], "Pygu")
 
-    def test_un_sprite_propio_se_respeta_tambien_en_v2(self):
+    def test_un_sprite_propio_pasa_a_rusty_y_su_bloque_se_conserva(self):
         propio = {**SPRITE_PIXEL, "archivo": "assets/mi_gato/sheet.png"}
-        self.ruta.write_text(json.dumps({"version_config": 2, "mascota": {
-            "personaje": "pixel", "spritesheet": propio}}), encoding="utf-8")
-        config = Config(self.ruta)
-        self.assertEqual(config.mascota["personaje"], "pixel")
-        self.assertEqual(config.mascota["spritesheet"]["archivo"], "assets/mi_gato/sheet.png")
+        for version in (1, 2, 3):
+            self.ruta.write_text(json.dumps({"version_config": version, "mascota": {
+                "personaje": "pixel", "spritesheet": propio}}), encoding="utf-8")
+            config = Config(self.ruta)
+            self.assertEqual(config.mascota["personaje"], "rusty", f"v{version}")
+            self.assertEqual(config.mascota["spritesheet"]["archivo"], "assets/mi_gato/sheet.png")
 
-    def test_un_sprite_propio_se_respeta(self):
-        propio = {**SPRITE_PIXEL, "archivo": "assets/mi_gato/sheet.png"}
-        self.ruta.write_text(json.dumps({"mascota": {"spritesheet": propio}}), encoding="utf-8")
+    def test_quien_eligio_el_panda_pixel_en_la_2x_pasa_a_panda_clasico(self):
+        self.ruta.write_text(json.dumps({"version_config": 3, "mascota": {"personaje": "pixel"}}),
+                             encoding="utf-8")
+        self.assertEqual(Config(self.ruta).mascota["personaje"], "panda_clasico")
+
+    def test_el_panda_vectorial_ya_no_existe_y_pasa_a_rusty(self):
+        self.ruta.write_text(json.dumps({"version_config": 3, "mascota": {"personaje": "vectorial"}}),
+                             encoding="utf-8")
         config = Config(self.ruta)
-        self.assertEqual(config.mascota["personaje"], "pixel")
-        self.assertEqual(config.mascota["spritesheet"]["archivo"], "assets/mi_gato/sheet.png")
+        self.assertEqual(config.mascota["personaje"], "rusty")
+        self.assertEqual(config.mascota["logo"], "personaje")
+        self.assertEqual(json.loads(self.ruta.read_text(encoding="utf-8"))["version_config"], 4)
+
+
+
+class Obsoletos(unittest.TestCase):
+    def test_aparta_lo_que_dejaron_versiones_anteriores_sin_borrarlo(self):
+        raiz = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, raiz, ignore_errors=True)
+        for relativa in ("Pandex.bat", "pandex/ui/sprites.py", "pandex/ui/__pycache__/sprites.cpython-313.pyc",
+                         "assets/rusty/spritesheet.png", "pandex/ui/mascota.py"):
+            (raiz / relativa).parent.mkdir(parents=True, exist_ok=True)
+            (raiz / relativa).write_text("x", encoding="utf-8")
+        self.assertEqual(actualizar.limpiar_obsoletos(raiz), 3)
+        self.assertFalse((raiz / "Pandex.bat").exists())
+        self.assertFalse((raiz / "assets/rusty").exists(), "la carpeta vacía también se va")
+        self.assertFalse((raiz / "pandex/ui/__pycache__/sprites.cpython-313.pyc").exists())
+        self.assertTrue((raiz / "pandex/ui/mascota.py").exists(), "lo que sí se usa se queda")
+        respaldo = actualizar.DATOS / "respaldos" / f"obsoletos-{actualizar.version_local()}"
+        self.assertTrue((respaldo / "Pandex.bat").exists(), "se guarda una copia, no se borra")
+        self.assertEqual(actualizar.limpiar_obsoletos(raiz), 0, "la segunda vez no hay nada")
 
 
 if __name__ == "__main__":

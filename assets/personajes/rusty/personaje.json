@@ -1,0 +1,10 @@
+{
+  "nombre": "Rusty, el panda rojo",
+  "autor": "LuoSKraD (Codex Pets)",
+  "cuadro": [192, 208],
+  "cuadros": {"idle": 0, "trabajando": 1, "feliz": 3, "error": 0},
+  "recorte": [5, 5, 183, 199],
+  "cabeza": [4, 4, 142, 122],
+  "fondo_logo": ["#4A7FBA", "#244A75"],
+  "orden": 0
+}

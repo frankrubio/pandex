@@ -11,18 +11,18 @@ import time
 from pathlib import Path
 
 from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QAction, QIcon, QPainter, QPixmap
+from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
-from . import actualizar
+from . import accesos, actualizar, horas
 from . import tareas as plugins
 from .config import Config
 from .ejecutor import Ejecutor
 from .log import get_logger
 from .programador import Programador
-from .rutas import ICONO, RAIZ
+from .rutas import RAIZ
 from .tareas import TaskContext
-from .ui import dibujo, iconos
+from .ui import iconos, logo, personajes
 from .ui.actualizacion import DialogoActualizacion
 from .ui.actualizacion import _Hilo as HiloFondo
 from .ui.configuracion import DialogoConfiguracion
@@ -66,15 +66,19 @@ class PandexApp(QObject):
         self.programador.montar(self.tareas)
         self.programador.iniciar()
 
+        self._logo = None
+        self.aplicar_logo()
         self._crear_bandeja()
 
     # ---------- arranque ----------
 
     def iniciar(self):
+        # lo que dejaron versiones anteriores (una actualización por ZIP no borra nada)
+        actualizar.limpiar_obsoletos()
         self.mascota.show()
         self.mascota.raise_()
         nombre = self.config.mascota.get("nombre", "Pandex")
-        self.mascota.decir(f"¡Hola! Soy {nombre}. Tengo {len(self.tareas)} tarea(s) listas.")
+        self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
         log.info("Pandex iniciado con %d tarea(s)", len(self.tareas))
         QTimer.singleShot(1500, self._primera_vez)
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
@@ -104,15 +108,26 @@ class PandexApp(QObject):
 
     # ---------- bandeja ----------
 
-    def _icono(self, lado=64):
-        if ICONO.exists():
-            return QIcon(str(ICONO))
-        pix = QPixmap(lado, lado)
-        pix.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pix)
-        dibujo.icono_bandeja(painter, lado)
-        painter.end()
-        return QIcon(pix)
+    def _icono(self):
+        return logo.icono()
+
+    def aplicar_logo(self):
+        """Pone el logo elegido en las ventanas y la bandeja. Devuelve True si cambió."""
+        elegido = logo.elegido(self.config.mascota)
+        if elegido == self._logo:
+            return False
+        cambio = self._logo is not None
+        self._logo = elegido
+        logo.fijar(elegido)
+        self.qapp.setWindowIcon(self._icono())
+        if cambio:
+            self.bandeja.setIcon(self._icono())
+            # y los accesos directos que ya existen (Escritorio, arranque con Windows)
+            ruta = personajes.ruta_icono(elegido)
+            if ruta is not None:
+                accesos.cambiar_icono(ruta)
+        log.info("logo: %s", elegido)
+        return True
 
     def _crear_bandeja(self):
         self.bandeja = QSystemTrayIcon(self._icono(), self.qapp)
@@ -282,7 +297,7 @@ class PandexApp(QObject):
         if dlg.exec():
             self.mascota.recargar_apariencia()
             self.programador.montar(self.tareas)
-            self.bandeja.setIcon(self._icono())
+            self.aplicar_logo()
             self.bandeja.setToolTip(self.config.mascota.get("nombre", "Pandex"))
             self.mascota.decir("Configuración guardada.", tipo="exito")
 

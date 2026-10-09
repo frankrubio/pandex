@@ -12,7 +12,7 @@ class Task:
     nombre = "Sincronizar Canvas"
     icono = "sincronizar"
     descripcion = "Baja el material nuevo de Canvas y lo ordena en tu carpeta"
-    schedule = None  # el asistente puede poner uno (p. ej. todos los días a las 19:00)
+    schedule = None  # el asistente puede poner uno (p. ej. todos los días a las 7:00 p. m.)
     configurar_texto = "Configurar Canvas…"
 
     def necesita_configurar(self, params):

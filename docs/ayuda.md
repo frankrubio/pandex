@@ -25,7 +25,7 @@ Instalando dependencias: la primera vez tarda unos minutos...
 - Si no tienes Google Chrome, también descarga un navegador para entrar a Canvas. Eso agrega un par de minutos.
 - Al final dice **Listo** y pide presionar una tecla. En tu Escritorio aparece **Pandex** con la cara de Rusty.
 
-**3. Al abrir Pandex.** Rusty aparece en una esquina de la pantalla con un globo que dice *"¡Hola! Soy Pandex. Tengo 3 tarea(s) listas."*. No se abre ninguna ventana grande: **Pandex es la mascota**. También queda un ícono junto al reloj de Windows.
+**3. Al abrir Pandex.** Rusty aparece en una esquina de la pantalla con un globo que dice *"¡Buenas tardes! Soy Pandex. Clic derecho para ver lo que puedo hacer."* (o buenos días o buenas noches, según la hora). No se abre ninguna ventana grande: **Pandex es la mascota**. También queda un ícono junto al reloj de Windows.
 
 **4. El asistente de Canvas.** Segundo y medio después aparece *"Antes de empezar, configuremos «Sincronizar Canvas»"* y se abre el asistente:
 
@@ -63,6 +63,19 @@ No. Rusty es una imagen quieta: sin hacer nada usa 0 % de CPU y unos 70 MB de me
 
 **¿Dónde se guardan los `.md` cuando convierto a Markdown?**
 Junto a cada archivo original y con el mismo nombre: `Clase 3.pdf` → `Clase 3.md`. Si ya existe un `.md`, no lo vuelve a convertir, salvo que marques *Forzar reconversión*.
+
+**¿Puedo poner mi propio personaje?**
+Sí: **Configuración → Apariencia → Añadir personaje…**, eliges la imagen y le pones nombre. Sirve un PNG, GIF o JPG:
+- **Una sola imagen:** se usa para todos los estados.
+- **Varias poses del mismo tamaño, una al lado de otra:** van en este orden: normal, trabajando, feliz y error.
+- **Un GIF:** cada cuadro es una pose, en ese mismo orden.
+- **Una mascota de [Codex Pets](https://codex-pets.net):** elige el `.zip` que descargaste, su `pet.json` o su `spritesheet.webp`. Pandex toma su nombre y una pose para cada estado.
+
+Si la imagen tiene fondo blanco u otro color liso, Pandex lo quita. El personaje aparece en la lista con «(tuyo)». Pulsa **Guardar** para usarlo.
+
+- **¿Se mueve?** Si la mascota trae varios movimientos (como las de Codex Pets), se mueve mientras trabaja, al saludar y si algo falla; en reposo queda quieta. Si solo trae 4 poses, usa esas 4 fijas. Se puede apagar en **Configuración → Comportamiento**.
+- **¿Puedo borrar el archivo original?** Sí. Pandex guarda su propia copia en `%LOCALAPPDATA%\Pandex\personajes`.
+- **¿Y si lo añado dos veces?** No se duplica: Pandex reconoce que es la misma imagen y lo deja elegido.
 
 **¿Cómo lo cierro o lo escondo?**
 Clic derecho en Rusty → **Ocultar**, o **Salir**. Si lo ocultas, vuelve a aparecer al hacer clic en su ícono junto al reloj.

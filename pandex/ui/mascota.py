@@ -1,13 +1,12 @@
 """La mascota: ventana sin marco, transparente, que se arrastra y habla.
 
-Es **estática** a propósito: cada estado (reposo, feliz, trabajando, error) es una
-imagen que se pinta una vez y queda en caché. No hay temporizadores de animación;
-la ventana solo se vuelve a dibujar cuando cambia el estado o el tamaño. En reposo
-no consume CPU.
+En reposo es **estática**: una imagen en caché, sin temporizadores, 0 % de CPU. Si el
+personaje trae movimientos (p. ej. una mascota de Codex Pets), se mueve **solo**
+mientras trabaja o reacciona, con cuadros ya escalados en caché; al volver al reposo el
+temporizador se apaga. Se puede desactivar en Configuración → Comportamiento.
 
-Personajes (``mascota.personaje``): ``"rusty"`` (por defecto, el panda rojo en pixel
-art, ``ui/rusty.py``), ``"vectorial"`` (el panda robot de ``ui/dibujo.py``) o
-``"pixel"`` (un sprite sheet, ``ui/sprites.py``).
+El personaje (``mascota.personaje``) es cualquiera de ``ui/personajes.py``: los que trae
+Pandex y los que añadiste tú. Por defecto, ``"rusty"``, el panda rojo.
 """
 
 import random
@@ -16,11 +15,10 @@ from PyQt6.QtCore import QPoint, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QGuiApplication, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
-from . import dibujo, rusty
+from . import logo, personajes
 from .globo import Globo
-from .sprites import Sprites
 
-ESTADOS = dibujo.ESTADOS
+ESTADOS = personajes.ESTADOS
 
 
 def pantalla_de(widget):
@@ -46,6 +44,12 @@ class Mascota(QWidget):
         self._construir_ventana()
         self._restaurar_posicion()
 
+        # los cuadros de la animación del estado actual (vacío = imagen fija)
+        self._cuadros = ()
+        self._cuadro = 0
+        self._animacion = QTimer(self)
+        self._animacion.timeout.connect(self._siguiente_cuadro)
+
         # vuelve sola al reposo tras una reacción (un único disparo, no un bucle)
         self._fin_estado = QTimer(self)
         self._fin_estado.setSingleShot(True)
@@ -54,15 +58,9 @@ class Mascota(QWidget):
     # ---------- construcción ----------
 
     def _cargar_personaje(self):
-        m = self.config.mascota
-        self.sprites = None
-        self.personaje = m.get("personaje", "rusty")
-        if self.personaje == "rusty" and not rusty.disponible():
-            self.personaje = "vectorial"  # falta assets/rusty: el panda dibujado no necesita archivos
-        if self.personaje == "pixel":
-            sprites = Sprites(m.get("spritesheet"))
-            if sprites.ok:
-                self.sprites = sprites
+        # uno que ya no existe (p. ej. lo quitaste): Rusty
+        elegido = personajes.elegir(self.config.mascota.get("personaje", personajes.POR_DEFECTO))
+        self.personaje = elegido.id if elegido else None
 
     def _construir_ventana(self):
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowSystemMenuHint
@@ -76,13 +74,9 @@ class Mascota(QWidget):
         self.setWindowTitle(self.config.mascota.get("nombre", "Pandex"))
 
     def _tamano(self):
-        """Con sprite sheet, la ventana toma la proporción del personaje."""
+        """La ventana toma la proporción del personaje."""
         lado = int(self.config.mascota.get("tamano", 120))
-        if self.sprites:
-            return self.sprites.tamano_ventana(lado)
-        if self.personaje == "rusty":
-            return rusty.tamano(lado)
-        return lado, lado
+        return personajes.tamano(self.personaje, lado)
 
     def _restaurar_posicion(self):
         guardada = self.config.mascota.get("posicion")
@@ -101,6 +95,7 @@ class Mascota(QWidget):
     def recargar_apariencia(self):
         self._cargar_personaje()
         self.resize(*self._tamano())
+        self._animar()  # otro personaje o tamaño: otros cuadros
         self.setWindowOpacity(float(self.config.mascota.get("opacidad", 1.0)))
         self.setWindowTitle(self.config.mascota.get("nombre", "Pandex"))
         encima = self.config.mascota.get("siempre_encima", True)
@@ -127,7 +122,27 @@ class Mascota(QWidget):
             self._fin_estado.stop()
         if estado != self._estado:
             self._estado = estado
+            self._animar()
             self.update()  # un solo repintado: la imagen ya está en caché
+
+    def _animar(self):
+        """Prende el temporizador solo si este estado tiene movimiento; si no, lo apaga."""
+        self._animacion.stop()
+        self._cuadros, self._cuadro = (), 0
+        if self.personaje is None or self._estado == "idle" or not self.config.mascota.get("animar", True):
+            return
+        ms = personajes.ritmo(self.personaje, self._estado)
+        if ms:
+            self._cuadros = personajes.cuadros(self.personaje, self._estado, self.height(),
+                                               self.devicePixelRatioF())
+            self._animacion.start(ms)
+
+    def _siguiente_cuadro(self):
+        if not self._cuadros or not self.isVisible():
+            self._animacion.stop()
+            return
+        self._cuadro = (self._cuadro + 1) % len(self._cuadros)
+        self.update()
 
     def decir(self, texto, tipo=None, segundos=None):
         if not self.config.mascota.get("globo_activo", True):
@@ -159,18 +174,16 @@ class Mascota(QWidget):
     def paintEvent(self, _evento):
         painter = QPainter(self)
         dpr = self.devicePixelRatioF()
-        if self.sprites:
-            pix = self.sprites.frame(self._estado, 0.0, self.width(), self.height())
-            if pix is not None:
-                painter.drawPixmap((self.width() - pix.width()) // 2,
-                                   (self.height() - pix.height()) // 2, pix)
-                return
-        if self.personaje == "rusty":
-            pix = rusty.imagen(self._estado, self.height(), dpr)
-            painter.drawPixmap(round((self.width() - pix.width() / dpr) / 2),
-                               round((self.height() - pix.height() / dpr) / 2), pix)
+        if self.personaje is None:  # sin ningún personaje instalado: al menos el logo
+            lado = min(self.width(), self.height())
+            painter.drawPixmap((self.width() - lado) // 2, (self.height() - lado) // 2, logo.pixmap(lado, dpr))
             return
-        painter.drawPixmap(0, 0, dibujo.imagen(self._estado, self.width(), self.height(), dpr))
+        if self._cuadros:
+            pix = self._cuadros[self._cuadro]
+        else:
+            pix = personajes.imagen(self.personaje, self._estado, self.height(), dpr)
+        painter.drawPixmap(round((self.width() - pix.width() / dpr) / 2),
+                           round((self.height() - pix.height() / dpr) / 2), pix)
 
     # ---------- interacción ----------
 

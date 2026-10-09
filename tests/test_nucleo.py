@@ -56,5 +56,33 @@ class Descubrir(unittest.TestCase):
         self.assertEqual(encontradas[0].nombre, "buena", "sin nombre, se usa el id")
 
 
+
+class Horas(unittest.TestCase):
+    def test_formato_de_12_horas(self):
+        from datetime import datetime
+
+        from pandex import horas
+
+        self.assertEqual(horas.hora(19, 5), "7:05 p. m.")
+        self.assertEqual(horas.hora(0, 30), "12:30 a. m.")
+        self.assertEqual(horas.hora(12, 0), "12:00 p. m.")
+        self.assertEqual(horas.hora(9, 0), "9:00 a. m.")
+        momento = datetime(2026, 10, 9, 20, 17)
+        self.assertEqual(horas.fecha_hora(momento), "09/10 8:17 p. m.")
+        self.assertEqual(horas.fecha_larga(momento), "viernes 9 de octubre")
+        self.assertEqual(horas.saludo(momento), "Buenas noches")
+        self.assertEqual(horas.saludo(momento.replace(hour=8)), "Buenos días")
+
+    def test_saludar_es_instantaneo(self):
+        import time
+
+        tarea = next(t for t in tareas.descubrir(TASKS_DIR) if t.id == "ejemplo_saludo")
+        inicio = time.monotonic()
+        resultado = tarea.run(None)
+        self.assertLess(time.monotonic() - inicio, 0.1)
+        self.assertTrue(resultado["ok"])
+        self.assertRegex(resultado["resumen"], r"Son las \d{1,2}:\d{2} [ap]\. m\.")
+
+
 if __name__ == "__main__":
     unittest.main()

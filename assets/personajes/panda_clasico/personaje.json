@@ -1,0 +1,10 @@
+{
+  "nombre": "Panda robot (clásico)",
+  "autor": "Pandex 1.x",
+  "cuadro": [346, 355],
+  "cuadros": {"idle": 0, "trabajando": 0, "feliz": 0, "error": 0},
+  "recorte": [3, 3, 340, 349],
+  "cabeza": [44, 0, 240, 186],
+  "fondo_logo": ["#4A7FBA", "#244A75"],
+  "orden": 90
+}

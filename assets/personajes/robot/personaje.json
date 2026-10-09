@@ -1,0 +1,10 @@
+{
+  "nombre": "Robot",
+  "autor": "Sprite sheet compartido por Frank, redibujado para Pandex",
+  "cuadro": [192, 208],
+  "cuadros": {"idle": 0, "trabajando": 1, "feliz": 3, "error": 0},
+  "recorte": [20, 0, 152, 208],
+  "cabeza": [20, 0, 152, 108],
+  "fondo_logo": ["#3B4660", "#1C2233"],
+  "orden": 30
+}

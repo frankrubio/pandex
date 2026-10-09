@@ -14,11 +14,13 @@ class Task:
     icono = "documento"
     descripcion = "Convierte PDF, Word, PowerPoint, Excel y más a .md, sin IA"
     schedule = None
+    programable = False  # cada vez eliges qué convertir: no corre sola a una hora
 
     def preparar(self, ctx):
         from pandex.markdown.navegador import Navegador  # Qt: solo al abrirlo
 
-        dialogo = Navegador(raices(), ctx.params.get("ultima_carpeta"),
+        cursos = ctx.config.get("tareas", {}).get("sync_canvas", {}).get("destino")
+        dialogo = Navegador(raices([("Mis cursos (Canvas)", cursos)]), ctx.params.get("ultima_carpeta"),
                             Clasificador(ctx.params.get("clasificacion")))
         dialogo.raise_()
         dialogo.activateWindow()

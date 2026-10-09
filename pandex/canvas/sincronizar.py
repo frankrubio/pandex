@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
+from .. import horas
 from ..rutas import DATOS
 from . import sesion
 from .cliente import Canvas, CanvasError, SinConexion
@@ -453,7 +454,7 @@ class Sincronizacion:
 
     def _informe(self, nuevos, n_cursos, dur):
         r = self._res
-        l = [f"SINCRONIZAR CANVAS · {datetime.now():%d/%m %H:%M} · {dur}", ""]
+        l = [f"SINCRONIZAR CANVAS · {horas.fecha_hora(datetime.now())} · {dur}", ""]
         if nuevos:
             l.append(f"✓ {len(nuevos)} archivo(s) nuevo(s)")
             por_curso = {}
@@ -507,9 +508,9 @@ class Sincronizacion:
 
 
 def _fecha(iso):
-    """``2026-10-12T05:00:00Z`` → ``12/10 00:00`` en tu hora local."""
+    """``2026-10-12T05:00:00Z`` → ``12/10 12:00 a. m.`` en tu hora local."""
     try:
-        return datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone().strftime("%d/%m %H:%M")
+        return horas.fecha_hora(datetime.fromisoformat(iso.replace("Z", "+00:00")).astimezone())
     except (ValueError, AttributeError):
         return iso
 
