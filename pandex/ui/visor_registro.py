@@ -1,5 +1,7 @@
 """Ventana «Ver registro»: las últimas líneas de ``logs/pandex.log``, con filtro."""
 
+import re
+
 from PyQt6.QtGui import QColor, QSyntaxHighlighter, QTextCharFormat
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -16,6 +18,18 @@ from ..rutas import LOG_FILE
 from . import iconos, tema
 
 LINEAS = 400
+
+_MARCA = re.compile(r"^\d{4}-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}),\d{3} ")
+
+
+def legible(linea):
+    """``2026-10-08 19:56:01,123 [INFO]…`` → ``08/10 7:56:01 p. m. [INFO]…``"""
+    m = _MARCA.match(linea)
+    if not m:
+        return linea
+    mes, dia, h, mi, s = m.groups()
+    h = int(h)
+    return f"{dia}/{mes} {(h % 12) or 12}:{mi}:{s} {'a. m.' if h < 12 else 'p. m.'} {linea[m.end():]}"
 
 
 class _Colores(QSyntaxHighlighter):
@@ -107,6 +121,6 @@ class VisorRegistro(QDialog):
         lineas = [l for l in self._lineas
                   if (not buscado or buscado in l.lower())
                   and (not problemas or "[WARNING]" in l or "[ERROR]" in l or "[CRITICAL]" in l)]
-        self.texto.setPlainText("\n".join(lineas) if lineas else "Nada coincide con el filtro.")
+        self.texto.setPlainText("\n".join(map(legible, lineas)) if lineas else "Nada coincide con el filtro.")
         barra = self.texto.verticalScrollBar()
         barra.setValue(barra.maximum())

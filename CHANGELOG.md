@@ -11,8 +11,22 @@ cuando buscas actualizaciones desde el menú.
 - **Logo a tu gusto:** en Configuración → Apariencia → Logo, el ícono de Pandex puede
   seguir al personaje o quedar fijo en otro. Cambia en las ventanas, junto al reloj y en
   el acceso directo del Escritorio.
-- Se quitó el panda robot dibujado («Panda robot»); quien lo usaba pasa a Rusty. El
-  panda robot pixel art sigue disponible como «Panda robot (clásico)».
+- **Tu propio personaje:** Configuración → Apariencia → **Añadir personaje…** Elige una
+  imagen PNG, GIF o JPG, ponle nombre y aparece en la lista. Entiende una imagen sola,
+  varias poses en fila (normal, trabajando, feliz, error) o un GIF, y quita el fondo liso.
+- **Explorador de archivos renovado** en Convertir a Markdown: columnas de estado, tipo,
+  tamaño y fecha, ordenar con un clic, buscar en la carpeta (Ctrl+F), abrir en el
+  Explorador de Windows, y tu carpeta de cursos de Canvas y el Escritorio en el inicio.
+- **Horarios sin cron:** en Configuración → Tareas eliges «Todos los días» o «De lunes a
+  viernes» y la hora.
+- **Hora en formato de 12 horas** (7:00 p. m.) en todo Pandex: saludo, horarios, informes
+  y registro.
+- **Saludar es instantáneo** (antes contaba hasta 3) y te dice la hora y la fecha. Al abrir,
+  Pandex saluda según la hora del día.
+- **Limpieza:** se quitaron el panda robot dibujado («Panda robot»; quien lo usaba pasa a
+  Rusty), `Pandex.bat` (hacía lo mismo que `Pandex.pyw`) y herramientas viejas. Si
+  actualizaste con el ZIP, Pandex aparta solo esos archivos (quedan en una copia de
+  respaldo). El panda robot pixel art sigue disponible como «Panda robot (clásico)».
 - Para programadores: cada personaje es una carpeta en `assets/personajes/`, y
   `herramientas/skins/` dibuja los nuevos en el estilo de Rusty.
 

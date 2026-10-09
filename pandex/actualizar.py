@@ -39,6 +39,20 @@ PROTEGIDOS = {"config.json", "config.json.tmp", "logs", ".venv", "venv", ".git",
 
 _SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
+# Archivos que trajeron versiones anteriores y ya no se usan. Una actualización por ZIP
+# solo agrega y reemplaza (no sabe qué se quitó), así que la versión nueva los aparta al
+# arrancar (``limpiar_obsoletos``). Con git, el pull ya los quitó y esto no hace nada.
+OBSOLETOS = (
+    "Pandex.bat",
+    "pandex/ui/dibujo.py",
+    "pandex/ui/rusty.py",
+    "pandex/ui/sprites.py",
+    "herramientas/preparar_sprite.py",
+    "herramientas/gif_a_sprite.py",
+    "assets/rusty/spritesheet.png",
+    "assets/panda_robot/spritesheet.png",
+)
+
 
 class ErrorActualizacion(Exception):
     """Algo impidió actualizar; el mensaje se le muestra a la persona tal cual."""
@@ -221,6 +235,33 @@ def _con_zip(raiz, avisar, zip_local=None):
         return {"modo": "zip", "archivos": copiados, "respaldo": respaldo if respaldo.exists() else None}
     finally:
         shutil.rmtree(trabajo, ignore_errors=True)
+
+
+def limpiar_obsoletos(raiz=RAIZ):
+    """Mueve a ``respaldos/obsoletos-<versión>`` lo que la versión actual ya no usa.
+
+    No borra nada: si hiciera falta, se recupera de ahí. Devuelve cuántos movió.
+    """
+    destino = DATOS / "respaldos" / f"obsoletos-{version_local()}"
+    movidos = 0
+    for relativa in OBSOLETOS:
+        viejo = raiz / relativa
+        if not viejo.is_file():
+            continue
+        try:
+            (destino / relativa).parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(viejo), str(destino / relativa))
+            movidos += 1
+            if viejo.suffix == ".py":  # su .pyc ya no sirve
+                for pyc in (viejo.parent / "__pycache__").glob(f"{viejo.stem}.*.pyc"):
+                    pyc.unlink(missing_ok=True)
+            if not any(viejo.parent.iterdir()):
+                viejo.parent.rmdir()
+        except OSError as exc:
+            log.warning("no pude apartar %s: %s", relativa, exc)
+    if movidos:
+        log.info("aparté %d archivo(s) de versiones anteriores en %s", movidos, destino)
+    return movidos
 
 
 def python_del_proyecto(raiz=RAIZ):

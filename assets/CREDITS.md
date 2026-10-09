@@ -8,8 +8,8 @@ Cada personaje vive en `personajes/<id>/`: `spritesheet.png`, `personaje.json` e
 <https://codex-pets.net/share/rusty> · autor: <https://codex-pets.net/users/luoskrad>.
 «A tiny red panda coding companion with a ringed tail».
 
-El sprite sheet son los 6 cuadros de su GIF original, puestos en fila sin modificar
-(`herramientas/gif_a_sprite.py`). Pandex usa un cuadro fijo por estado. Rusty es además la
+El sprite sheet son los 6 cuadros de su GIF original, puestos en fila sin modificar.
+Pandex usa un cuadro fijo por estado. Rusty es además la
 referencia de estilo para los demás personajes (skill `.claude/skills/skin-pixel-art`).
 
 ## BMO: `personajes/bmo/`
@@ -26,9 +26,8 @@ Redibujado pose por pose a partir de un sprite sheet que compartió el autor del
 
 ## Panda robot (clásico): `personajes/panda_clasico/`
 
-El personaje de Pandex 1.x, aportado por el autor del proyecto (imagen generada por IA).
-Se procesó con `herramientas/preparar_sprite.py`: se quitó el fondo liso, se recortó y se
-redujo a la mitad (346×355 px, un solo cuadro).
+El personaje de Pandex 1.x, aportado por el autor del proyecto (imagen generada por IA): se
+le quitó el fondo liso, se recortó y se redujo a la mitad (346×355 px, un solo cuadro).
 
 ## Íconos: `personajes/<id>/icono.ico`, `pandex.ico`, `pandex_256.png`, `logo.png`
 
@@ -38,6 +37,7 @@ los de Rusty, el logo por defecto.
 
 ## ¿Quieres otro personaje?
 
-Mira «Personajes» en `docs/arquitectura.md`. Si usas mascotas de terceros (por ejemplo, de
+Desde Pandex: **Configuración → Apariencia → Añadir personaje…** (ver «Personajes» en
+`docs/arquitectura.md`). Los que añades así quedan solo en tu PC. Si usas mascotas de terceros (por ejemplo, de
 Codex Pets u [OpenPets](https://openpets.dev)), revisa su licencia antes de redistribuirlas y
 agrega aquí su atribución.

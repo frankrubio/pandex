@@ -1,6 +1,8 @@
 """Los personajes de Pandex: Rusty y los demás, cada uno en su carpeta.
 
-Cada personaje vive en ``assets/personajes/<id>/``:
+Los que trae Pandex viven en ``assets/personajes/<id>/``; los que añades tú (desde
+Configuración, ver ``pandex/personaje_nuevo.py``), en ``%LOCALAPPDATA%\\Pandex\\personajes``,
+para que sobrevivan a las actualizaciones. Cada carpeta tiene:
 
 - ``spritesheet.png``: los cuadros en fila, todos del mismo tamaño.
 - ``personaje.json``: su nombre, qué cuadro usa cada estado, el recorte común (para
@@ -8,7 +10,8 @@ Cada personaje vive en ``assets/personajes/<id>/``:
 - ``icono.ico``: el ícono de la app con su cara (``herramientas/crear_icono.py``).
 
 Para agregar uno basta con crear su carpeta: aparece solo en Configuración. Los
-dibujos nuevos se hacen con ``herramientas/skins/`` (ver la skill ``skin-pixel-art``).
+dibujos nuevos que se incluyen en Pandex se hacen con ``herramientas/skins/`` (ver la
+skill ``skin-pixel-art``).
 
 La mascota es **estática**: cada estado es un cuadro fijo que se escala una sola vez
 por tamaño y queda en caché. En reposo no se usa CPU.
@@ -21,7 +24,7 @@ from PyQt6.QtCore import QRect, Qt
 from PyQt6.QtGui import QImage, QPixmap
 
 from ..log import get_logger
-from ..rutas import ASSETS_DIR
+from ..rutas import ASSETS_DIR, PERSONAJES_PROPIOS
 
 log = get_logger("pandex.personajes")
 
@@ -32,8 +35,9 @@ FONDO_LOGO = ("#4A7FBA", "#244A75")
 
 
 class Personaje:
-    def __init__(self, ident, datos, carpeta):
+    def __init__(self, ident, datos, carpeta, propio=False):
         self.id = ident
+        self.propio = propio  # lo añadiste tú: se puede quitar
         self.nombre = str(datos.get("nombre") or ident)
         self.autor = str(datos.get("autor") or "")
         self.orden = int(datos.get("orden", 50))
@@ -61,19 +65,29 @@ def _caja(valor, cuadro):
 
 @lru_cache(maxsize=1)
 def catalogo():
-    """``{id: Personaje}`` de los que tienen su sprite sheet, en orden."""
-    encontrados = []
-    for json_ in sorted(CARPETA.glob("*/personaje.json")):
-        carpeta = json_.parent
-        if not (carpeta / "spritesheet.png").exists():
-            continue
-        try:
-            datos = json.loads(json_.read_text(encoding="utf-8"))
-            encontrados.append(Personaje(carpeta.name, datos, carpeta))
-        except (OSError, ValueError, TypeError) as exc:
-            log.warning("personaje %s ignorado: %s", carpeta.name, exc)
-    encontrados.sort(key=lambda p: (p.orden, p.nombre.lower()))
-    return {p.id: p for p in encontrados}
+    """``{id: Personaje}`` de los que tienen su sprite sheet, en orden.
+
+    Si un personaje tuyo se llama igual que uno de Pandex, manda el de Pandex.
+    """
+    encontrados = {}
+    for raiz, propio in ((CARPETA, False), (PERSONAJES_PROPIOS, True)):
+        for json_ in sorted(raiz.glob("*/personaje.json")):
+            carpeta = json_.parent
+            if carpeta.name in encontrados or not (carpeta / "spritesheet.png").exists():
+                continue
+            try:
+                datos = json.loads(json_.read_text(encoding="utf-8"))
+                encontrados[carpeta.name] = Personaje(carpeta.name, datos, carpeta, propio)
+            except (OSError, ValueError, TypeError) as exc:
+                log.warning("personaje %s ignorado: %s", carpeta.name, exc)
+    orden = sorted(encontrados.values(), key=lambda p: (p.orden, p.nombre.lower()))
+    return {p.id: p for p in orden}
+
+
+def recargar():
+    """Después de añadir o quitar uno: vuelve a leer las carpetas y vacía las cachés."""
+    for funcion in (catalogo, _hoja, _imagen, cabeza):
+        funcion.cache_clear()
 
 
 def lista():

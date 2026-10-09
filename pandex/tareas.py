@@ -8,6 +8,7 @@ Una tarea es un archivo ``tasks/<algo>.py`` con una clase ``Task``::
         descripcion = "Qué hace"        # tooltip y Configuración
         schedule = None                 # cron opcional, p. ej. "0 19 * * 1-5"
         icono = "tarea"                 # opcional: el ícono del menú (ver pandex/ui/iconos.py)
+        programable = True              # opcional: False si no tiene sentido darle un horario
 
         def run(self, ctx):             # corre en un hilo aparte: nada de ventanas aquí
             return {"ok": True, "resumen": "Listo."}

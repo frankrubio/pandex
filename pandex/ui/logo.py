@@ -6,12 +6,13 @@ las ventanas y el del acceso directo (``assets/personajes/<id>/icono.ico``, que 
 ``herramientas/crear_icono.py``).
 """
 
-from PyQt6.QtCore import QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QIcon, QLinearGradient, QPainter, QPixmap
+from PyQt6.QtCore import QBuffer, QIODevice, QRectF, Qt
+from PyQt6.QtGui import QBrush, QColor, QIcon, QImage, QLinearGradient, QPainter, QPixmap
 
 from . import personajes
 
 SIGUE_AL_PERSONAJE = "personaje"
+TAMANOS_ICO = (16, 20, 24, 32, 40, 48, 64, 72, 96, 128, 256)
 
 _actual = personajes.POR_DEFECTO  # el que usa la app ahora (lo fija ``app.aplicar_logo``)
 
@@ -97,3 +98,38 @@ def icono(ident=None):
     for lado in (16, 24, 32, 48, 64, 256):
         resultado.addPixmap(pixmap(lado, ident=ident))
     return resultado
+
+
+def imagen(lado, ident=None):
+    """El logo como ``QImage`` (para exportarlo)."""
+    img = QImage(lado, lado, QImage.Format.Format_ARGB32)
+    img.fill(Qt.GlobalColor.transparent)
+    p = QPainter(img)
+    pintar(p, lado, ident=ident)
+    p.end()
+    return img
+
+
+def a_pillow(img):
+    import io
+
+    from PIL import Image  # solo al exportar
+
+    buf = QBuffer()
+    buf.open(QIODevice.OpenModeFlag.WriteOnly)
+    img.save(buf, "PNG")
+    return Image.open(io.BytesIO(bytes(buf.data()))).convert("RGBA")
+
+
+def guardar_ico(ident, destino=None):
+    """Escribe el ``.ico`` del personaje con todos los tamaños de Windows (16 a 256 px).
+
+    Cada tamaño se pinta por separado: los chicos usan la versión «mini», más grande y
+    sin brillo, para que se lean en la bandeja. Devuelve la ruta.
+    """
+    p = personajes.elegir(ident)
+    destino = destino or p.icono
+    imagenes = [a_pillow(imagen(lado, p.id)) for lado in TAMANOS_ICO]
+    imagenes[-1].save(destino, format="ICO", sizes=[(t, t) for t in TAMANOS_ICO],
+                      append_images=imagenes[:-1])
+    return destino

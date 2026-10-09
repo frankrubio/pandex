@@ -12,8 +12,9 @@ class Task:
     id = "hola"                         # único; también es su clave en config.json
     nombre = "Decir hola"               # lo que se ve en el menú
     descripcion = "Saluda y se va"      # tooltip y ventana de Configuración
-    schedule = None                     # None = solo manual; "0 8 * * 1-5" = 8:00 de lunes a viernes
+    schedule = None                     # None = solo manual; "0 8 * * 1-5" = 8:00 a. m. de lunes a viernes
     icono = "hola"                      # opcional: sincronizar, documento, hola, canvas, lista… (pandex/ui/iconos.py)
+    programable = True                  # opcional: False si no tiene sentido darle un horario
 
     def run(self, ctx):
         ctx.decir("¡Hola!")
@@ -107,14 +108,19 @@ class Task:
 
 ## Programarla
 
-Con `schedule` en la clase o, mejor, desde **Configuración → Horario (cron)**, que se guarda
-en `config.json` y manda sobre el código. Formato cron de 5 campos: `minuto hora día mes día_semana`.
+Con `schedule` en la clase o, mejor, desde **Configuración → Tareas**: ahí se elige *Solo
+cuando lo pida*, *Todos los días* o *De lunes a viernes* y la hora (en formato de 12 horas),
+sin saber cron. Se guarda en `config.json` y manda sobre el código. Para algo más fino está
+*Personalizado (cron)*, de 5 campos: `minuto hora día mes día_semana`.
 
 | Cron | Cuándo |
 |---|---|
-| `0 19 * * *` | todos los días a las 19:00 |
-| `0 8 * * 1-5` | de lunes a viernes a las 8:00 |
+| `0 19 * * *` | todos los días a las 7:00 p. m. |
+| `0 8 * * 1-5` | de lunes a viernes a las 8:00 a. m. |
 | `*/30 * * * *` | cada 30 minutos |
+
+Si tu tarea pide algo cada vez antes de empezar (como *Convertir a Markdown*, que pregunta qué
+archivos), pon `programable = False`: Configuración no le ofrece horario.
 
 ## Reglas de la casa
 

@@ -1,5 +1,6 @@
 """La interfaz se construye y se pinta sin errores (ventanas invisibles, sin internet)."""
 
+import json
 import os
 import shutil
 import tempfile
@@ -131,6 +132,151 @@ class Interfaz(unittest.TestCase):
         g.progreso("Voy 2 de 3…", 2, 3)
         self.assertEqual(g._avance, (2, 3))
         g.ocultar_ya()
+
+
+class PersonajesPropios(unittest.TestCase):
+    """Añadir un personaje desde una imagen: el formato se reconoce solo."""
+
+    def setUp(self):
+        self.carpeta = Path(tempfile.mkdtemp())
+        self.destino = self.carpeta / "personajes"
+
+    def tearDown(self):
+        shutil.rmtree(self.carpeta, ignore_errors=True)
+
+    def _pose(self, color, fondo=(0, 0, 0, 0)):
+        from PIL import Image, ImageDraw
+
+        img = Image.new("RGBA", (60, 80), fondo)
+        ImageDraw.Draw(img).ellipse((10, 10, 50, 70), fill=color)
+        return img
+
+    def test_una_tira_de_poses_se_parte_en_su_orden(self):
+        from PIL import Image
+
+        from pandex import personaje_nuevo
+
+        tira = Image.new("RGBA", (240, 80))
+        for i, color in enumerate(("red", "green", "blue", "yellow")):
+            tira.paste(self._pose(color), (i * 60, 0))
+        ruta = self.carpeta / "mi_gato.png"
+        tira.save(ruta)
+        ident, poses = personaje_nuevo.importar(ruta, "Mi gato", self.destino, ocupados={"rusty"})
+        self.assertEqual((ident, poses), ("mi_gato", 4))
+        datos = json.loads((self.destino / ident / "personaje.json").read_text(encoding="utf-8"))
+        self.assertEqual(datos["cuadros"], {"idle": 0, "trabajando": 1, "feliz": 2, "error": 3})
+        self.assertEqual(datos["nombre"], "Mi gato")
+
+    def test_una_imagen_sola_con_fondo_blanco_pierde_el_fondo(self):
+        from PIL import Image
+
+        from pandex import personaje_nuevo
+
+        ruta = self.carpeta / "dibujo.jpg"
+        self._pose((200, 40, 40, 255), fondo=(255, 255, 255, 255)).convert("RGB").save(ruta, quality=95)
+        ident, poses = personaje_nuevo.importar(ruta, "Dibujo", self.destino)
+        self.assertEqual(poses, 1)
+        hoja = Image.open(self.destino / ident / "spritesheet.png")
+        self.assertEqual(hoja.getpixel((0, 0))[3], 0, "el fondo blanco ya no está")
+
+    def test_un_gif_da_una_pose_por_cuadro_y_el_nombre_no_choca(self):
+        from pandex import personaje_nuevo
+
+        ruta = self.carpeta / "rusty.gif"
+        cuadros = [self._pose(c).convert("RGB") for c in ("red", "blue", "green")]
+        cuadros[0].save(ruta, save_all=True, append_images=cuadros[1:], duration=100)
+        ident, poses = personaje_nuevo.importar(ruta, "Rusty", self.destino, ocupados={"rusty"})
+        self.assertEqual((ident, poses), ("rusty_2", 3), "no pisa a un personaje de Pandex")
+
+    def test_el_catalogo_lo_muestra_y_se_puede_quitar(self):
+        from unittest import mock
+
+        from pandex import personaje_nuevo
+        from pandex.ui import logo, personajes
+
+        ruta = self.carpeta / "zorro.png"
+        self._pose("orange").save(ruta)
+        ident, _ = personaje_nuevo.importar(ruta, "Zorro", self.destino)
+        with mock.patch.object(personajes, "PERSONAJES_PROPIOS", self.destino):
+            personajes.recargar()
+            try:
+                p = personajes.catalogo()[ident]
+                self.assertTrue(p.propio)
+                self.assertFalse(personajes.catalogo()["rusty"].propio)
+                self.assertFalse(personajes.imagen(ident, "feliz", 120).isNull())
+                logo.guardar_ico(ident)
+                self.assertTrue(p.icono.exists())
+                personaje_nuevo.quitar(ident, self.destino)
+                personajes.recargar()
+                self.assertNotIn(ident, personajes.catalogo())
+            finally:
+                personajes.recargar()
+        with self.assertRaises(personaje_nuevo.ErrorPersonaje):
+            personaje_nuevo.quitar("rusty", self.destino)
+
+    def test_lo_que_no_es_imagen_da_un_mensaje_claro(self):
+        from pandex import personaje_nuevo
+
+        ruta = self.carpeta / "roto.png"
+        ruta.write_text("no soy una imagen", encoding="utf-8")
+        with self.assertRaises(personaje_nuevo.ErrorPersonaje):
+            personaje_nuevo.importar(ruta, "Roto", self.destino)
+
+
+class HorarioSinCron(unittest.TestCase):
+    def test_lee_y_arma_los_horarios_simples(self):
+        from PyQt6.QtCore import QTime
+
+        from pandex.ui.configuracion import Horario, armar_horario, leer_horario
+
+        self.assertEqual(leer_horario(None)[0], "manual")
+        self.assertEqual(leer_horario("0 19 * * *"), ("diario", QTime(19, 0)))
+        self.assertEqual(leer_horario("30 7 * * 1-5"), ("semana", QTime(7, 30)))
+        self.assertEqual(leer_horario("*/30 8-18 * * 1-5")[0], "cron")
+        self.assertEqual(armar_horario("semana", QTime(19, 5)), "5 19 * * 1-5")
+        self.assertIsNone(armar_horario("manual", QTime(19, 5)))
+        self.assertEqual(Horario("*/30 8-18 * * 1-5").valor(), "*/30 8-18 * * 1-5", "lo avanzado no se pierde")
+        diario = Horario("0 19 * * *")
+        self.assertEqual(diario.hora.text().replace("\xa0", " "), "7:00 p. m.")
+
+
+class ExploradorDeArchivos(unittest.TestCase):
+    def setUp(self):
+        self.carpeta = Path(tempfile.mkdtemp())
+        for nombre in ("Clase 2.pdf", "Clase 10.pdf", "AP3-Sem3.pdf", "Clase 2.md"):
+            (self.carpeta / nombre).write_text("x", encoding="utf-8")
+        (self.carpeta / "Lecturas").mkdir()
+
+    def tearDown(self):
+        shutil.rmtree(self.carpeta, ignore_errors=True)
+
+    def test_columnas_orden_busqueda_y_marcar(self):
+        from PyQt6.QtCore import Qt
+
+        from pandex.markdown.navegador import ESTADO, NOMBRE, Navegador
+
+        nav = Navegador([("Pruebas", self.carpeta)])
+        nav._mostrar(self.carpeta)
+        filas = nav._filas()
+        self.assertEqual([f.text(NOMBRE) for f in filas],
+                         ["..", "Lecturas", "AP3-Sem3.pdf", "Clase 2.pdf", "Clase 10.pdf"])
+        estados = {f.text(NOMBRE): f.text(ESTADO) for f in filas}
+        self.assertEqual(estados["Clase 2.pdf"], "✓ Ya en .md")
+        self.assertTrue(estados["AP3-Sem3.pdf"].startswith("No:"))
+
+        nav.lista.sortItems(NOMBRE, Qt.SortOrder.DescendingOrder)
+        nombres = [f.text(NOMBRE) for f in nav._filas()]
+        self.assertEqual(nombres[:2], ["..", "Lecturas"], "«..» y las carpetas siempre arriba")
+        self.assertEqual(nombres[2], "Clase 10.pdf")
+
+        nav.buscar.setText("clase")
+        visibles = [f.text(NOMBRE) for f in nav._filas() if not f.isHidden()]
+        self.assertEqual(sorted(visibles), ["..", "Clase 10.pdf", "Clase 2.pdf"])
+
+        nav._marcar_todo()
+        self.assertEqual(len(nav.marcados), 2, "marca el material de estudio visible")
+        nav._elegir_marcados()
+        self.assertEqual(len(nav.resultado["archivos"]), 2)
 
 
 if __name__ == "__main__":

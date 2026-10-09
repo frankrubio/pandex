@@ -5,9 +5,8 @@ imagen que se pinta una vez y queda en caché. No hay temporizadores de animaci�
 la ventana solo se vuelve a dibujar cuando cambia el estado o el tamaño. En reposo
 no consume CPU.
 
-Personajes (``mascota.personaje``): cualquiera de ``assets/personajes/`` (por defecto
-``"rusty"``, el panda rojo; ver ``ui/personajes.py``) o ``"pixel"``, un sprite sheet
-propio descrito en ``config.json`` (``ui/sprites.py``).
+El personaje (``mascota.personaje``) es cualquiera de ``ui/personajes.py``: los que trae
+Pandex y los que añadiste tú. Por defecto, ``"rusty"``, el panda rojo.
 """
 
 import random
@@ -18,7 +17,6 @@ from PyQt6.QtWidgets import QApplication, QWidget
 
 from . import logo, personajes
 from .globo import Globo
-from .sprites import Sprites
 
 ESTADOS = personajes.ESTADOS
 
@@ -54,16 +52,8 @@ class Mascota(QWidget):
     # ---------- construcción ----------
 
     def _cargar_personaje(self):
-        m = self.config.mascota
-        self.sprites = None
-        self.personaje = m.get("personaje", personajes.POR_DEFECTO)
-        if self.personaje == "pixel":
-            sprites = Sprites(m.get("spritesheet"))
-            if sprites.ok:
-                self.sprites = sprites
-                return
-        # uno que ya no existe (o un sprite propio que no carga): Rusty
-        elegido = personajes.elegir(self.personaje)
+        # uno que ya no existe (p. ej. lo quitaste): Rusty
+        elegido = personajes.elegir(self.config.mascota.get("personaje", personajes.POR_DEFECTO))
         self.personaje = elegido.id if elegido else None
 
     def _construir_ventana(self):
@@ -78,10 +68,8 @@ class Mascota(QWidget):
         self.setWindowTitle(self.config.mascota.get("nombre", "Pandex"))
 
     def _tamano(self):
-        """Con sprite sheet, la ventana toma la proporción del personaje."""
+        """La ventana toma la proporción del personaje."""
         lado = int(self.config.mascota.get("tamano", 120))
-        if self.sprites:
-            return self.sprites.tamano_ventana(lado)
         return personajes.tamano(self.personaje, lado)
 
     def _restaurar_posicion(self):
@@ -159,12 +147,6 @@ class Mascota(QWidget):
     def paintEvent(self, _evento):
         painter = QPainter(self)
         dpr = self.devicePixelRatioF()
-        if self.sprites:
-            pix = self.sprites.frame(self._estado, 0.0, self.width(), self.height())
-            if pix is not None:
-                painter.drawPixmap((self.width() - pix.width()) // 2,
-                                   (self.height() - pix.height()) // 2, pix)
-                return
         if self.personaje is None:  # sin ningún personaje instalado: al menos el logo
             lado = min(self.width(), self.height())
             painter.drawPixmap((self.width() - lado) // 2, (self.height() - lado) // 2, logo.pixmap(lado, dpr))

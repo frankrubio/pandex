@@ -101,7 +101,7 @@ def configuracion(cfg, oscuro):
     from pandex.ui.configuracion import DialogoConfiguracion
 
     dlg = DialogoConfiguracion(cfg, tareas.descubrir(), al_buscar_actualizaciones=lambda: None)
-    dlg.resize(720, 460)
+    dlg.resize(720, 540)
     return dlg.grab().toImage()
 
 

@@ -106,11 +106,38 @@ def _tarea(p):
     _flecha(p, (11, 16.5), (14.5, 20), (21, 12))
 
 
+def _mas(p):
+    p.drawLine(QPointF(16, 7), QPointF(16, 25))
+    p.drawLine(QPointF(7, 16), QPointF(25, 16))
+
+
+def _carpeta(p):
+    ruta = QPainterPath(QPointF(5, 24))
+    ruta.lineTo(QPointF(5, 9))
+    ruta.lineTo(QPointF(12, 9))
+    ruta.lineTo(QPointF(15, 12))
+    ruta.lineTo(QPointF(27, 12))
+    ruta.lineTo(QPointF(27, 24))
+    ruta.closeSubpath()
+    p.drawPath(ruta)
+
+
+def _buscar(p):
+    p.drawEllipse(QPointF(14, 14), 7, 7)
+    p.drawLine(QPointF(19.5, 19.5), QPointF(26, 26))
+
+
+def _subir(p):
+    p.drawLine(QPointF(16, 26), QPointF(16, 7))
+    _flecha(p, (9.5, 13.5), (16, 7), (22.5, 13.5))
+
+
 DIBUJOS = {
     "sincronizar": _sincronizar, "documento": _documento, "hola": _hola,
     "engranaje": _engranaje, "lista": _lista, "recargar": _recargar,
     "descargar": _descargar, "mostrar": _ojo, "ocultar": _ocultar, "salir": _salir,
-    "canvas": _canvas, "tarea": _tarea,
+    "canvas": _canvas, "tarea": _tarea, "mas": _mas, "carpeta": _carpeta, "buscar": _buscar,
+    "subir": _subir,
 }
 
 

@@ -47,3 +47,5 @@ def _ultimo_uso(carpeta):
 
 
 DATOS = _carpeta_de_datos()
+# los personajes que añades tú (Configuración → Apariencia → Añadir personaje)
+PERSONAJES_PROPIOS = DATOS / "personajes"

@@ -61,10 +61,13 @@ def orden_natural(texto):
     return [int(t) if t.isdigit() else t.casefold() for t in re.split(r"(\d+)", texto)]
 
 
-def raices():
-    """Los puntos de partida, resueltos en cada llamada (el OneDrive puede cambiar de nombre)."""
+def raices(extra=()):
+    """Los puntos de partida, resueltos en cada llamada (el OneDrive puede cambiar de nombre).
+
+    ``extra``: ``[(etiqueta, ruta)]`` que van primero, p. ej. tu carpeta de cursos de Canvas.
+    """
     casa = Path(os.environ.get("USERPROFILE") or Path.home())
-    salida = []
+    salida = [(etiqueta, Path(ruta)) for etiqueta, ruta in extra if ruta and Path(ruta).is_dir()]
     try:
         onedrives = sorted(
             (d for d in casa.iterdir() if d.name.startswith("OneDrive - ") and d.is_dir()),
@@ -75,9 +78,12 @@ def raices():
     for d in onedrives:
         institucion = d.name.removeprefix("OneDrive - ")
         salida.append((f"OneDrive institucional · {institucion}", d))
-    for etiqueta, nombre in (("Descargas", "Downloads"), ("Documentos", "Documents")):
-        ruta = casa / nombre
-        if ruta.is_dir():
+    # el Escritorio puede estar dentro de OneDrive (copia de seguridad de carpetas)
+    escritorio = next((d for d in (casa / "Desktop", casa / "OneDrive" / "Desktop",
+                                   casa / "OneDrive" / "Escritorio") if d.is_dir()), None)
+    for etiqueta, ruta in (("Escritorio", escritorio), ("Descargas", casa / "Downloads"),
+                           ("Documentos", casa / "Documents")):
+        if ruta is not None and ruta.is_dir():
             salida.append((etiqueta, ruta))
     return salida
 

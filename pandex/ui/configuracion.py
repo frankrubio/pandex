@@ -1,15 +1,19 @@
 """Ventana «Configuración»: apariencia de la mascota, comportamiento y horario de cada tarea."""
 
-from PyQt6.QtCore import QSize, Qt, QUrl
+import re
+
+from PyQt6.QtCore import QLocale, QSize, Qt, QTime, QUrl
 from PyQt6.QtGui import QDesktopServices, QPainter
 from PyQt6.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
+    QFileDialog,
     QFormLayout,
     QFrame,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -20,24 +24,76 @@ from PyQt6.QtWidgets import (
     QSlider,
     QSpinBox,
     QStackedWidget,
+    QTimeEdit,
     QVBoxLayout,
     QWidget,
 )
 
-from .. import __version__, accesos
-from ..config import _es_de_fabrica
+from .. import __version__, accesos, personaje_nuevo
 from . import iconos, logo, personajes, tema
-from .sprites import Sprites
 
-PROPIO = ("pixel", "Sprite sheet propio (config.json)")
+HORARIOS = (("manual", "Solo cuando lo pida"), ("diario", "Todos los días"),
+            ("semana", "De lunes a viernes"), ("cron", "Personalizado (cron)"))
+ESPANOL = QLocale(QLocale.Language.Spanish, QLocale.Country.Peru)  # «7:00 p. m.»
+_SIMPLE = re.compile(r"^(\d{1,2}) (\d{1,2}) \* \* (\*|1-5)$")
 
 
-def opciones_de_personaje(mascota):
-    """Los personajes de ``assets/personajes/`` y, si configuraste uno, el tuyo."""
-    opciones = personajes.lista()
-    if not _es_de_fabrica(mascota.get("spritesheet")):
-        opciones.append(PROPIO)
-    return opciones
+def leer_horario(cron):
+    """``"0 19 * * 1-5"`` → ``("semana", QTime(19, 0))``; lo que no es simple, ``"cron"``."""
+    if not cron:
+        return "manual", QTime(19, 0)
+    m = _SIMPLE.match(cron.strip())
+    if m and int(m[1]) < 60 and int(m[2]) < 24:
+        return ("diario" if m[3] == "*" else "semana"), QTime(int(m[2]), int(m[1]))
+    return "cron", QTime(19, 0)
+
+
+def armar_horario(tipo, hora, texto=""):
+    if tipo == "diario":
+        return f"{hora.minute()} {hora.hour()} * * *"
+    if tipo == "semana":
+        return f"{hora.minute()} {hora.hour()} * * 1-5"
+    if tipo == "cron":
+        return texto.strip() or None
+    return None
+
+
+class Horario(QWidget):
+    """Cuándo corre sola una tarea, sin tener que saber cron."""
+
+    def __init__(self, cron, parent=None):
+        super().__init__(parent)
+        tipo, hora = leer_horario(cron)
+        self.tipo = QComboBox()
+        for clave, texto in HORARIOS:
+            self.tipo.addItem(texto, clave)
+        self.tipo.setCurrentIndex(self.tipo.findData(tipo))
+        self.hora = QTimeEdit(hora)
+        self.hora.setLocale(ESPANOL)
+        self.hora.setDisplayFormat("h:mm ap")
+        self.a_las = QLabel("a las")
+        self.cron = QLineEdit(cron or "")
+        self.cron.setPlaceholderText("minuto hora día mes día-semana · ej. 0 19 * * 1-5")
+        fila = QHBoxLayout(self)
+        fila.setContentsMargins(0, 0, 0, 0)
+        fila.setSpacing(8)
+        fila.addWidget(self.tipo)
+        fila.addWidget(self.a_las)
+        fila.addWidget(self.hora)
+        fila.addWidget(self.cron, 1)
+        fila.addStretch()
+        self.tipo.currentIndexChanged.connect(self._mostrar)
+        self._mostrar()
+
+    def _mostrar(self, *_):
+        tipo = self.tipo.currentData()
+        con_hora = tipo in ("diario", "semana")
+        self.a_las.setVisible(con_hora)
+        self.hora.setVisible(con_hora)
+        self.cron.setVisible(tipo == "cron")
+
+    def valor(self):
+        return armar_horario(self.tipo.currentData(), self.hora.time(), self.cron.text())
 
 
 class VistaPrevia(QWidget):
@@ -48,7 +104,6 @@ class VistaPrevia(QWidget):
         self.config = config
         self.personaje = config.mascota.get("personaje", personajes.POR_DEFECTO)
         self.opacidad = float(config.mascota.get("opacidad", 1.0))
-        self._sprites = None
         self.setFixedSize(150, 150)
 
     def poner(self, personaje=None, opacidad=None):
@@ -65,15 +120,6 @@ class VistaPrevia(QWidget):
         p.setBrush(tema.color("superficie_2"))
         p.drawRoundedRect(self.rect().adjusted(0, 0, -1, -1), 16, 16)
         p.setOpacity(self.opacidad)
-        lado = 120
-        if self.personaje == "pixel":
-            if self._sprites is None:
-                self._sprites = Sprites(self.config.mascota.get("spritesheet"))
-            if self._sprites.ok:
-                pix = self._sprites.frame("idle", 0, lado, lado)
-                if pix is not None:
-                    p.drawPixmap((self.width() - pix.width()) // 2, (self.height() - pix.height()) // 2, pix)
-                    return
         pix = personajes.imagen(self.personaje, "idle", 126, self.devicePixelRatioF())
         ancho = round(pix.width() / pix.devicePixelRatio())
         alto = round(pix.height() / pix.devicePixelRatio())
@@ -108,7 +154,7 @@ class DialogoConfiguracion(QDialog):
         self.tareas = tareas
         self._al_buscar = al_buscar_actualizaciones
         self.setWindowTitle("Configuración de Pandex")
-        self.resize(720, 520)
+        self.resize(720, 560)
 
         self.navegacion = QListWidget()
         self.navegacion.setObjectName("navegacion")
@@ -191,18 +237,12 @@ class DialogoConfiguracion(QDialog):
         form.addRow("Nombre", self.nombre)
 
         self.personaje = QComboBox()
-        for clave, texto in opciones_de_personaje(m):
-            self.personaje.addItem(texto, clave)
-        self.personaje.setCurrentIndex(max(0, self.personaje.findData(m.get("personaje", personajes.POR_DEFECTO))))
-        self.personaje.currentIndexChanged.connect(self._personaje_cambiado)
         form.addRow("Personaje", self.personaje)
-
         # el ícono de la app: la cara del personaje elegido, u otro fijo
         self.logo = QComboBox()
-        self.logo.addItem("Igual que el personaje", logo.SIGUE_AL_PERSONAJE)
-        for clave, texto in personajes.lista():
-            self.logo.addItem(texto, clave)
-        self.logo.setCurrentIndex(max(0, self.logo.findData(m.get("logo") or logo.SIGUE_AL_PERSONAJE)))
+        self._llenar_combos(m.get("personaje", personajes.POR_DEFECTO),
+                            m.get("logo") or logo.SIGUE_AL_PERSONAJE)
+        self.personaje.currentIndexChanged.connect(self._personaje_cambiado)
         self.logo.currentIndexChanged.connect(self._mostrar_logo)
         self.logo_vista = QLabel()
         self.logo_vista.setFixedSize(36, 36)
@@ -220,12 +260,114 @@ class DialogoConfiguracion(QDialog):
         form.addRow("Opacidad", fila_opacidad)
         fila.addLayout(form, 1)
         caja.addLayout(fila)
+        caja.addSpacing(14)
+        caja.addWidget(self._tarjeta_personaje_propio())
         caja.addStretch()
+        self._personaje_cambiado()
         return pagina
+
+    def _tarjeta_personaje_propio(self):
+        tarjeta = _tarjeta()
+        caja = QVBoxLayout(tarjeta)
+        caja.setContentsMargins(16, 12, 16, 12)
+        caja.setSpacing(6)
+        caja.addWidget(QLabel("<b>Tu propio personaje</b>"))
+        ayuda = QLabel("Una imagen PNG, GIF o JPG. Si tiene varias poses en fila, van en este orden: "
+                       "normal, trabajando, feliz y error. El fondo liso se quita solo.")
+        ayuda.setProperty("rol", "suave")
+        ayuda.setWordWrap(True)
+        caja.addWidget(ayuda)
+        self.aviso_propio = QLabel()
+        self.aviso_propio.setWordWrap(True)
+        self.aviso_propio.hide()
+        caja.addWidget(self.aviso_propio)
+        botones = QHBoxLayout()
+        botones.setSpacing(10)
+        anadir = QPushButton(iconos.icono("mas"), "Añadir personaje…")
+        anadir.clicked.connect(self._anadir_personaje)
+        self.quitar_propio = QPushButton("Quitar")
+        self.quitar_propio.setToolTip("Quita el personaje elegido arriba (solo los que añadiste tú)")
+        self.quitar_propio.clicked.connect(self._quitar_personaje)
+        botones.addWidget(anadir)
+        botones.addWidget(self.quitar_propio)
+        botones.addStretch()
+        caja.addLayout(botones)
+        return tarjeta
+
+    def _llenar_combos(self, personaje, logo_elegido):
+        for combo in (self.personaje, self.logo):
+            combo.blockSignals(True)
+            combo.clear()
+        self.logo.addItem("Igual que el personaje", logo.SIGUE_AL_PERSONAJE)
+        for p in personajes.catalogo().values():
+            texto = f"{p.nombre} (tuyo)" if p.propio else p.nombre
+            self.personaje.addItem(texto, p.id)
+            self.logo.addItem(texto, p.id)
+        self.personaje.setCurrentIndex(max(0, self.personaje.findData(personaje)))
+        self.logo.setCurrentIndex(max(0, self.logo.findData(logo_elegido)))
+        for combo in (self.personaje, self.logo):
+            combo.blockSignals(False)
+
+    def _avisar_propio(self, texto, tipo="exito"):
+        self.aviso_propio.setText(texto)
+        self.aviso_propio.setStyleSheet(f"color: {tema.hex_(tipo)};")
+        self.aviso_propio.show()
+
+    def _anadir_personaje(self):
+        ruta, _ = QFileDialog.getOpenFileName(
+            self, "Elige la imagen de tu personaje", "",
+            "Imágenes (*.png *.gif *.webp *.jpg *.jpeg)")
+        if not ruta:
+            return
+        nombre, ok = QInputDialog.getText(self, "Añadir personaje", "¿Cómo se llama?",
+                                          text=personaje_nuevo.nombre_desde_archivo(ruta))
+        if not ok or not nombre.strip():
+            return
+        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        try:
+            ident, poses = personaje_nuevo.importar(ruta, nombre, ocupados=personajes.catalogo())
+            personajes.recargar()
+            logo.guardar_ico(ident)
+        except personaje_nuevo.ErrorPersonaje as exc:
+            QApplication.restoreOverrideCursor()
+            self._avisar_propio(str(exc), "error")
+            return
+        except Exception as exc:  # una imagen rara no debe cerrar la ventana
+            QApplication.restoreOverrideCursor()
+            self._avisar_propio(f"No pude añadirlo: {exc}", "error")
+            return
+        QApplication.restoreOverrideCursor()
+        self._llenar_combos(ident, self.logo.currentData())
+        self._personaje_cambiado()
+        detalle = ("la misma imagen para todos los estados" if poses == 1
+                   else f"{poses} poses: " + ", ".join(("normal", "trabajando", "feliz", "error")[:poses]))
+        self._avisar_propio(f"✓ Añadí «{nombre.strip()}» ({detalle}). Pulsa Guardar para usarlo.")
+
+    def _quitar_personaje(self):
+        p = personajes.catalogo().get(self.personaje.currentData())
+        if p is None or not p.propio:
+            return
+        r = QMessageBox.question(self, "Quitar personaje", f"¿Quito a «{p.nombre}»? Se borra su imagen "
+                                 "de Pandex (tu archivo original no se toca).")
+        if r != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            personaje_nuevo.quitar(p.id)
+        except (OSError, personaje_nuevo.ErrorPersonaje) as exc:
+            self._avisar_propio(f"No pude quitarlo: {exc}", "error")
+            return
+        personajes.recargar()
+        logo_actual = self.logo.currentData()
+        self._llenar_combos(personajes.POR_DEFECTO,
+                            logo.SIGUE_AL_PERSONAJE if logo_actual == p.id else logo_actual)
+        self._personaje_cambiado()
+        self._avisar_propio(f"Quité a «{p.nombre}».")
 
     def _personaje_cambiado(self, _indice=None):
         self.vista.poner(self.personaje.currentData())
         self._mostrar_logo()
+        p = personajes.catalogo().get(self.personaje.currentData())
+        self.quitar_propio.setEnabled(bool(p and p.propio))
 
     def _logo_elegido(self):
         return logo.elegido({"logo": self.logo.currentData(), "personaje": self.personaje.currentData()})
@@ -304,8 +446,8 @@ class DialogoConfiguracion(QDialog):
         pagina = QWidget()
         caja = QVBoxLayout(pagina)
         caja.setContentsMargins(0, 0, 0, 0)
-        caja.addLayout(_titulo("Tareas", "Actívalas o dales un horario (formato cron). "
-                                         "Vacío = solo cuando la pidas desde el menú."))
+        caja.addLayout(_titulo("Tareas", "Actívalas y elige si corren solas. Pandex tiene que "
+                                         "estar abierto a esa hora."))
         self.filas = {}
         if not self.tareas:
             vacio = QLabel("No hay tareas en la carpeta tasks/.")
@@ -335,9 +477,15 @@ class DialogoConfiguracion(QDialog):
                 descripcion.setProperty("rol", "suave")
                 descripcion.setWordWrap(True)
                 interno.addWidget(descripcion)
-            cron = QLineEdit(opciones.get("schedule") or (tarea.schedule or ""))
-            cron.setPlaceholderText("Horario: vacío = solo manual  ·  ej. 0 19 * * 1-5")
-            interno.addWidget(cron)
+            if not getattr(tarea, "programable", True):
+                # pide algo antes de empezar (p. ej. qué archivos): no tiene sentido a una hora fija
+                cron = None
+                nota = QLabel("Se usa desde el menú: cada vez eliges qué hacer.")
+                nota.setProperty("rol", "suave")
+                interno.addWidget(nota)
+            else:
+                cron = Horario(opciones.get("schedule") or tarea.schedule)
+                interno.addWidget(cron)
             filas.addWidget(tarjeta)
             self.filas[tarea.id] = (activa, cron)
         filas.addStretch()
@@ -415,7 +563,8 @@ class DialogoConfiguracion(QDialog):
         for task_id, (activa, cron) in self.filas.items():
             opciones = self.config.tarea(task_id)
             opciones["activa"] = activa.isChecked()
-            opciones["schedule"] = cron.text().strip() or None
+            if cron is not None:
+                opciones["schedule"] = cron.valor()
 
         if self.inicio.isChecked() != accesos.arranca_con_windows():
             try:

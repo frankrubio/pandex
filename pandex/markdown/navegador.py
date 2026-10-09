@@ -1,27 +1,35 @@
-"""El navegador de archivos de «Convertir a Markdown», pensado para el teclado."""
+"""El explorador de archivos de «Convertir a Markdown»: claro con el mouse, rápido con el teclado.
+
+Una tabla como la del Explorador de Windows (nombre, estado, tipo, tamaño y fecha) que
+además dice qué es material de estudio y qué ya está en ``.md``.
+"""
 
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
-from PyQt6.QtCore import QFileInfo, Qt
-from PyQt6.QtGui import QKeySequence, QShortcut
+from PyQt6.QtCore import QFileInfo, Qt, QUrl
+from PyQt6.QtGui import QDesktopServices, QKeySequence, QShortcut
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
     QDialog,
     QFileIconProvider,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QSizePolicy,
-    QStyle,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from ..ui import tema
+from .. import horas
+from ..ui import iconos, tema
 from .archivos import (
     AVISO_LOTE,
     SIN_IA,
@@ -34,14 +42,39 @@ from .archivos import (
 from .clasificador import Clasificador
 
 ROL = Qt.ItemDataRole.UserRole
+CLAVE = Qt.ItemDataRole.UserRole + 1  # para ordenar cada columna
 SUBIR, INICIO, RAIZ, CARPETA, ARCHIVO, ULTIMA = range(6)
+NOMBRE, ESTADO, TIPO, TAMANO, FECHA = range(5)
+COLUMNAS = ("Nombre", "Estado", "Tipo", "Tamaño", "Modificado")
+
+
+def _tamano(n):
+    for unidad in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unidad == "GB":
+            return f"{n:.0f} {unidad}" if unidad == "B" else f"{n:.1f} {unidad}".replace(".", ",")
+        n /= 1024
+    return ""
+
+
+class _Fila(QTreeWidgetItem):
+    """Ordena por la columna elegida, pero «..» y las carpetas siempre van arriba."""
+
+    def __lt__(self, otra):
+        arbol = self.treeWidget()
+        columna = arbol.sortColumn() if arbol else NOMBRE
+        descendente = arbol is not None and arbol.header().sortIndicatorOrder() == Qt.SortOrder.DescendingOrder
+        grupo, grupo_otra = self.data(NOMBRE, CLAVE)[0], otra.data(NOMBRE, CLAVE)[0]
+        if grupo != grupo_otra:
+            return (grupo < grupo_otra) != descendente
+        return self.data(columna, CLAVE) < otra.data(columna, CLAVE)
 
 
 class Navegador(QDialog):
     """Elegir archivos o una carpeta sin escribir rutas.
 
-    Teclado: ↑↓ moverse · Enter entrar/marcar · Espacio marcar · Retroceso subir
-             Ctrl+A marcar el material · Ctrl+Enter convertir marcados
+    Mouse: doble clic abre una carpeta o marca un archivo; la casilla también marca.
+    Teclado: ↑↓ moverse · Enter abrir/marcar · Espacio marcar · Retroceso subir
+             Ctrl+F buscar · Ctrl+A marcar el material · Ctrl+Enter convertir marcados
              Ctrl+M material de estudio de esta carpeta · Ctrl+T todos · 1-9 raíz
              Esc cancelar · y escribir las primeras letras salta al nombre.
     """
@@ -50,24 +83,60 @@ class Navegador(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Convertir a Markdown")
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-        self.resize(700, 580)
+        self.resize(860, 600)
 
         self.raices = raices_
         self.ultima = Path(ultima) if ultima and Path(ultima).is_dir() else None
         self.clasificador = clasificador or Clasificador()
-        self.iconos = QFileIconProvider()  # los mismos íconos del Explorador
+        self.proveedor = QFileIconProvider()  # los mismos íconos del Explorador
+        self._iconos = {}  # por extensión: pedirle el ícono a Windows por cada archivo es lento
         self.actual = None  # None = pantalla de inicio
         self.marcados = set()
         self.resultado = None
         self._repetidos = set()
         self._cuenta = (0, 0)  # (material de estudio, todos) en la carpeta actual
 
+        # barra de arriba: subir · migas · buscar · abrir en el Explorador
+        self.btn_subir = QPushButton(iconos.icono("subir"), "")
+        self.btn_subir.setToolTip("Subir un nivel (Retroceso)")
+        self.btn_subir.clicked.connect(self._subir)
         self.migas = QHBoxLayout()
         self.migas.setSpacing(0)
         self.migas.setContentsMargins(0, 0, 0, 0)
-        self.lista = QListWidget()
+        contenedor_migas = QWidget()
+        contenedor_migas.setLayout(self.migas)
+        # que una ruta larga nunca empuje el ancho del diálogo
+        contenedor_migas.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.buscar = QLineEdit()
+        self.buscar.setPlaceholderText("Buscar aquí (Ctrl+F)")
+        self.buscar.addAction(iconos.icono("buscar"), QLineEdit.ActionPosition.LeadingPosition)
+        self.buscar.setClearButtonEnabled(True)
+        self.buscar.setFixedWidth(240)
+        self.buscar.textChanged.connect(self._filtrar)
+        self.btn_explorador = QPushButton(iconos.icono("carpeta"), "")
+        self.btn_explorador.setToolTip("Abrir esta carpeta en el Explorador de Windows")
+        self.btn_explorador.clicked.connect(self._abrir_en_explorador)
+        barra = QHBoxLayout()
+        barra.setSpacing(8)
+        barra.addWidget(self.btn_subir)
+        barra.addWidget(contenedor_migas, 1)
+        barra.addWidget(self.buscar)
+        barra.addWidget(self.btn_explorador)
+
+        self.lista = QTreeWidget()
+        self.lista.setColumnCount(len(COLUMNAS))
+        self.lista.setHeaderLabels(COLUMNAS)
+        self.lista.setRootIsDecorated(False)
+        self.lista.setUniformRowHeights(True)
+        self.lista.setAllColumnsShowFocus(True)
+        self.lista.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.lista.setFont(tema.fuente(10))
-        self.lista.setUniformItemSizes(True)
+        cabecera = self.lista.header()
+        cabecera.setStretchLastSection(False)
+        cabecera.setSectionResizeMode(NOMBRE, QHeaderView.ResizeMode.Stretch)
+        for col in (ESTADO, TIPO, TAMANO, FECHA):
+            cabecera.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
+        cabecera.setSortIndicator(NOMBRE, Qt.SortOrder.AscendingOrder)
         self.lista.itemActivated.connect(self._activar)
         self.lista.itemChanged.connect(self._al_marcar)
         self.estado = QLabel()
@@ -83,20 +152,26 @@ class Navegador(QDialog):
 
         self.btn_estudio = QPushButton()
         self.btn_estudio.setToolTip(
-            "Convierte solo material de estudio: clases, guías, resúmenes y lecturas.\n"
+            "Convierte solo material de estudio: clases, guías, resúmenes y lecturas (Ctrl+M).\n"
             "Deja fuera actividades previas, tareas, evaluaciones, preguías, HTML…"
         )
         self.btn_estudio.setProperty("rol", "primario")
         self.btn_estudio.clicked.connect(lambda: self._elegir_carpeta("estudio"))
         self.btn_todos = QPushButton()
-        self.btn_todos.setToolTip("Convierte todo lo convertible de la carpeta, sin filtrar.")
+        self.btn_todos.setToolTip("Convierte todo lo convertible de la carpeta, sin filtrar (Ctrl+T).")
         self.btn_todos.clicked.connect(lambda: self._elegir_carpeta("todos"))
         self.btn_convertir = QPushButton()
+        self.btn_convertir.setToolTip("Convierte los archivos que marcaste (Ctrl+Enter).")
         self.btn_convertir.clicked.connect(self._elegir_marcados)
         cancelar = QPushButton("Cancelar")
         cancelar.clicked.connect(self.reject)
-        for b in (self.btn_estudio, self.btn_todos, self.btn_convertir, cancelar):
+        for b in (self.btn_subir, self.btn_explorador, self.btn_estudio, self.btn_todos,
+                  self.btn_convertir, cancelar):
             b.setAutoDefault(False)
+        for b in (self.btn_subir, self.btn_explorador):
+            b.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            b.setFixedWidth(38)
+            b.setStyleSheet("QPushButton { padding: 4px; min-width: 0; }")
 
         opciones = QHBoxLayout()
         opciones.addWidget(self.recursivo)
@@ -111,38 +186,35 @@ class Navegador(QDialog):
         botones.addWidget(cancelar)
         botones.addWidget(self.btn_convertir)
 
-        ayuda = QLabel(
-            "Enter entrar/marcar · Espacio marcar · Retroceso subir · Ctrl+A marcar material · "
-            "Ctrl+Enter convertir marcados\nCtrl+M material de estudio de la carpeta · "
-            "Ctrl+T todos · Esc cancelar · en gris: lo que no es material de estudio"
-        )
+        ayuda = QLabel("Doble clic o Enter: abrir o marcar · Espacio: marcar · Retroceso: subir · "
+                       "Ctrl+F: buscar · en gris: lo que no es material de estudio")
         ayuda.setProperty("rol", "suave")
         ayuda.setStyleSheet("font-size: 8pt;")
 
         cuerpo = QVBoxLayout(self)
-        contenedor_migas = QWidget()
-        contenedor_migas.setLayout(self.migas)
-        # que una ruta larga nunca empuje el ancho del diálogo
-        contenedor_migas.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        cuerpo.addWidget(contenedor_migas)
+        cuerpo.addLayout(barra)
         cuerpo.addWidget(self.lista, 1)
         cuerpo.addWidget(self.estado)
         cuerpo.addLayout(opciones)
         cuerpo.addLayout(botones)
         cuerpo.addWidget(ayuda)
 
-        QShortcut(QKeySequence("Backspace"), self, activated=self._subir)
+        QShortcut(QKeySequence("Backspace"), self.lista, activated=self._subir)
         QShortcut(QKeySequence("Alt+Left"), self, activated=self._subir)
+        QShortcut(QKeySequence("Alt+Up"), self, activated=self._subir)
+        QShortcut(QKeySequence("Ctrl+F"), self, activated=self._enfocar_busqueda)
         QShortcut(QKeySequence("Ctrl+A"), self, activated=self._marcar_todo)
         QShortcut(QKeySequence("Ctrl+Return"), self, activated=self._elegir_marcados)
         QShortcut(QKeySequence("Ctrl+Enter"), self, activated=self._elegir_marcados)
         QShortcut(QKeySequence("Ctrl+M"), self, activated=lambda: self._elegir_carpeta("estudio"))
         QShortcut(QKeySequence("Ctrl+T"), self, activated=lambda: self._elegir_carpeta("todos"))
         QShortcut(QKeySequence("Space"), self.lista, activated=self._alternar_actual)
+        # buscar → ↓ baja a la lista; Enter abre el primero que coincide
+        self.buscar.returnPressed.connect(self._abrir_primero)
         # solo en la pantalla de inicio: dentro de una carpeta los dígitos sirven
         # para saltar escribiendo (p. ej. «05_Analisis»)
         self._atajos_raiz = [
-            QShortcut(QKeySequence(str(n)), self, activated=lambda n=n: self._atajo_raiz(n))
+            QShortcut(QKeySequence(str(n)), self.lista, activated=lambda n=n: self._atajo_raiz(n))
             for n in range(1, 10)
         ]
 
@@ -151,75 +223,112 @@ class Navegador(QDialog):
     # ---------- pintar ----------
 
     def _icono(self, rol, ruta):
-        if rol in (RAIZ, CARPETA, ARCHIVO) and ruta:
-            return self.iconos.icon(QFileInfo(str(ruta)))
-        estandar = {
-            SUBIR: QStyle.StandardPixmap.SP_FileDialogToParent,
-            ULTIMA: QStyle.StandardPixmap.SP_BrowserReload,
-        }[rol]
-        return self.style().standardIcon(estandar)
+        if rol == ARCHIVO:
+            ext = Path(ruta).suffix.lower()
+            if ext not in self._iconos:
+                self._iconos[ext] = self.proveedor.icon(QFileInfo(str(ruta)))
+            return self._iconos[ext]
+        if rol in (RAIZ, ULTIMA) and ruta:
+            return self.proveedor.icon(QFileInfo(str(ruta)))
+        if rol == SUBIR:
+            return iconos.icono("subir")
+        if "carpeta" not in self._iconos:
+            self._iconos["carpeta"] = self.proveedor.icon(QFileIconProvider.IconType.Folder)
+        return self._iconos["carpeta"]
 
-    def _item(self, texto, rol, ruta=None, marcable=False, gris=False, ayuda=None):
-        # el ícono va aparte y el texto empieza por el nombre: así funciona
-        # escribir las primeras letras para saltar
-        item = QListWidgetItem(self._icono(rol, ruta), texto)
-        item.setData(ROL, (rol, str(ruta) if ruta else None))
+    def _fila(self, textos, rol, ruta=None, claves=None, marcable=False, gris=False, ayuda=None):
+        """Una fila de la tabla. ``textos``: nombre, estado, tipo, tamaño, fecha."""
+        fila = _Fila([str(t) for t in textos])
+        fila.setIcon(NOMBRE, self._icono(rol, ruta))
+        fila.setData(NOMBRE, ROL, (rol, str(ruta) if ruta else None))
+        grupo = {SUBIR: 0, RAIZ: 1, ULTIMA: 2, CARPETA: 1}.get(rol, 3)
+        claves = claves or {}
+        fila.setData(NOMBRE, CLAVE, (grupo, orden_natural(textos[0])))
+        for col in (ESTADO, TIPO, TAMANO, FECHA):
+            fila.setData(col, CLAVE, claves.get(col, textos[col].casefold() if isinstance(textos[col], str) else 0))
+        for col in (TAMANO,):
+            fila.setTextAlignment(col, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         if marcable:
             flags |= Qt.ItemFlag.ItemIsUserCheckable
-            item.setCheckState(
-                Qt.CheckState.Checked if str(ruta) in self.marcados else Qt.CheckState.Unchecked
-            )
-        item.setFlags(flags)
-        if gris:
-            item.setForeground(tema.color("texto_suave"))
+            fila.setCheckState(NOMBRE, Qt.CheckState.Checked if str(ruta) in self.marcados
+                               else Qt.CheckState.Unchecked)
+        fila.setFlags(flags)
+        suave = tema.color("texto_suave")
+        for col in range(len(COLUMNAS)):
+            if gris or col != NOMBRE:
+                fila.setForeground(col, suave)
         if ayuda:
-            item.setToolTip(ayuda)
-        return item
+            for col in range(len(COLUMNAS)):
+                fila.setToolTip(col, ayuda)
+        return fila
+
+    def _fecha(self, momento):
+        dt = datetime.fromtimestamp(momento)
+        return f"{dt:%d/%m/%Y} {horas.de(dt)}"
 
     def _mostrar(self, carpeta):
         self.actual = Path(carpeta) if carpeta else None
         for atajo in self._atajos_raiz:
             atajo.setEnabled(self.actual is None)
+        self.buscar.blockSignals(True)
+        self.buscar.clear()
+        self.buscar.blockSignals(False)
         self.lista.blockSignals(True)
+        self.lista.setSortingEnabled(False)
         self.lista.clear()
         self._pintar_migas()
+        filas = []
 
         if self.actual is None:
             for i, (etiqueta, ruta) in enumerate(self.raices, start=1):
-                self.lista.addItem(self._item(f"{i}   {etiqueta}", RAIZ, ruta, ayuda=str(ruta)))
+                filas.append(self._fila((f"{i}   {etiqueta}", "", "Carpeta", "", ""), RAIZ, ruta,
+                                        claves={ESTADO: i}, ayuda=str(ruta)))
             if self.ultima:
-                self.lista.addItem(
-                    self._item(f"Última carpeta: {self._corta(self.ultima)}", ULTIMA, self.ultima)
-                )
+                filas.append(self._fila((f"Última carpeta: {self._corta(self.ultima)}", "", "Carpeta", "", ""),
+                                        ULTIMA, self.ultima, ayuda=str(self.ultima)))
             if not self.raices:
-                self.estado.setText("No encontré OneDrive, Descargas ni Documentos.")
+                self.estado.setText("No encontré OneDrive, Escritorio, Descargas ni Documentos.")
             else:
-                self.estado.setText("Elige dónde empezar (o pulsa su número).")
+                self.estado.setText("Elige dónde empezar: doble clic, o pulsa su número.")
             self._cuenta = (0, 0)
         else:
             subcarpetas, archivos, sin_ia = listar(self.actual)
             self._repetidos = {
                 s for s, n in Counter(p.stem.casefold() for p in archivos).items() if n > 1
             }
-            self.lista.addItem(self._item("..", SUBIR))
+            filas.append(self._fila(("..", "", "", "", ""), SUBIR, ayuda="Subir un nivel"))
             for sub in subcarpetas:
-                self.lista.addItem(self._item(sub.name, CARPETA, sub))
+                fecha = self._mtime(sub)
+                filas.append(self._fila((sub.name, "", "Carpeta", "", self._fecha(fecha) if fecha else ""),
+                                        CARPETA, sub, claves={FECHA: fecha, TAMANO: -1}))
             estudio = ya = 0
             for archivo in archivos:
                 es, motivo = self.clasificador.clasificar(archivo)
                 convertido = ruta_md(archivo, self._repetidos).exists()
                 estudio += es
                 ya += convertido
-                texto = archivo.name
                 if convertido:
-                    texto += "      ✓ ya en .md"
-                if not es:
-                    texto += f"      · no: {motivo}"
+                    estado = "✓ Ya en .md"
+                elif es:
+                    estado = "Material de estudio"
+                else:
+                    estado = f"No: {motivo}"
+                try:
+                    info = archivo.stat()
+                    tam, fecha = info.st_size, info.st_mtime
+                except OSError:
+                    tam, fecha = 0, 0
+                tipo = SOPORTADOS.get(archivo.suffix.lower(), archivo.suffix.lstrip(".").upper())
                 ayuda = (f"Material de estudio ({motivo})" if es else
                          f"No es material de estudio: {motivo}.\n"
                          "Márcalo a mano o usa «Todos» si igual lo quieres.")
-                self.lista.addItem(self._item(texto, ARCHIVO, archivo, True, not es, ayuda))
+                fila = self._fila((archivo.name, estado, tipo, _tamano(tam), self._fecha(fecha) if fecha else ""),
+                                  ARCHIVO, archivo, claves={TAMANO: tam, FECHA: fecha},
+                                  marcable=True, gris=not es, ayuda=ayuda)
+                if convertido:
+                    fila.setForeground(ESTADO, tema.color("exito"))
+                filas.append(fila)
             self._cuenta = (estudio, len(archivos))
             partes = [f"{len(subcarpetas)} carpeta(s)",
                       f"{len(archivos)} archivo(s): {estudio} material de estudio"]
@@ -229,10 +338,29 @@ class Navegador(QDialog):
                 partes.append(f"{sin_ia} de audio/video (no soportado sin IA)")
             self.estado.setText(" · ".join(partes))
 
+        self.lista.addTopLevelItems(filas)
+        for col in (ESTADO, TAMANO, FECHA):  # en el inicio solo importa el nombre
+            self.lista.setColumnHidden(col, self.actual is None)
+        self.lista.setSortingEnabled(self.actual is not None)
         self.lista.blockSignals(False)
-        self.lista.setCurrentRow(1 if self.actual is not None and self.lista.count() > 1 else 0)
+        primera = 1 if self.actual is not None and self.lista.topLevelItemCount() > 1 else 0
+        if self.lista.topLevelItemCount():
+            self.lista.setCurrentItem(self.lista.topLevelItem(primera))
+        self.btn_subir.setEnabled(self.actual is not None)
+        self.btn_explorador.setEnabled(self.actual is not None)
+        self.buscar.setEnabled(self.actual is not None)
         self.lista.setFocus()
         self._refrescar_botones()
+
+    @staticmethod
+    def _mtime(ruta):
+        try:
+            return ruta.stat().st_mtime
+        except OSError:
+            return 0
+
+    def _filas(self):
+        return [self.lista.topLevelItem(i) for i in range(self.lista.topLevelItemCount())]
 
     def _pintar_migas(self):
         while self.migas.count():
@@ -275,7 +403,8 @@ class Navegador(QDialog):
         self.migas.addStretch()
 
     def _raiz_de(self, carpeta):
-        for etiqueta, ruta in self.raices:
+        # la más específica primero: «Mis cursos» suele estar dentro del OneDrive
+        for etiqueta, ruta in sorted(self.raices, key=lambda r: len(r[1].parts), reverse=True):
             if carpeta == ruta or ruta in carpeta.parents:
                 return etiqueta, ruta
         return None
@@ -304,8 +433,8 @@ class Navegador(QDialog):
 
     # ---------- acciones ----------
 
-    def _activar(self, item):
-        rol, ruta = item.data(ROL)
+    def _activar(self, item, _columna=0):
+        rol, ruta = item.data(NOMBRE, ROL)
         if rol in (RAIZ, CARPETA, ULTIMA):
             self._mostrar(ruta)
         elif rol == SUBIR:
@@ -314,28 +443,25 @@ class Navegador(QDialog):
             self._alternar(item)
 
     def _alternar(self, item):
-        nuevo = (
-            Qt.CheckState.Unchecked
-            if item.checkState() == Qt.CheckState.Checked
-            else Qt.CheckState.Checked
-        )
-        item.setCheckState(nuevo)
+        nuevo = (Qt.CheckState.Unchecked if item.checkState(NOMBRE) == Qt.CheckState.Checked
+                 else Qt.CheckState.Checked)
+        item.setCheckState(NOMBRE, nuevo)
 
     def _alternar_actual(self):
         item = self.lista.currentItem()
-        if item and item.data(ROL)[0] == ARCHIVO:
+        if item and item.data(NOMBRE, ROL)[0] == ARCHIVO:
             self._alternar(item)
-            fila = self.lista.currentRow()
-            if fila < self.lista.count() - 1:
-                self.lista.setCurrentRow(fila + 1)
+            debajo = self.lista.itemBelow(item)
+            if debajo is not None:
+                self.lista.setCurrentItem(debajo)
         elif item:
             self._activar(item)
 
-    def _al_marcar(self, item):
-        rol, ruta = item.data(ROL)
-        if rol != ARCHIVO:
+    def _al_marcar(self, item, columna=NOMBRE):
+        rol, ruta = item.data(NOMBRE, ROL)
+        if rol != ARCHIVO or columna != NOMBRE:
             return
-        if item.checkState() == Qt.CheckState.Checked:
+        if item.checkState(NOMBRE) == Qt.CheckState.Checked:
             self.marcados.add(ruta)
         else:
             self.marcados.discard(ruta)
@@ -343,17 +469,14 @@ class Navegador(QDialog):
 
     def _marcar_todo(self):
         """Marca el material de estudio de la carpeta; otra vez, desmarca todo."""
-        archivos = [
-            self.lista.item(i) for i in range(self.lista.count())
-            if self.lista.item(i).data(ROL)[0] == ARCHIVO
-        ]
-        de_estudio = [i for i in archivos if self.clasificador.clasificar(i.data(ROL)[1])[0]]
-        if de_estudio and all(i.checkState() == Qt.CheckState.Checked for i in de_estudio):
-            for item in archivos:
-                item.setCheckState(Qt.CheckState.Unchecked)
+        archivos = [f for f in self._filas() if f.data(NOMBRE, ROL)[0] == ARCHIVO and not f.isHidden()]
+        de_estudio = [f for f in archivos if self.clasificador.clasificar(f.data(NOMBRE, ROL)[1])[0]]
+        if de_estudio and all(f.checkState(NOMBRE) == Qt.CheckState.Checked for f in de_estudio):
+            for fila in archivos:
+                fila.setCheckState(NOMBRE, Qt.CheckState.Unchecked)
         else:
-            for item in de_estudio:
-                item.setCheckState(Qt.CheckState.Checked)
+            for fila in de_estudio:
+                fila.setCheckState(NOMBRE, Qt.CheckState.Checked)
 
     def _subir(self):
         if self.actual is None:
@@ -364,14 +487,52 @@ class Navegador(QDialog):
             return
         anterior = self.actual
         self._mostrar(self.actual.parent)
-        for i in range(self.lista.count()):
-            if self.lista.item(i).data(ROL)[1] == str(anterior):
-                self.lista.setCurrentRow(i)
+        for fila in self._filas():
+            if fila.data(NOMBRE, ROL)[1] == str(anterior):
+                self.lista.setCurrentItem(fila)
                 break
 
     def _atajo_raiz(self, n):
         if self.actual is None and n <= len(self.raices):
             self._mostrar(self.raices[n - 1][1])
+
+    def _enfocar_busqueda(self):
+        if self.buscar.isEnabled():
+            self.buscar.setFocus()
+            self.buscar.selectAll()
+
+    def _filtrar(self, texto):
+        buscado = texto.strip().casefold()
+        primera = None
+        for fila in self._filas():
+            rol = fila.data(NOMBRE, ROL)[0]
+            visible = rol == SUBIR or not buscado or buscado in fila.text(NOMBRE).casefold()
+            fila.setHidden(not visible)
+            if visible and rol != SUBIR and primera is None:
+                primera = fila
+        if primera is not None:
+            self.lista.setCurrentItem(primera)
+
+    def _abrir_primero(self):
+        item = self.lista.currentItem()
+        if item is not None and not item.isHidden():
+            self._activar(item)
+            self.lista.setFocus()
+
+    def _abrir_en_explorador(self):
+        if self.actual is not None:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.actual)))
+
+    def keyPressEvent(self, evento):
+        # Esc con una búsqueda escrita la borra; sin búsqueda, cierra
+        if evento.key() == Qt.Key.Key_Escape and self.buscar.text():
+            self.buscar.clear()
+            self.lista.setFocus()
+            return
+        if evento.key() == Qt.Key.Key_Down and self.buscar.hasFocus():
+            self.lista.setFocus()
+            return
+        super().keyPressEvent(evento)
 
     def _elegir_marcados(self):
         if not self.marcados:

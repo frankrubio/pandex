@@ -5,6 +5,10 @@ description: Diseña un personaje (skin) nuevo para la mascota de Pandex en pixe
 
 # Skins de Pandex en el estilo de Rusty
 
+Esta skill es para personajes que **se incluyen en Pandex** (`assets/personajes/`). Si Frank
+solo quiere usar una imagen suya en su PC, sin dibujar nada, no hace falta: basta con
+**Configuración → Apariencia → Añadir personaje…** (`pandex/personaje_nuevo.py`).
+
 Rusty (`assets/personajes/rusty/`) es la referencia de calidad. Todo personaje nuevo
 tiene que verse como de la misma familia que Rusty: mismo tamaño, mismo grosor de
 contorno y el mismo cuidado en el sombreado.

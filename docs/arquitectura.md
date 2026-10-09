@@ -17,10 +17,12 @@ devuelven.
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
-| `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque). |
-| `pandex/ui/` | `mascota.py` (la ventana, estática), `personajes.py` (el catálogo de `assets/personajes/`), `logo.py` (el logo y los íconos), `sprites.py` (sprite sheet propio), `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
+| `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque) y su ícono. |
+| `pandex/horas.py` | Horas y fechas para el usuario, en formato de 12 horas (*7:05 p. m.*). |
+| `pandex/personaje_nuevo.py` | «Añadir personaje…»: convierte una imagen o un GIF en un personaje (Pillow, solo al usarlo). |
+| `pandex/ui/` | `mascota.py` (la ventana, estática), `personajes.py` (el catálogo de `assets/personajes/`), `logo.py` (el logo y los íconos), `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
 | `pandex/markdown/proceso.py` | Corre la conversión a Markdown en un proceso hijo (la memoria del conversor se libera al terminar). |
-| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. |
+| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. Al arrancar aparta los archivos que dejaron versiones anteriores (`OBSOLETOS`), porque el ZIP solo agrega y reemplaza. |
 | `pandex/canvas/` | Sincronizar Canvas → [sincronizar-canvas.md](sincronizar-canvas.md) |
 | `pandex/markdown/` | Convertir a Markdown → [convertir-markdown.md](convertir-markdown.md) |
 | `tasks/*.py` | Los plug-ins. Delgados: conectan una función de `pandex/` con el menú. |
@@ -89,11 +91,10 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
 {
   "mascota": {
     "nombre": "Pandex",
-    "personaje": "rusty",          // una carpeta de assets/personajes/ o "pixel" (sprite sheet propio)
+    "personaje": "rusty",          // uno de assets/personajes/ o uno que añadiste
     "logo": "personaje",           // ícono de la app: el del personaje o el id de otro
     "tamano": 120,                 // alto en píxeles
     "opacidad": 1.0,
-    "spritesheet": { ... },        // solo con "personaje": "pixel"; ver «Cambiar el personaje»
     "globo_activo": true,
     "globo_segundos": 5,
     "posicion": [1291, 695],       // se guarda sola al arrastrarla
@@ -105,7 +106,7 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
   "tareas": {
     "<id de la tarea>": {
       "activa": true,
-      "schedule": "0 19 * * *",    // cron opcional; null = solo manual
+      "schedule": "0 19 * * *",    // cron (Configuración → Tareas lo arma por ti); null = solo manual
       ...                          // lo propio de cada tarea
     }
   }
@@ -156,18 +157,24 @@ Hoy trae `rusty`, `bmo`, `robot` y `panda_clasico`. **El logo** (`mascota.logo`)
 personaje o queda fijo en otro; al cambiarlo, Pandex cambia el ícono de las ventanas, de la
 bandeja y de los accesos directos que existan (`accesos.cambiar_icono`).
 
-**Un personaje nuevo** se dibuja en código con `herramientas/skins/` (librería `pixelart.py`,
+**Un personaje nuevo para incluir en Pandex** se dibuja en código con `herramientas/skins/` (librería `pixelart.py`,
 un archivo por personaje y `construir.py`, que genera la carpeta completa). La skill
 `.claude/skills/skin-pixel-art` tiene las reglas del estilo de Rusty y el paso a paso.
 
-**Un sprite sheet propio** sin tocar el repositorio: `"personaje": "pixel"` y en `spritesheet`
-`archivo`, `frame_ancho`, `frame_alto`; cada estado (`idle`, `feliz`, `trabajando`, `error`)
-lista su cuadro como `[fila, columna]`. Para prepararlo:
+**Un personaje tuyo**, sin tocar código: **Configuración → Apariencia → Añadir personaje…**
+(`pandex/personaje_nuevo.py`). Acepta PNG, GIF, WEBP o JPG:
 
-```bash
-.venv\Scripts\python.exe herramientas/preparar_sprite.py imagen.png assets/mio/spritesheet.png  # quita el fondo
-.venv\Scripts\python.exe herramientas/gif_a_sprite.py mascota.gif assets/mio/spritesheet.png    # GIF → sheet
-```
+| Si la imagen es… | Pandex… |
+|---|---|
+| Una sola figura | Usa la misma imagen para todos los estados. |
+| Varias poses del mismo tamaño, en fila (como Rusty) | Las separa solo, por las columnas transparentes entre poses. Orden: normal, trabajando, feliz, error; si faltan, usa la normal. |
+| Un GIF animado | Toma cada cuadro como una pose, en ese orden. |
+
+Si no tiene transparencia y el fondo es de un solo color, lo quita. El nombre que escribes es
+el que aparece en el selector, con «(tuyo)». Se guarda en `%LOCALAPPDATA%\Pandex\personajes\<id>\`
+(con su `personaje.json` e `icono.ico`), así que sobrevive a las actualizaciones; **Quitar** lo
+borra de ahí. Un `config.json` antiguo con `"personaje": "pixel"` pasa a Rusty y conserva su
+bloque `spritesheet`, para que puedas añadir esa imagen con el botón.
 
 ## Rendimiento
 

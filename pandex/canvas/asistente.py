@@ -24,7 +24,7 @@ from datetime import datetime
 from pathlib import Path
 
 from playwright.sync_api import Error as PlaywrightError
-from PyQt6.QtCore import Qt, QThread, QTime, pyqtSignal
+from PyQt6.QtCore import QLocale, Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QButtonGroup,
@@ -50,6 +50,7 @@ from PyQt6.QtWidgets import (
     QWizardPage,
 )
 
+from .. import horas
 from ..log import get_logger
 from ..rutas import DATOS
 from ..ui import logo, tema
@@ -648,7 +649,8 @@ class PaginaDescarga(QWizardPage):
             grupo.addButton(b)
         self.programar = QCheckBox("Revisar Canvas automáticamente todos los días a las")
         self.hora = QTimeEdit(QTime(19, 0))
-        self.hora.setDisplayFormat("HH:mm")
+        self.hora.setLocale(QLocale(QLocale.Language.Spanish, QLocale.Country.Peru))
+        self.hora.setDisplayFormat("h:mm ap")  # 7:00 p. m.
 
         fila_desde = QHBoxLayout()
         fila_desde.addWidget(self.desde)
@@ -707,7 +709,7 @@ class PaginaListo(QWizardPage):
         lineas.append(f"<b>Descarga inicial:</b> {descarga}")
         if e.horario:
             h, m = e.horario.split()[1], e.horario.split()[0]
-            lineas.append(f"<b>Revisión automática:</b> todos los días a las {int(h):02d}:{int(m):02d}")
+            lineas.append(f"<b>Revisión automática:</b> todos los días a las {horas.hora(h, m)}")
         lineas.append("<br>Al terminar empiezo la primera sincronización. Puedes volver a este "
                       "asistente cuando quieras: clic derecho → Configurar Canvas.")
         self.resumen.setText("<br>".join(lineas))

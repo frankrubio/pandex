@@ -14,7 +14,7 @@ from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
-from . import accesos, actualizar
+from . import accesos, actualizar, horas
 from . import tareas as plugins
 from .config import Config
 from .ejecutor import Ejecutor
@@ -73,10 +73,12 @@ class PandexApp(QObject):
     # ---------- arranque ----------
 
     def iniciar(self):
+        # lo que dejaron versiones anteriores (una actualización por ZIP no borra nada)
+        actualizar.limpiar_obsoletos()
         self.mascota.show()
         self.mascota.raise_()
         nombre = self.config.mascota.get("nombre", "Pandex")
-        self.mascota.decir(f"¡Hola! Soy {nombre}. Tengo {len(self.tareas)} tarea(s) listas.")
+        self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
         log.info("Pandex iniciado con %d tarea(s)", len(self.tareas))
         QTimer.singleShot(1500, self._primera_vez)
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
