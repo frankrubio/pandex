@@ -8,8 +8,8 @@ Formatos: PNG, GIF, WEBP o JPG. Pandex entiende tres casos:
   si sobran, se ignoran.
 - **Un GIF animado**: cada cuadro es una pose, en ese mismo orden (la mascota no se
   anima: usa una pose fija por estado).
-- **Una mascota de Codex Pets** (codex-pets.net): su ``spritesheet.webp`` o el ``.zip``
-  descargado (con ``pet.json``). Es una cuadrícula de 8 columnas con cuadros de 192×208,
+- **Una mascota de Codex Pets** (codex-pets.net): el ``.zip`` descargado, su ``pet.json``
+  o su ``spritesheet.webp``. Es una cuadrícula de 8 columnas con cuadros de 192×208,
   una fila por animación; Pandex toma una pose de la fila que corresponde a cada estado
   y el nombre del ``pet.json``.
 
@@ -28,7 +28,8 @@ from pathlib import Path
 
 from .rutas import PERSONAJES_PROPIOS
 
-EXTENSIONES = (".png", ".gif", ".webp", ".jpg", ".jpeg", ".zip")
+IMAGENES = (".png", ".gif", ".webp", ".jpg", ".jpeg")
+EXTENSIONES = (*IMAGENES, ".zip", ".json")  # .zip y pet.json: Codex Pets
 ESTADOS = ("idle", "trabajando", "feliz", "error")
 MAX_POSES = 12
 ALTO_MAX = 416       # más alto no se nota en pantalla y solo ocupa memoria
@@ -64,8 +65,10 @@ def nombre_desde_archivo(ruta):
 
 
 def _manifiesto(ruta):
-    """El ``pet.json`` de Codex Pets, del ZIP o de la carpeta de la imagen (o ``{}``)."""
+    """El ``pet.json`` de Codex Pets: el elegido, el del ZIP o el de al lado (o ``{}``)."""
     try:
+        if ruta.suffix.lower() == ".json":
+            return json.loads(ruta.read_text(encoding="utf-8"))
         if ruta.suffix.lower() == ".zip":
             with zipfile.ZipFile(ruta) as z:
                 nombre = next((n for n in z.namelist() if Path(n).name.lower() == "pet.json"), None)
@@ -77,7 +80,17 @@ def _manifiesto(ruta):
 
 
 def _abrir(ruta):
-    """La imagen a leer: el archivo, o el sprite sheet de adentro si es un ZIP."""
+    """La imagen a leer: el archivo, o el sprite sheet que indica el ZIP o el ``pet.json``."""
+    if ruta.suffix.lower() == ".json":
+        pedido = str(_manifiesto(ruta).get("spritesheetPath") or "")
+        carpeta = ruta.parent.resolve()
+        candidatos = [carpeta / pedido] if pedido else []
+        candidatos += [carpeta / f"spritesheet{ext}" for ext in IMAGENES]
+        for imagen in candidatos:
+            # solo dentro de la carpeta del pet.json
+            if imagen.resolve().parent == carpeta and imagen.is_file():
+                return imagen
+        raise ErrorPersonaje("Ese pet.json no tiene su imagen al lado (spritesheet.webp).")
     if ruta.suffix.lower() != ".zip":
         return ruta
     try:
@@ -85,7 +98,7 @@ def _abrir(ruta):
             nombres = [n for n in z.namelist() if not n.endswith("/")]
             pedido = str(_manifiesto(ruta).get("spritesheetPath") or "")
             candidatos = [n for n in nombres if pedido and n.endswith(pedido)] or [
-                n for n in nombres if Path(n).suffix.lower() in EXTENSIONES[:-1]]
+                n for n in nombres if Path(n).suffix.lower() in IMAGENES]
             if not candidatos:
                 raise ErrorPersonaje("Ese ZIP no trae ninguna imagen de mascota.")
             info = z.getinfo(candidatos[0])
@@ -151,18 +164,21 @@ def _partir(img):
     return [img.crop((k * ancho, 0, (k + 1) * ancho, h)) for k in range(mejor)]
 
 
-def _rejilla_codex(img):
+def _rejilla_codex(img, con_manifiesto=False):
     """``(ancho, alto)`` de cada cuadro si la imagen es un atlas de Codex Pets; si no, None.
 
-    Se reconoce por la forma: 8 columnas de cuadros 192×208 (o la misma proporción, por si
-    la imagen se reescaló) y 9 filas o más.
+    Con su ``pet.json`` a mano no hay dudas: es Codex Pets. Sin él, se reconoce por la
+    forma: 8 columnas de cuadros 192×208 (o la misma proporción, por si la imagen se
+    reescaló), 9 filas o más y fondo transparente.
     """
     w, h = img.size
     ancho = w / CODEX_COLUMNAS
+    alto = ancho * CODEX_PROPORCION
+    filas = max(1, round(h / alto))
+    if con_manifiesto:
+        return ancho, h / filas
     if ancho < 64 or img.getchannel("A").getextrema()[0] > 0:
         return None  # muy chica para ser un atlas, o sin fondo transparente (Codex siempre lo tiene)
-    alto = ancho * CODEX_PROPORCION
-    filas = round(h / alto)
     if filas < 9 or abs(h - filas * alto) > max(2, h * 0.01):
         return None
     return ancho, h / filas
@@ -194,7 +210,7 @@ def _poses(ruta):
                 poses = [c.convert("RGBA") for _, c in zip(range(MAX_POSES), ImageSequence.Iterator(im))]
                 return [_quitar_fondo(p) for p in poses]
             img = im.convert("RGBA")
-            rejilla = _rejilla_codex(img)
+            rejilla = _rejilla_codex(img, con_manifiesto=bool(_manifiesto(ruta)))
             if rejilla:
                 return _poses_codex(img, *rejilla)
             return _partir(_quitar_fondo(img))
@@ -218,7 +234,8 @@ def importar(ruta, nombre, destino=PERSONAJES_PROPIOS, ocupados=()):
 
     ruta = Path(ruta)
     if ruta.suffix.lower() not in EXTENSIONES:
-        raise ErrorPersonaje("Usa una imagen PNG, GIF, WEBP o JPG, o el ZIP de Codex Pets.")
+        raise ErrorPersonaje("Usa una imagen PNG, GIF, WEBP o JPG, o el ZIP o el pet.json de "
+                             "Codex Pets.")
     poses = _poses(ruta)
     x0, y0, x1, y1 = _caja_comun(poses)
     poses = [p.crop((x0, y0, x1, y1)) for p in poses]

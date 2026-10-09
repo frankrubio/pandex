@@ -258,6 +258,25 @@ class PersonajesPropios(unittest.TestCase):
         ident, poses = personaje_nuevo.importar(ruta, "Pato programador", self.destino)
         self.assertEqual((ident, poses), ("pato_programador", 4))
 
+    def test_elegir_el_pet_json_tambien_sirve(self):
+        from pandex import personaje_nuevo
+
+        self._atlas_codex().save(self.carpeta / "spritesheet.webp", lossless=True)
+        manifiesto = self.carpeta / "pet.json"
+        manifiesto.write_text(json.dumps({"displayName": "Duck", "spritesheetPath": "spritesheet.webp"}),
+                              encoding="utf-8")
+        self.assertEqual(personaje_nuevo.nombre_desde_archivo(manifiesto), "Duck")
+        ident, poses = personaje_nuevo.importar(manifiesto, "Duck", self.destino)
+        self.assertEqual((ident, poses), ("duck", 4))
+
+    def test_un_pet_json_que_apunta_fuera_de_su_carpeta_se_rechaza(self):
+        from pandex import personaje_nuevo
+
+        manifiesto = self.carpeta / "pet.json"
+        manifiesto.write_text(json.dumps({"spritesheetPath": "../../secreto.png"}), encoding="utf-8")
+        with self.assertRaises(personaje_nuevo.ErrorPersonaje):
+            personaje_nuevo.importar(manifiesto, "X", self.destino)
+
     def test_lo_que_no_es_imagen_da_un_mensaje_claro(self):
         from pandex import personaje_nuevo
 

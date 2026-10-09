@@ -69,7 +69,7 @@ Sí: **Configuración → Apariencia → Añadir personaje…**, eliges la image
 - **Una sola imagen:** se usa para todos los estados.
 - **Varias poses del mismo tamaño, una al lado de otra:** van en este orden: normal, trabajando, feliz y error.
 - **Un GIF:** cada cuadro es una pose, en ese mismo orden.
-- **Una mascota de [Codex Pets](https://codex-pets.net):** elige el `.zip` que descargaste (o su `spritesheet.webp`). Pandex toma su nombre y una pose para cada estado.
+- **Una mascota de [Codex Pets](https://codex-pets.net):** elige el `.zip` que descargaste, su `pet.json` o su `spritesheet.webp`. Pandex toma su nombre y una pose para cada estado.
 
 Si la imagen tiene fondo blanco u otro color liso, Pandex lo quita. El personaje aparece en la lista con «(tuyo)». Pulsa **Guardar** para usarlo.
 

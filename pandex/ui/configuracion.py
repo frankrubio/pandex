@@ -317,7 +317,7 @@ class DialogoConfiguracion(QDialog):
     def _anadir_personaje(self):
         ruta, _ = QFileDialog.getOpenFileName(
             self, "Elige la imagen de tu personaje", "",
-            "Imágenes o Codex Pets (*.png *.gif *.webp *.jpg *.jpeg *.zip)")
+            "Imágenes o Codex Pets (*.png *.gif *.webp *.jpg *.jpeg *.zip pet.json)")
         if not ruta:
             return
         nombre, ok = QInputDialog.getText(self, "Añadir personaje", "¿Cómo se llama?",
