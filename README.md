@@ -90,14 +90,15 @@ Para actualizar: `git pull`, o el menú **Buscar actualizaciones…**
 
 ## La primera vez
 
-Se abre un asistente que te guía en 4 pasos:
+Rusty aparece en una esquina con un saludo y abre un asistente:
 
 1. Escribe la dirección de tu Canvas (por ejemplo `https://utec.instructure.com`).
 2. Inicia sesión como siempre, en la ventana del navegador. **Pandex nunca ve tu contraseña.**
 3. Elige tus cursos y la carpeta donde guardarlos (te recomendamos una dentro de OneDrive).
 4. Elige qué bajar al empezar: todo, desde una semana, o nada.
 
-Nada se escribe en tu PC hasta que pulsas **Terminar**.
+Nada se escribe en tu PC hasta que pulsas **Terminar**. ¿Quieres ver antes cómo se ve cada
+paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-vez).
 
 ## Cómo se usa
 
@@ -131,6 +132,8 @@ con un clic. Tus cursos y tu configuración no se tocan.
 | Empezó otro ciclo | Clic derecho → **Configurar Canvas…** |
 | *"🔒 aún sin abrir en Canvas"* | El docente lo programó para más adelante; Pandex lo baja solo cuando se abra. |
 | Algo no se bajó o no sé por qué | Clic derecho → **Ver registro**: cada decisión dice el motivo. |
+
+**Más dudas y errores frecuentes** (con lo que significa cada mensaje de Rusty): [docs/ayuda.md](docs/ayuda.md).
 
 **Tu privacidad:** todo pasa en tu PC. Pandex solo habla con tu Canvas y, cuando se lo pides,
 con GitHub para actualizarse. Sin servidores, sin telemetría y sin IA en la nube.
@@ -173,6 +176,7 @@ class Task:
 
 | Para saber… | Lee |
 |---|---|
+| Qué ve un estudiante la primera vez, dudas y errores frecuentes | [docs/ayuda.md](docs/ayuda.md) |
 | El flujo completo, hilos, `config.json` y rendimiento | [docs/arquitectura.md](docs/arquitectura.md) |
 | Crear tareas: `ctx`, `preparar`, `configurar`, horarios | [docs/crear-tareas.md](docs/crear-tareas.md) |
 | Cómo decide Sincronizar Canvas dónde va cada archivo | [docs/sincronizar-canvas.md](docs/sincronizar-canvas.md) |
