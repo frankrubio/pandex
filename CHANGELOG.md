@@ -3,6 +3,19 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.3.0
+
+- **Personajes nuevos:** BMO (fan art de *Hora de Aventura*) y un robot blanco con
+  detalles cian, los dos en pixel art con el mismo estilo de Rusty. Se eligen en
+  Configuración → Apariencia → Personaje.
+- **Logo a tu gusto:** en Configuración → Apariencia → Logo, el ícono de Pandex puede
+  seguir al personaje o quedar fijo en otro. Cambia en las ventanas, junto al reloj y en
+  el acceso directo del Escritorio.
+- Se quitó el panda robot dibujado («Panda robot»); quien lo usaba pasa a Rusty. El
+  panda robot pixel art sigue disponible como «Panda robot (clásico)».
+- Para programadores: cada personaje es una carpeta en `assets/personajes/`, y
+  `herramientas/skins/` dibuja los nuevos en el estilo de Rusty.
+
 ## 2.2.0
 
 - **Actualizar con un clic:** Pandex revisa una vez al día, mientras está abierto, si

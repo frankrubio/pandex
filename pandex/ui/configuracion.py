@@ -25,11 +25,19 @@ from PyQt6.QtWidgets import (
 )
 
 from .. import __version__, accesos
-from . import dibujo, iconos, rusty, tema
+from ..config import _es_de_fabrica
+from . import iconos, logo, personajes, tema
 from .sprites import Sprites
 
-PERSONAJES = (("rusty", "Rusty, el panda rojo"), ("vectorial", "Panda robot"),
-              ("pixel", "Panda robot pixel art (clásico)"))
+PROPIO = ("pixel", "Sprite sheet propio (config.json)")
+
+
+def opciones_de_personaje(mascota):
+    """Los personajes de ``assets/personajes/`` y, si configuraste uno, el tuyo."""
+    opciones = personajes.lista()
+    if not _es_de_fabrica(mascota.get("spritesheet")):
+        opciones.append(PROPIO)
+    return opciones
 
 
 class VistaPrevia(QWidget):
@@ -38,7 +46,7 @@ class VistaPrevia(QWidget):
     def __init__(self, config, parent=None):
         super().__init__(parent)
         self.config = config
-        self.personaje = config.mascota.get("personaje", "rusty")
+        self.personaje = config.mascota.get("personaje", personajes.POR_DEFECTO)
         self.opacidad = float(config.mascota.get("opacidad", 1.0))
         self._sprites = None
         self.setFixedSize(150, 150)
@@ -66,13 +74,10 @@ class VistaPrevia(QWidget):
                 if pix is not None:
                     p.drawPixmap((self.width() - pix.width()) // 2, (self.height() - pix.height()) // 2, pix)
                     return
-        if self.personaje == "rusty":
-            pix = rusty.imagen("idle", 126, self.devicePixelRatioF())
-            ancho = round(pix.width() / pix.devicePixelRatio())
-            alto = round(pix.height() / pix.devicePixelRatio())
-            p.drawPixmap((self.width() - ancho) // 2, (self.height() - alto) // 2, pix)
-            return
-        p.drawPixmap(15, 15, dibujo.imagen("idle", lado, lado, self.devicePixelRatioF()))
+        pix = personajes.imagen(self.personaje, "idle", 126, self.devicePixelRatioF())
+        ancho = round(pix.width() / pix.devicePixelRatio())
+        alto = round(pix.height() / pix.devicePixelRatio())
+        p.drawPixmap((self.width() - ancho) // 2, (self.height() - alto) // 2, pix)
 
 
 def _tarjeta():
@@ -186,11 +191,27 @@ class DialogoConfiguracion(QDialog):
         form.addRow("Nombre", self.nombre)
 
         self.personaje = QComboBox()
-        for clave, texto in PERSONAJES:
+        for clave, texto in opciones_de_personaje(m):
             self.personaje.addItem(texto, clave)
-        self.personaje.setCurrentIndex(max(0, self.personaje.findData(m.get("personaje", "rusty"))))
-        self.personaje.currentIndexChanged.connect(lambda _i: self.vista.poner(self.personaje.currentData()))
+        self.personaje.setCurrentIndex(max(0, self.personaje.findData(m.get("personaje", personajes.POR_DEFECTO))))
+        self.personaje.currentIndexChanged.connect(self._personaje_cambiado)
         form.addRow("Personaje", self.personaje)
+
+        # el ícono de la app: la cara del personaje elegido, u otro fijo
+        self.logo = QComboBox()
+        self.logo.addItem("Igual que el personaje", logo.SIGUE_AL_PERSONAJE)
+        for clave, texto in personajes.lista():
+            self.logo.addItem(texto, clave)
+        self.logo.setCurrentIndex(max(0, self.logo.findData(m.get("logo") or logo.SIGUE_AL_PERSONAJE)))
+        self.logo.currentIndexChanged.connect(self._mostrar_logo)
+        self.logo_vista = QLabel()
+        self.logo_vista.setFixedSize(36, 36)
+        fila_logo = QHBoxLayout()
+        fila_logo.setSpacing(10)
+        fila_logo.addWidget(self.logo_vista)
+        fila_logo.addWidget(self.logo, 1)
+        form.addRow("Logo", fila_logo)
+        self._mostrar_logo()
 
         self.tamano, fila_tamano = self._deslizador(60, 400, int(m.get("tamano", 120)), " px")
         form.addRow("Tamaño", fila_tamano)
@@ -201,6 +222,16 @@ class DialogoConfiguracion(QDialog):
         caja.addLayout(fila)
         caja.addStretch()
         return pagina
+
+    def _personaje_cambiado(self, _indice=None):
+        self.vista.poner(self.personaje.currentData())
+        self._mostrar_logo()
+
+    def _logo_elegido(self):
+        return logo.elegido({"logo": self.logo.currentData(), "personaje": self.personaje.currentData()})
+
+    def _mostrar_logo(self, _indice=None):
+        self.logo_vista.setPixmap(logo.pixmap(36, self.devicePixelRatioF(), self._logo_elegido()))
 
     def _deslizador(self, minimo, maximo, valor, sufijo):
         deslizador = QSlider(Qt.Orientation.Horizontal)
@@ -258,8 +289,8 @@ class DialogoConfiguracion(QDialog):
         acceso = _tarjeta()
         fila = QHBoxLayout(acceso)
         fila.setContentsMargins(16, 12, 16, 12)
-        texto = QLabel("<b>Acceso directo</b><br>Un ícono de Rusty en tu Escritorio: doble clic "
-                       "y aparece la mascota.")
+        texto = QLabel("<b>Acceso directo</b><br>Un ícono en tu Escritorio, con el logo que "
+                       "elegiste: doble clic y aparece la mascota.")
         texto.setWordWrap(True)
         fila.addWidget(texto, 1)
         crear = QPushButton(iconos.icono("descargar"), "Crear en el Escritorio")
@@ -326,13 +357,13 @@ class DialogoConfiguracion(QDialog):
         caja.addLayout(_titulo("Acerca de"))
 
         fila = QHBoxLayout()
-        logo = QLabel()
-        logo.setFixedSize(72, 72)
-        logo.setPixmap(dibujo.pixmap_logo(72, self.devicePixelRatioF()))
-        fila.addWidget(logo)
+        logo_ = QLabel()
+        logo_.setFixedSize(72, 72)
+        logo_.setPixmap(logo.pixmap(72, self.devicePixelRatioF()))
+        fila.addWidget(logo_)
         fila.addSpacing(12)
         texto = QLabel(
-            f"<b>Pandex {__version__}</b><br>Un panda rojo que ordena tus cursos de Canvas "
+            f"<b>Pandex {__version__}</b><br>Una mascota que ordena tus cursos de Canvas "
             "y convierte tu material a Markdown. Todo en tu PC, gratis y sin IA.")
         texto.setWordWrap(True)
         fila.addWidget(texto, 1)
@@ -355,7 +386,7 @@ class DialogoConfiguracion(QDialog):
     def _crear_acceso(self):
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            ruta = accesos.crear_en_escritorio()
+            ruta = accesos.crear_en_escritorio(personajes.ruta_icono(self._logo_elegido()))
         except Exception as exc:
             QApplication.restoreOverrideCursor()
             QMessageBox.warning(self, "Acceso directo", f"No pude crearlo:\n{exc}")
@@ -373,6 +404,7 @@ class DialogoConfiguracion(QDialog):
         m = self.config.mascota
         m["nombre"] = self.nombre.text().strip() or "Pandex"
         m["personaje"] = self.personaje.currentData()
+        m["logo"] = self.logo.currentData()
         m["tamano"] = self.tamano.value()
         m["opacidad"] = round(self.opacidad.value() / 100, 2)
         m["globo_activo"] = self.globo.isChecked()

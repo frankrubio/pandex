@@ -95,7 +95,7 @@ class MigrarConfig(unittest.TestCase):
         self.assertEqual(config.mascota["nombre"], "Pygu")
         self.assertNotIn("animacion", config.mascota)
         guardado = json.loads(self.ruta.read_text(encoding="utf-8"))
-        self.assertEqual(guardado["version_config"], 3)
+        self.assertEqual(guardado["version_config"], 4)
         self.assertNotIn("spritesheet", guardado["mascota"], "el de fábrica no se vuelve a guardar")
 
     def test_el_de_fabrica_con_otros_valores_tambien_pasa_a_rusty(self):
@@ -124,6 +124,19 @@ class MigrarConfig(unittest.TestCase):
         config = Config(self.ruta)
         self.assertEqual(config.mascota["personaje"], "pixel")
         self.assertEqual(config.mascota["spritesheet"]["archivo"], "assets/mi_gato/sheet.png")
+
+    def test_quien_eligio_el_panda_pixel_en_la_2x_pasa_a_panda_clasico(self):
+        self.ruta.write_text(json.dumps({"version_config": 3, "mascota": {"personaje": "pixel"}}),
+                             encoding="utf-8")
+        self.assertEqual(Config(self.ruta).mascota["personaje"], "panda_clasico")
+
+    def test_el_panda_vectorial_ya_no_existe_y_pasa_a_rusty(self):
+        self.ruta.write_text(json.dumps({"version_config": 3, "mascota": {"personaje": "vectorial"}}),
+                             encoding="utf-8")
+        config = Config(self.ruta)
+        self.assertEqual(config.mascota["personaje"], "rusty")
+        self.assertEqual(config.mascota["logo"], "personaje")
+        self.assertEqual(json.loads(self.ruta.read_text(encoding="utf-8"))["version_config"], 4)
 
     def test_un_sprite_propio_se_respeta(self):
         propio = {**SPRITE_PIXEL, "archivo": "assets/mi_gato/sheet.png"}

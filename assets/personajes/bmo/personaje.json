@@ -1,0 +1,10 @@
+{
+  "nombre": "BMO",
+  "autor": "Fan art de BMO (Hora de Aventura, © Cartoon Network), dibujado para Pandex",
+  "cuadro": [192, 208],
+  "cuadros": {"idle": 0, "trabajando": 1, "feliz": 2, "error": 3},
+  "recorte": [12, 8, 168, 192],
+  "cabeza": [28, 8, 136, 96],
+  "fondo_logo": ["#3E4A63", "#1F2638"],
+  "orden": 20
+}

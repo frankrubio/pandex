@@ -1,9 +1,9 @@
 """Convierte un GIF animado (p. ej. una mascota de Codex Pets) en un sprite sheet.
 
-    .venv\\Scripts\\python.exe herramientas/gif_a_sprite.py rusty.gif assets/rusty/spritesheet.png
+    .venv\\Scripts\\python.exe herramientas/gif_a_sprite.py rusty.gif assets/personajes/rusty/spritesheet.png
 
 Pone cada cuadro del GIF uno al lado del otro, en una sola fila, con transparencia.
-Pandex usa una imagen fija por estado: en ``config.json`` (o en ``pandex/ui/rusty.py``)
+Pandex usa una imagen fija por estado: en ``config.json`` (o en ``assets/personajes/<id>/personaje.json``)
 eliges qué cuadro corresponde a cada uno.
 """
 

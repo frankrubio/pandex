@@ -18,7 +18,7 @@ devuelven.
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque). |
-| `pandex/ui/` | `mascota.py` (la ventana, estática), `rusty.py` (el panda rojo en pixel art), `dibujo.py` (panda robot vectorial y el logo), `sprites.py`, `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
+| `pandex/ui/` | `mascota.py` (la ventana, estática), `personajes.py` (el catálogo de `assets/personajes/`), `logo.py` (el logo y los íconos), `sprites.py` (sprite sheet propio), `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
 | `pandex/markdown/proceso.py` | Corre la conversión a Markdown en un proceso hijo (la memoria del conversor se libera al terminar). |
 | `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. |
 | `pandex/canvas/` | Sincronizar Canvas → [sincronizar-canvas.md](sincronizar-canvas.md) |
@@ -89,7 +89,8 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
 {
   "mascota": {
     "nombre": "Pandex",
-    "personaje": "rusty",          // "rusty", "vectorial" (panda robot) o "pixel" (sprite sheet)
+    "personaje": "rusty",          // una carpeta de assets/personajes/ o "pixel" (sprite sheet propio)
+    "logo": "personaje",           // ícono de la app: el del personaje o el id de otro
     "tamano": 120,                 // alto en píxeles
     "opacidad": 1.0,
     "spritesheet": { ... },        // solo con "personaje": "pixel"; ver «Cambiar el personaje»
@@ -100,7 +101,7 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
     "frases_click": ["¿Qué tal?", "..."]
   },
   "arrancar_con_windows": false,
-  "version_config": 3,             // para poner al día un config.json viejo al actualizar
+  "version_config": 4,             // para poner al día un config.json viejo al actualizar
   "tareas": {
     "<id de la tarea>": {
       "activa": true,
@@ -142,18 +143,31 @@ manejado por código. Ninguna usa internet.
 
 ## Personajes
 
-`mascota.personaje` en `config.json` (o **Configuración → Apariencia**): `"rusty"` (sprite de
-`assets/rusty/`, `ui/rusty.py`), `"vectorial"` (panda robot dibujado, `ui/dibujo.py`) o
-`"pixel"` (cualquier sprite sheet, `ui/sprites.py`). Para usar el tuyo:
+Cada personaje es una carpeta de `assets/personajes/<id>/` y aparece solo en **Configuración →
+Apariencia** (`ui/personajes.py` la lee):
+
+| Archivo | Qué es |
+|---|---|
+| `spritesheet.png` | Los cuadros en fila, todos del mismo tamaño (los nuevos, 192×208). |
+| `personaje.json` | `nombre`, `cuadros` (qué cuadro usa cada estado), `recorte` (la caja común, para que la figura no salte), `cabeza` (lo que va en el logo), `fondo_logo` y `orden`. |
+| `icono.ico` | El ícono de la app con su cara (`herramientas/crear_icono.py <id>`). |
+
+Hoy trae `rusty`, `bmo`, `robot` y `panda_clasico`. **El logo** (`mascota.logo`) sigue al
+personaje o queda fijo en otro; al cambiarlo, Pandex cambia el ícono de las ventanas, de la
+bandeja y de los accesos directos que existan (`accesos.cambiar_icono`).
+
+**Un personaje nuevo** se dibuja en código con `herramientas/skins/` (librería `pixelart.py`,
+un archivo por personaje y `construir.py`, que genera la carpeta completa). La skill
+`.claude/skills/skin-pixel-art` tiene las reglas del estilo de Rusty y el paso a paso.
+
+**Un sprite sheet propio** sin tocar el repositorio: `"personaje": "pixel"` y en `spritesheet`
+`archivo`, `frame_ancho`, `frame_alto`; cada estado (`idle`, `feliz`, `trabajando`, `error`)
+lista su cuadro como `[fila, columna]`. Para prepararlo:
 
 ```bash
 .venv\Scripts\python.exe herramientas/preparar_sprite.py imagen.png assets/mio/spritesheet.png  # quita el fondo
 .venv\Scripts\python.exe herramientas/gif_a_sprite.py mascota.gif assets/mio/spritesheet.png    # GIF → sheet
 ```
-
-Luego `"personaje": "pixel"` y `spritesheet → archivo, frame_ancho, frame_alto`; cada estado
-(`idle`, `feliz`, `trabajando`, `error`) lista su cuadro como `[fila, columna]`. El ícono y las
-capturas del README se regeneran con `herramientas/crear_icono.py` y `herramientas/capturas.py`.
 
 ## Rendimiento
 
@@ -180,7 +194,7 @@ Qué se carga y cuándo:
 - **`asyncio`**: solo para el OCR de Windows.
 
 La mascota es **estática**: cada estado (reposo, feliz, trabajando, error) se pinta una
-sola vez y queda en caché (`rusty.imagen`, `dibujo.imagen`). No hay temporizadores de
+sola vez y queda en caché (`personajes.imagen`). No hay temporizadores de
 animación; la ventana solo se repinta cuando cambia el estado. El único temporizador es
 un disparo único que la devuelve al reposo tras una reacción. Las transiciones (globo,
 apertura de ventanas) duran menos de 0,3 s y solo corren en ese momento. Los avances de

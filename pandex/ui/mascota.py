@@ -5,9 +5,9 @@ imagen que se pinta una vez y queda en caché. No hay temporizadores de animaci�
 la ventana solo se vuelve a dibujar cuando cambia el estado o el tamaño. En reposo
 no consume CPU.
 
-Personajes (``mascota.personaje``): ``"rusty"`` (por defecto, el panda rojo en pixel
-art, ``ui/rusty.py``), ``"vectorial"`` (el panda robot de ``ui/dibujo.py``) o
-``"pixel"`` (un sprite sheet, ``ui/sprites.py``).
+Personajes (``mascota.personaje``): cualquiera de ``assets/personajes/`` (por defecto
+``"rusty"``, el panda rojo; ver ``ui/personajes.py``) o ``"pixel"``, un sprite sheet
+propio descrito en ``config.json`` (``ui/sprites.py``).
 """
 
 import random
@@ -16,11 +16,11 @@ from PyQt6.QtCore import QPoint, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QGuiApplication, QPainter
 from PyQt6.QtWidgets import QApplication, QWidget
 
-from . import dibujo, rusty
+from . import logo, personajes
 from .globo import Globo
 from .sprites import Sprites
 
-ESTADOS = dibujo.ESTADOS
+ESTADOS = personajes.ESTADOS
 
 
 def pantalla_de(widget):
@@ -56,13 +56,15 @@ class Mascota(QWidget):
     def _cargar_personaje(self):
         m = self.config.mascota
         self.sprites = None
-        self.personaje = m.get("personaje", "rusty")
-        if self.personaje == "rusty" and not rusty.disponible():
-            self.personaje = "vectorial"  # falta assets/rusty: el panda dibujado no necesita archivos
+        self.personaje = m.get("personaje", personajes.POR_DEFECTO)
         if self.personaje == "pixel":
             sprites = Sprites(m.get("spritesheet"))
             if sprites.ok:
                 self.sprites = sprites
+                return
+        # uno que ya no existe (o un sprite propio que no carga): Rusty
+        elegido = personajes.elegir(self.personaje)
+        self.personaje = elegido.id if elegido else None
 
     def _construir_ventana(self):
         flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowSystemMenuHint
@@ -80,9 +82,7 @@ class Mascota(QWidget):
         lado = int(self.config.mascota.get("tamano", 120))
         if self.sprites:
             return self.sprites.tamano_ventana(lado)
-        if self.personaje == "rusty":
-            return rusty.tamano(lado)
-        return lado, lado
+        return personajes.tamano(self.personaje, lado)
 
     def _restaurar_posicion(self):
         guardada = self.config.mascota.get("posicion")
@@ -165,12 +165,13 @@ class Mascota(QWidget):
                 painter.drawPixmap((self.width() - pix.width()) // 2,
                                    (self.height() - pix.height()) // 2, pix)
                 return
-        if self.personaje == "rusty":
-            pix = rusty.imagen(self._estado, self.height(), dpr)
-            painter.drawPixmap(round((self.width() - pix.width() / dpr) / 2),
-                               round((self.height() - pix.height() / dpr) / 2), pix)
+        if self.personaje is None:  # sin ningún personaje instalado: al menos el logo
+            lado = min(self.width(), self.height())
+            painter.drawPixmap((self.width() - lado) // 2, (self.height() - lado) // 2, logo.pixmap(lado, dpr))
             return
-        painter.drawPixmap(0, 0, dibujo.imagen(self._estado, self.width(), self.height(), dpr))
+        pix = personajes.imagen(self.personaje, self._estado, self.height(), dpr)
+        painter.drawPixmap(round((self.width() - pix.width() / dpr) / 2),
+                           round((self.height() - pix.height() / dpr) / 2), pix)
 
     # ---------- interacción ----------
 

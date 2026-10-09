@@ -11,7 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 from pandex.config import Config  # noqa: E402
-from pandex.ui import dibujo, tema  # noqa: E402
+from pandex.ui import tema  # noqa: E402
 
 app = QApplication.instance() or QApplication([])
 
@@ -25,24 +25,56 @@ class Interfaz(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.carpeta, ignore_errors=True)
 
-    def test_cada_estado_se_pinta_y_queda_en_cache(self):
-        for estado in dibujo.ESTADOS:
-            pix = dibujo.imagen(estado, 120, 120)
-            self.assertFalse(pix.isNull())
-            self.assertIs(pix, dibujo.imagen(estado, 120, 120), "la segunda vez sale de la caché")
+    def test_cada_personaje_un_cuadro_fijo_por_estado(self):
+        from pandex.ui import personajes
 
-    def test_rusty_un_cuadro_fijo_por_estado(self):
-        from pandex.ui import rusty
-
-        self.assertTrue(rusty.disponible(), "assets/rusty/spritesheet.png")
-        for estado in rusty.ESTADOS:
-            pix = rusty.imagen(estado, 126)
-            self.assertFalse(pix.isNull())
-            self.assertLessEqual(pix.height(), 126)
-            self.assertIs(pix, rusty.imagen(estado, 126), "la segunda vez sale de la caché")
-        pix = rusty.imagen("idle", 126, 1.5)
+        todos = personajes.catalogo()
+        self.assertEqual(next(iter(todos)), "rusty", "Rusty va primero")
+        for esperado in ("rusty", "bmo", "robot", "panda_clasico"):
+            self.assertIn(esperado, todos)
+        for ident, p in todos.items():
+            self.assertTrue(p.icono.exists(), f"falta {ident}/icono.ico")
+            for estado in personajes.ESTADOS:
+                pix = personajes.imagen(ident, estado, 126)
+                self.assertFalse(pix.isNull())
+                self.assertLessEqual(pix.height(), 126)
+                self.assertIs(pix, personajes.imagen(ident, estado, 126), "la segunda vez sale de la caché")
+            self.assertFalse(personajes.cabeza(ident).isNull())
+        pix = personajes.imagen("rusty", "idle", 126, 1.5)
         self.assertEqual(pix.devicePixelRatio(), 1.5)
-        self.assertFalse(rusty.cabeza().isNull())
+
+    def test_un_personaje_que_no_existe_cae_en_rusty(self):
+        from pandex.ui import personajes
+        from pandex.ui.mascota import Mascota
+
+        self.assertEqual(personajes.elegir("vectorial").id, "rusty")
+        self.config.mascota["personaje"] = "no_existe"
+        self.assertEqual(Mascota(self.config).personaje, "rusty")
+
+    def test_el_logo_sigue_al_personaje_o_queda_fijo(self):
+        from pandex.ui import logo
+
+        self.assertEqual(logo.elegido({"personaje": "bmo"}), "bmo")
+        self.assertEqual(logo.elegido({"personaje": "bmo", "logo": "personaje"}), "bmo")
+        self.assertEqual(logo.elegido({"personaje": "bmo", "logo": "robot"}), "robot")
+        self.assertEqual(logo.elegido({"personaje": "pixel", "logo": "no_existe"}), "rusty")
+        self.assertFalse(logo.icono("bmo").isNull())
+        self.assertFalse(logo.pixmap(48, ident="robot").isNull())
+
+    def test_el_acceso_directo_usa_el_icono_del_logo_elegido(self):
+        import json
+        from unittest import mock
+
+        from pandex import accesos
+
+        ruta = self.carpeta / "config.json"
+        casos = [({"personaje": "bmo"}, "bmo"), ({"personaje": "bmo", "logo": "robot"}, "robot"),
+                 ({"personaje": "../../algo"}, None), ({}, None)]
+        for mascota, esperado in casos:
+            ruta.write_text(json.dumps({"mascota": mascota}), encoding="utf-8")
+            with mock.patch.object(accesos, "CONFIG_FILE", ruta):
+                ico = accesos.icono_elegido()
+            self.assertEqual(ico.parent.name if esperado else ico, esperado or accesos.ICONO)
 
     def test_la_mascota_es_estatica(self):
         from PyQt6.QtCore import QTimer

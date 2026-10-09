@@ -52,7 +52,7 @@ from PyQt6.QtWidgets import (
 
 from ..log import get_logger
 from ..rutas import DATOS
-from ..ui import dibujo, tema
+from ..ui import logo, tema
 from . import adoptar, sesion
 from .cliente import Canvas, CanvasError
 from .destinos import alias_semana, nombre_semana, resolver_subcarpeta
@@ -729,7 +729,7 @@ class AsistenteCanvas(QWizard):
         self.entrada = None
         self.setWindowTitle("Configurar Canvas · Pandex")
         self.setWizardStyle(QWizard.WizardStyle.ModernStyle)
-        self.setPixmap(QWizard.WizardPixmap.LogoPixmap, dibujo.pixmap_logo(48))
+        self.setPixmap(QWizard.WizardPixmap.LogoPixmap, logo.pixmap(48))
         for boton in (QWizard.WizardButton.NextButton, QWizard.WizardButton.FinishButton):
             tema.marcar_primario(self.button(boton))
         self.setOption(QWizard.WizardOption.NoBackButtonOnStartPage, True)

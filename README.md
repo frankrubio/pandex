@@ -106,8 +106,8 @@ paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-v
   `Curso / Sem 3 / Material de clase / Clase 3.pdf`. Nunca borra ni pisa nada tuyo.
 - **Clic derecho → Convertir a Markdown**: eliges una carpeta y convierte PDF, Word,
   PowerPoint y Excel a `.md`.
-- **Clic derecho → Configuración**: personaje, tamaño, horario automático, arrancar con
-  Windows y crear el acceso directo.
+- **Clic derecho → Configuración**: personaje (Rusty, BMO, Robot…), logo de la app, tamaño,
+  horario automático, arrancar con Windows y crear el acceso directo.
 - **Clic** sobre Rusty para saludarlo. **Arrástralo** para moverlo.
 
 <p align="center">
