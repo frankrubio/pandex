@@ -88,6 +88,31 @@ def novedades_de(changelog, version=None):
     return ""
 
 
+def _explicar(exc):
+    """El mensaje para la persona según lo que pasó de verdad (y no siempre «sin internet»).
+
+    Con la versión 2.1 cualquier falla decía «revisa tu conexión», aunque hubiera internet:
+    un antivirus que revisa HTTPS, un proxy o GitHub respondiendo con un error se veían igual.
+    """
+    import ssl
+    import urllib.error
+
+    causa = getattr(exc, "reason", exc)
+    if isinstance(exc, urllib.error.HTTPError):
+        if exc.code in (403, 429):
+            return ("GitHub me pidió esperar un momento (demasiadas consultas). "
+                    "Inténtalo de nuevo en unos minutos.")
+        return f"GitHub respondió con un error ({exc.code}). Inténtalo de nuevo en unos minutos."
+    if isinstance(causa, ssl.SSLError) or "CERTIFICATE" in str(causa).upper():
+        return ("No pude verificar la conexión segura con GitHub. Suele pasar cuando un antivirus "
+                "o el wifi de la universidad revisa las conexiones HTTPS. Prueba con otra red, o "
+                "actualiza a mano (README → Actualizar).")
+    if isinstance(causa, TimeoutError) or "timed out" in str(causa).lower():
+        return "GitHub tardó demasiado en responder. Inténtalo de nuevo."
+    return ("No pude conectarme con GitHub. Revisa tu conexión a internet; si otras páginas "
+            "abren bien, mira «Ver registro» para el motivo exacto.")
+
+
 def _abrir(url, timeout=10):
     """GET con la librería de Python (urllib): la revisión diaria no carga ``requests``
     (~17 MB que quedarían en memoria hasta cerrar Pandex)."""
@@ -98,9 +123,8 @@ def _abrir(url, timeout=10):
         return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Pandex"}),
                                       timeout=timeout)
     except (urllib.error.URLError, OSError) as exc:
-        raise ErrorActualizacion(
-            "No pude conectarme con GitHub. Revisa tu conexión a internet e inténtalo de nuevo."
-        ) from exc
+        log.warning("no pude abrir %s: %s: %s", url, type(exc).__name__, exc)  # la causa real
+        raise ErrorActualizacion(_explicar(exc)) from exc
 
 
 def _texto(url):

@@ -145,6 +145,33 @@ class MigrarConfig(unittest.TestCase):
 
 
 
+class ErroresDeRed(unittest.TestCase):
+    """El mensaje dice qué pasó de verdad, no siempre «sin internet»."""
+
+    def _mensaje(self, exc):
+        from unittest import mock
+
+        with mock.patch("urllib.request.urlopen", side_effect=exc):
+            with self.assertLogs("pandex.actualizar", "WARNING") as logs:
+                with self.assertRaises(actualizar.ErrorActualizacion) as ctx:
+                    actualizar._abrir("https://raw.githubusercontent.com/x")
+        self.assertIn(type(exc).__name__, logs.output[0], "la causa real queda en el registro")
+        return str(ctx.exception)
+
+    def test_cada_causa_tiene_su_mensaje(self):
+        import ssl
+        import urllib.error
+
+        http = urllib.error.HTTPError("u", 429, "Too Many", {}, None)
+        self.assertIn("esperar", self._mensaje(http))
+        http404 = urllib.error.HTTPError("u", 404, "Not Found", {}, None)
+        self.assertIn("404", self._mensaje(http404))
+        certificado = urllib.error.URLError(ssl.SSLCertVerificationError("CERTIFICATE_VERIFY_FAILED"))
+        self.assertIn("antivirus", self._mensaje(certificado))
+        self.assertIn("tardó", self._mensaje(TimeoutError("timed out")))
+        self.assertIn("conexión a internet", self._mensaje(urllib.error.URLError("sin red")))
+
+
 class Obsoletos(unittest.TestCase):
     def test_aparta_lo_que_dejaron_versiones_anteriores_sin_borrarlo(self):
         raiz = Path(tempfile.mkdtemp())

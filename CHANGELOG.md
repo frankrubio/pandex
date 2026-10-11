@@ -3,6 +3,13 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.3.1
+
+- **Buscar actualizaciones dice la causa real.** Antes, cualquier falla mostraba «revisa tu
+  conexión a internet», aunque hubiera internet (un antivirus que revisa HTTPS, el wifi de
+  la universidad o GitHub pidiendo esperar se veían igual). Ahora el mensaje explica qué
+  pasó y el motivo exacto queda en «Ver registro».
+
 ## 2.3.0
 
 - **Personajes nuevos:** BMO (fan art de *Hora de Aventura*) y un robot blanco con
