@@ -23,7 +23,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from playwright.sync_api import Error as PlaywrightError
 from PyQt6.QtCore import QLocale, Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -175,7 +174,7 @@ class _Trabajo(QThread):
             self.listo.emit(self._funcion(self.aviso.emit))
         except CanvasError as exc:
             self.fallo.emit(str(exc))
-        except PlaywrightError as exc:
+        except sesion.error_navegador() as exc:
             log.warning("navegador: %s", exc)
             self.fallo.emit(sesion.mensaje_de_error(exc))
         except Exception as exc:

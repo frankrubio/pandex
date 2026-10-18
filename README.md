@@ -26,7 +26,9 @@
 
 ## Instalar (5 minutos)
 
-Necesitas **Windows 10 u 11** y **Python**. ¿Usas **Linux**? Ve a [docs/linux.md](docs/linux.md): son 4 comandos y usa Firefox.
+Necesitas **Windows 10 u 11** y **Python**. ¿Usas **Linux**? Ve a [docs/linux.md](docs/linux.md): son unos pocos comandos y usa tu Firefox.
+
+El instalador pregunta si quieres **«Convertir a Markdown»** (unos 280 MB). Si no lo usas, di que no: Pandex queda mucho más liviano.
 
 1. **Instala Python** desde [python.org/downloads](https://www.python.org/downloads/).
    En la primera pantalla del instalador marca **☑ Add python.exe to PATH**.

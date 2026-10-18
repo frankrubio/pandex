@@ -8,20 +8,11 @@ APScheduler==3.11.3
 
 # Sincronizar Canvas: un navegador solo para iniciar sesión (Chrome en Windows, Firefox en Linux),
 # y la API de Canvas
-playwright==1.63.0
+playwright==1.63.0; sys_platform == "win32"
+selenium==4.51.0; sys_platform != "win32"
 requests==2.34.2
 
-# Convertir a Markdown: todo local, sin IA
-markitdown[pdf,docx,pptx,xlsx,xls]==0.1.8
-pypdfium2==5.13.0
+# Personajes propios e íconos
 pillow==12.3.0
-charset-normalizer==3.5.1
 
-# OCR que trae Windows (respaldo para PDFs escaneados). En Linux se usa Tesseract, si está instalado.
-winrt-runtime==3.2.1; sys_platform == "win32"
-winrt-Windows.Foundation==3.2.1; sys_platform == "win32"
-winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"
-winrt-Windows.Globalization==3.2.1; sys_platform == "win32"
-winrt-Windows.Graphics.Imaging==3.2.1; sys_platform == "win32"
-winrt-Windows.Media.Ocr==3.2.1; sys_platform == "win32"
-winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"
+# «Convertir a Markdown» es opcional: requirements-markdown.txt (unos 280 MB más)

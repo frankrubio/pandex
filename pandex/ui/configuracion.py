@@ -20,6 +20,7 @@ from PyQt6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QScrollArea,
     QSlider,
     QSpinBox,
@@ -29,7 +30,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, accesos, personaje_nuevo, rutas
+from .. import __version__, accesos, extras, personaje_nuevo, rutas
 from . import iconos, logo, personajes, tema
 
 HORARIOS = (("manual", "Solo cuando lo pida"), ("diario", "Todos los días"),
@@ -442,6 +443,22 @@ class DialogoConfiguracion(QDialog):
         self.inicio = QCheckBox("Arrancar con Windows" if rutas.WINDOWS else "Arrancar al iniciar sesión")
         self.inicio.setChecked(accesos.arranca_con_el_sistema())
         interno.addWidget(self.inicio)
+        interno.addSpacing(4)
+        interno.addWidget(QLabel("<b>Cuando no está haciendo nada</b>"))
+        self.modo_siempre = QRadioButton("Quedarse en el escritorio (como siempre)")
+        self.modo_hora = QRadioButton("Cerrarse, y abrirse sola a la hora de sus tareas")
+        self.modo_hora.setToolTip(
+            "No ocupa memoria el resto del día. A la hora de una tarea el sistema abre a Pandex,\n"
+            "la hace y se cierra. Si la PC estaba apagada, la hace apenas la prendas.")
+        (self.modo_hora if self.config.datos.get("modo") == "a_la_hora" else self.modo_siempre).setChecked(True)
+        interno.addWidget(self.modo_siempre)
+        interno.addWidget(self.modo_hora)
+        nota_modo = QLabel("Las horas se eligen en «Tareas». En los dos modos, si la PC estuvo apagada "
+                           "a esa hora, la tarea se hace apenas vuelvas.")
+        nota_modo.setProperty("rol", "suave")
+        nota_modo.setWordWrap(True)
+        interno.addWidget(nota_modo)
+        interno.addSpacing(4)
         self.avisar_nuevas = QCheckBox("Avisarme cuando haya una versión nueva (revisa una vez al día)")
         self.avisar_nuevas.setChecked(bool(self.config.datos.get("buscar_actualizaciones", True)))
         interno.addWidget(self.avisar_nuevas)
@@ -466,8 +483,8 @@ class DialogoConfiguracion(QDialog):
         pagina = QWidget()
         caja = QVBoxLayout(pagina)
         caja.setContentsMargins(0, 0, 0, 0)
-        caja.addLayout(_titulo("Tareas", "Actívalas y elige si corren solas. Pandex tiene que "
-                                         "estar abierto a esa hora."))
+        caja.addLayout(_titulo("Tareas", "Actívalas y elige si corren solas. Si la PC está apagada "
+                                         "a esa hora, se hacen apenas la prendas."))
         self.filas = {}
         if not self.tareas:
             vacio = QLabel("No hay tareas en la carpeta tasks/.")
@@ -497,6 +514,13 @@ class DialogoConfiguracion(QDialog):
                 descripcion.setProperty("rol", "suave")
                 descripcion.setWordWrap(True)
                 interno.addWidget(descripcion)
+            if not extras.disponible(tarea):
+                # función opcional que no instalaste: Pandex no la carga ni la muestra en el menú
+                activa.setEnabled(False)
+                interno.addLayout(self._fila_instalar(tarea.requiere))
+                filas.addWidget(tarjeta)
+                self.filas[tarea.id] = (activa, None)
+                continue
             if not getattr(tarea, "programable", True):
                 # pide algo antes de empezar (p. ej. qué archivos): no tiene sentido a una hora fija
                 cron = None
@@ -517,6 +541,40 @@ class DialogoConfiguracion(QDialog):
         scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
         caja.addWidget(scroll, 1)
         return pagina
+
+    def _fila_instalar(self, extra):
+        datos = extras.EXTRAS[extra]
+        fila = QHBoxLayout()
+        nota = QLabel(f"No está instalada ({datos['peso']}). Si no la usas, Pandex queda más liviano.")
+        nota.setProperty("rol", "suave")
+        nota.setWordWrap(True)
+        boton = QPushButton(iconos.icono("descargar"), "Instalar")
+        fila.addWidget(nota, 1)
+        fila.addWidget(boton)
+
+        def instalar():
+            from .actualizacion import _Hilo
+
+            boton.setEnabled(False)
+            nota.setText("Instalando… tarda unos minutos. Puedes seguir usando Pandex.")
+
+            def trabajo(_aviso):
+                try:
+                    extras.instalar(extra)
+                except extras.ErrorExtra as exc:
+                    return str(exc)
+                return None
+
+            hilo = _Hilo(trabajo)
+            hilo.listo.connect(lambda error: nota.setText(
+                error or f"✓ Listo: «{datos['nombre']}» ya está en el menú."))
+            hilo.listo.connect(lambda error: boton.setEnabled(bool(error)))
+            hilo.fallo.connect(nota.setText)
+            self._hilo_extra = hilo
+            hilo.start()
+
+        boton.clicked.connect(instalar)
+        return fila
 
     def _pagina_acerca(self):
         pagina = QWidget()
@@ -596,6 +654,7 @@ class DialogoConfiguracion(QDialog):
             except Exception as exc:
                 QMessageBox.warning(self, "Arranque automático", f"No pude cambiarlo:\n{exc}")
         self.config.datos["arrancar_con_windows"] = accesos.arranca_con_el_sistema()
+        self.config.datos["modo"] = "a_la_hora" if self.modo_hora.isChecked() else "siempre"
 
         self.config.guardar()
         self.accept()

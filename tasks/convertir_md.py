@@ -15,6 +15,7 @@ class Task:
     descripcion = "Convierte PDF, Word, PowerPoint, Excel y más a .md, sin IA"
     schedule = None
     programable = False  # cada vez eliges qué convertir: no corre sola a una hora
+    requiere = "markdown"  # opcional: si no lo instalaste, no aparece (ver pandex/extras.py)
 
     def preparar(self, ctx):
         from pandex.markdown.navegador import Navegador  # Qt: solo al abrirlo

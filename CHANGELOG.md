@@ -8,9 +8,16 @@ cuando buscas actualizaciones desde el menú.
 - **Pandex funciona en Linux.** Hay un instalador (`./instalar.sh`) y una guía corta:
   [docs/linux.md](docs/linux.md). Los accesos directos, el arranque automático y las
   carpetas de datos usan las rutas de Linux.
-- **Canvas con Firefox.** En Linux, iniciar sesión en Canvas usa Firefox; ya no hace falta
-  Chrome ni Chromium. En Windows sigue igual (Chrome), y se puede elegir con
-  `"navegador": "firefox"`.
+- **Canvas con tu Firefox.** En Linux, iniciar sesión en Canvas usa el Firefox que ya tienes
+  (con un perfil aparte): no se descarga ningún navegador. En Windows sigue igual (Chrome).
+- **Más liviano: «Convertir a Markdown» es opcional.** El instalador pregunta; si no lo quieres,
+  Pandex no lo instala ni lo muestra (en Linux: 340 MB en vez de unos 840 MB). Se puede añadir
+  después en Configuración → Tareas → Instalar.
+- **A su hora, aunque la PC haya estado apagada.** Si una tarea tocaba con la PC apagada o
+  suspendida, se hace apenas vuelves. Y en Configuración → Comportamiento puedes elegir que
+  Pandex se cierre y el sistema lo abra solo a la hora de sus tareas (no ocupa memoria el resto
+  del día).
+- **Arreglado:** el horario «de lunes a viernes» corría de martes a sábado.
 - **OneDrive en Linux.** Configuración → OneDrive → *Conectar una cuenta…*: tu OneDrive
   (personal, de la universidad o los dos) aparece como una carpeta y Pandex trabaja directo
   ahí, igual que en Windows. Usa rclone. Si OneDrive no está disponible, Pandex no sincroniza

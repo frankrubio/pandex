@@ -1,0 +1,16 @@
+# «Convertir a Markdown» (opcional): PDF, Word, PowerPoint, Excel y más a .md, todo local y sin IA.
+# Pandex lo instala si lo pides en el instalador o en Configuración → Tareas.
+#   .venv/bin/python -m pip install -r requirements-markdown.txt          (Linux)
+#   .venv\Scripts\python.exe -m pip install -r requirements-markdown.txt   (Windows)
+markitdown[pdf,docx,pptx,xlsx,xls]==0.1.8
+pypdfium2==5.13.0
+charset-normalizer==3.5.1
+
+# OCR que trae Windows (respaldo para PDFs escaneados). En Linux se usa Tesseract, si está instalado.
+winrt-runtime==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"
+winrt-Windows.Globalization==3.2.1; sys_platform == "win32"
+winrt-Windows.Graphics.Imaging==3.2.1; sys_platform == "win32"
+winrt-Windows.Media.Ocr==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"

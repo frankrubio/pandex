@@ -9,11 +9,11 @@ y convierte documentos a Markdown. Núcleo genérico en `pandex/`; funciones enc
 
 ## Comandos
 ```
-python -m venv .venv && .venv/bin/python -m pip install -r requirements.txt   # Windows: .venv\Scripts\python.exe
+python -m venv .venv && .venv/bin/python -m pip install -r requirements.txt -r requirements-markdown.txt   # Windows: .venv\Scripts\python.exe
 QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -t . -v   # Windows: sin la variable
 QT_QPA_PLATFORM=offscreen .venv/bin/python main.py --test
 ```
-Las dependencias `winrt-*` (OCR) solo se instalan en Windows. La CI corre en Windows y Ubuntu (3.12 y 3.13).
+«Convertir a Markdown» es opcional (`requirements-markdown.txt`, ver `pandex/extras.py`). Las `winrt-*` solo en Windows; Playwright solo en Windows (en Linux, Selenium con el Firefox del sistema). La CI corre en Windows y Ubuntu (3.12 y 3.13).
 
 ## Reglas
 - Textos de interfaz y documentos: español de Perú neutro, directos y breves.

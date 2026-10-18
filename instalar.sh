@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Instala Pandex en Linux: entorno virtual, dependencias, Firefox para Canvas y el acceso directo.
+# Instala Pandex en Linux: entorno virtual, dependencias y el acceso directo.
+# Usa tu Firefox para Canvas (no descarga otro navegador).
 # Uso:  ./instalar.sh      (si no abre:  bash instalar.sh)
 set -u
 cd "$(dirname "$0")"
@@ -29,14 +30,35 @@ if [ ! -x .venv/bin/python ]; then
     "$PY" -m venv .venv || { echo " Falta el módulo venv. Debian/Ubuntu: sudo apt install python3-venv"; fallo; }
 fi
 
-# 3. Dependencias
+# 3. Dependencias (lo básico: mascota, tareas y Canvas)
 echo " Instalando dependencias: la primera vez tarda unos minutos..."
 .venv/bin/python -m pip install --upgrade pip --quiet
 .venv/bin/python -m pip install -r requirements.txt --quiet || fallo
 
-# 4. Firefox para iniciar sesión en Canvas (el de Playwright; no toca tu Firefox)
-echo " Descargando Firefox para iniciar sesión en Canvas (unos 80 MB, solo esta vez)..."
-.venv/bin/python -m playwright install firefox || fallo
+# 4. «Convertir a Markdown» es opcional (unos 280 MB). Se puede añadir después en
+#    Configuración → Tareas. Para no preguntar:  PANDEX_MARKDOWN=si ./instalar.sh  (o =no)
+if .venv/bin/python -c "import markitdown" >/dev/null 2>&1; then
+    QUIERE=si   # ya lo tenías: se actualiza
+else
+    QUIERE="${PANDEX_MARKDOWN:-}"
+    if [ -z "$QUIERE" ]; then
+        echo
+        read -r -p " ¿Instalar también «Convertir a Markdown» (PDF, Word, PowerPoint a .md; unos 280 MB)? [s/N] " QUIERE
+    fi
+fi
+case "$QUIERE" in
+    s|S|si|sí|Si|Sí|SI|y|Y|yes)
+        echo " Instalando «Convertir a Markdown»..."
+        .venv/bin/python -m pip install -r requirements-markdown.txt --quiet || fallo ;;
+    *) echo " Sin «Convertir a Markdown»: Pandex queda más liviano." ;;
+esac
+
+# Navegador para Canvas: tu Firefox (no se descarga ninguno)
+if ! command -v firefox >/dev/null 2>&1 && ! command -v firefox-esr >/dev/null 2>&1; then
+    echo
+    echo " AVISO: no encontré Firefox. Pandex lo usa para que inicies sesión en Canvas."
+    echo "   Instálalo con: sudo apt install firefox"
+fi
 
 # 5. Acceso directo (menú de aplicaciones y Escritorio)
 .venv/bin/python -m pandex.accesos || fallo
@@ -51,13 +73,10 @@ if ! command -v rclone >/dev/null 2>&1; then
     echo
     echo " Opcional: para usar tu OneDrive (Configuración → OneDrive): sudo apt install rclone fuse3"
 fi
-if ! command -v tesseract >/dev/null 2>&1; then
+if .venv/bin/python -c "import markitdown" >/dev/null 2>&1 && ! command -v tesseract >/dev/null 2>&1; then
     echo
     echo " Opcional: para leer PDFs escaneados (OCR): sudo apt install tesseract-ocr tesseract-ocr-spa"
 fi
-echo
-echo " Si Firefox no abre al conectar Canvas, falta alguna librería del sistema:"
-echo "   sudo .venv/bin/python -m playwright install-deps firefox"
 echo
 echo " Listo. Abre Pandex desde el menú de aplicaciones o con:  .venv/bin/python main.py"
 echo " La primera vez te va a guiar para conectar tu Canvas."

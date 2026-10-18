@@ -166,6 +166,8 @@ class Sesion(unittest.TestCase):
     def setUp(self):
         self.perfil_original = sesion.PERFIL
         self.sync_original = sesion.sync_playwright
+        self.error_original = sesion.PlaywrightError
+        sesion.PlaywrightError = type("ErrorDePlaywright", (Exception,), {})  # sin Playwright instalado
         self.espera_original = sesion.ESPERA_SSO
         sesion.ESPERA_SSO = 0.3  # no esperar 20 s de verdad
         sesion.PERFIL = Path(tempfile.mkdtemp()) / "perfil"
@@ -175,6 +177,7 @@ class Sesion(unittest.TestCase):
         shutil.rmtree(sesion.PERFIL.parent, ignore_errors=True)
         sesion.PERFIL = self.perfil_original
         sesion.sync_playwright = self.sync_original
+        sesion.PlaywrightError = self.error_original
         sesion.ESPERA_SSO = self.espera_original
 
     def navegador(self, *valida_tras):

@@ -157,3 +157,51 @@ class MontajeReal(ConDatosTemporales):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+import tests.test_canvas_sincronizar as _sincronizar  # noqa: E402  (módulo: no repite sus pruebas aquí)
+
+
+@unittest.skipUnless(shutil.which("rclone") and shutil.which("fusermount3") and os.path.exists("/dev/fuse"),
+                     "hace falta rclone y FUSE")
+class SincronizarDentroDeOneDrive(_sincronizar.ConfiguracionClasica):
+    """Las mismas pruebas de «Sincronizar Canvas», con la carpeta de cursos dentro de un
+    OneDrive montado: tiene que reconocer las carpetas y la estructura que ya había, igual
+    que en una carpeta local."""
+
+    def setUp(self):
+        super().setUp()  # arma Ciclo/Calculo/Sem 6/Material de clase… en una carpeta local
+        nube = self.tmp / "nube"
+        nube.mkdir()
+        shutil.move(str(self.ciclo), str(nube / "Ciclo"))  # …y lo sube «a la nube»
+        datos = self.tmp / "datos-od"
+        datos.mkdir()
+        for nombre, valor in (("CONF", datos / "rclone.conf"), ("CUENTAS", datos / "cuentas.json"),
+                              ("DATOS", datos)):
+            parche = mock.patch.object(od, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
+        (datos / "rclone.conf").write_text(f"[pandex-prueba]\ntype = alias\nremote = {nube}\n")
+        self.cuenta = od.Cuenta("pandex-prueba", "Prueba", "business", str(self.tmp / "casa" / "OneDrive - Prueba"))
+        od._guardar([self.cuenta])
+        try:
+            od.montar(self.cuenta)
+        except od.ErrorOneDrive as exc:
+            self.skipTest(f"no se pudo montar: {exc}")
+        self.ciclo = self.cuenta.ruta / "Ciclo"
+        self.params["destino"] = str(self.ciclo)
+
+    def tearDown(self):
+        od.desmontar(self.cuenta)  # antes de borrar la carpeta temporal
+        super().tearDown()
+
+    def test_lo_que_ya_estaba_en_onedrive_se_reconoce(self):
+        r, _ = self.sincronizar(self.params)
+        # «Clase 6.pdf» ya estaba en Calculo/Sem 6/Material de clase: no se vuelve a bajar
+        self.assertTrue(any(linea.startswith("ya lo tenías") and "Clase 6.pdf" in linea
+                            for linea in r["detalle"]), r["detalle"])
+        clase = list((self.ciclo / "Calculo" / "Sem 6" / "Material de clase").iterdir())
+        self.assertEqual(sum(1 for f in clase if f.name.startswith("Clase 6")), 1)
+        # la carpeta «Laboratorio» que ya existía se usa, en vez de crear «Lab»
+        self.assertTrue((self.ciclo / "Programacion_I" / "Sem 6" / "Laboratorio").is_dir())
+        self.assertFalse((self.ciclo / "Programacion_I" / "Sem 6" / "Lab").exists())

@@ -37,12 +37,12 @@ class Programador:
             from apscheduler.schedulers.background import BackgroundScheduler
 
             self._sched = BackgroundScheduler(daemon=True)
-        from apscheduler.triggers.cron import CronTrigger
+        from .pendientes import disparador
 
         for task_id, cron in horarios:
             try:
                 self._sched.add_job(
-                    self.disparar, CronTrigger.from_crontab(cron), args=[task_id],
+                    self.disparar, disparador(cron), args=[task_id],
                     id=task_id, replace_existing=True, misfire_grace_time=3600, coalesce=True,
                 )
                 log.info("tarea %s programada con cron '%s'", task_id, cron)

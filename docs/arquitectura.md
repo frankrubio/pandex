@@ -17,6 +17,9 @@ devuelven.
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
+| `pandex/pendientes.py` | Qué tarea programada se perdió (PC apagada o suspendida) y hay que hacer ya. Sin Qt. |
+| `pandex/despertador.py` | Modo «a la hora»: temporizador de systemd (Linux) o tarea programada (Windows) que lanza `main.py --pendientes`. |
+| `pandex/extras.py` | Funciones opcionales (hoy, «Convertir a Markdown» = `requirements-markdown.txt`). |
 | `pandex/onedrive.py` | Linux: conecta y monta OneDrive con rclone (`~/OneDrive`, `~/OneDrive - Nombre`); `asegurar()` impide escribir si no está montado. La pantalla está en `pandex/ui/onedrive.py`. |
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque) y su ícono. |
 | `pandex/horas.py` | Horas y fechas para el usuario, en formato de 12 horas (*7:05 p. m.*). |
@@ -194,7 +197,7 @@ proporciones no):
 Qué se carga y cuándo:
 
 - **Al arrancar:** Qt, la mascota, el menú y las tareas (solo su parte liviana).
-- **`playwright`** (`canvas/sesion.py → _cargar`): al iniciar sesión en Canvas.
+- **`playwright`** (Windows) o **`selenium`** con tu Firefox (Linux, `canvas/firefox.py`): al iniciar sesión en Canvas.
 - **`requests`** (`canvas/cliente.py`, `actualizar.py`): al sincronizar o buscar actualizaciones.
 - **APScheduler** (`programador.py`): solo si alguna tarea tiene horario.
 - **MarkItDown** (`markdown/proceso.py`): en un proceso hijo que se cierra al terminar; Python

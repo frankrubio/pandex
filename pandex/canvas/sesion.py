@@ -10,6 +10,7 @@ cierra apenas la sesión es válida.
 
 import sys
 import time
+from contextlib import contextmanager
 
 from ..rutas import DATOS
 from .cliente import CanvasError
@@ -19,8 +20,8 @@ PERFIL_FIREFOX = DATOS / "browser-profile-firefox"
 ESPERA_SSO = 20  # segundos para que un login institucional (SSO) termine solo
 
 
-# Playwright se carga al usarlo, no al abrir Pandex: son ~14 MB y ~0,1 s de arranque
-# que la mascota no necesita mientras no inicies sesión en Canvas.
+# Playwright (Windows) y Selenium (Linux) se cargan al usarlos, no al abrir Pandex: la
+# mascota no los necesita mientras no inicies sesión en Canvas.
 PlaywrightError = None
 sync_playwright = None
 
@@ -36,13 +37,20 @@ def _cargar():
 
 
 def error_navegador():
-    """La clase de error de Playwright, para usarla en un ``except``."""
-    _cargar()
-    return PlaywrightError
+    """Las clases de error del navegador (Playwright y/o Firefox), para un ``except``."""
+    from .firefox import ErrorFirefox
+
+    errores = [ErrorFirefox]
+    try:
+        _cargar()
+        errores.append(PlaywrightError)
+    except ImportError:  # en Linux no se instala Playwright
+        pass
+    return tuple(errores)
 
 
 def elegir_navegador(navegador="auto", usar_chrome=True):
-    """``"firefox"`` o ``"chrome"``. ``"auto"``: Firefox en Linux; en Windows, Chrome
+    """``"firefox"`` o ``"chrome"``. ``"auto"``: tu Firefox en Linux; en Windows, Chrome
     (o el Chromium de Playwright si no está instalado)."""
     if navegador in ("firefox", "chrome"):
         return navegador
@@ -50,7 +58,11 @@ def elegir_navegador(navegador="auto", usar_chrome=True):
 
 
 def _perfil(navegador):
-    return PERFIL_FIREFOX if navegador == "firefox" else PERFIL
+    if navegador == "firefox":
+        from .firefox import perfil_para
+
+        return perfil_para(PERFIL_FIREFOX)
+    return PERFIL
 
 
 def _hay_perfil(navegador):
@@ -64,8 +76,6 @@ def _abrir_contexto(pw, headless, usar_chrome, navegador="chrome"):
     carpeta.mkdir(parents=True, exist_ok=True)
     opciones = {"user_data_dir": str(carpeta), "headless": headless,
                 "viewport": {"width": 1366, "height": 900}}
-    if navegador == "firefox":
-        return pw.firefox.launch_persistent_context(**opciones)
     if usar_chrome:
         try:
             return pw.chromium.launch_persistent_context(channel="chrome", **opciones)
@@ -74,10 +84,23 @@ def _abrir_contexto(pw, headless, usar_chrome, navegador="chrome"):
     return pw.chromium.launch_persistent_context(**opciones)
 
 
+@contextmanager
+def _abridor(navegador, usar_chrome):
+    """Da ``abrir(headless) -> contexto`` y los errores a esperar, según el navegador."""
+    if navegador == "firefox":
+        from . import firefox
+
+        yield (lambda headless: firefox.abrir(_perfil("firefox"), headless)), (firefox.ErrorFirefox,)
+        return
+    _cargar()
+    with sync_playwright() as pw:
+        yield (lambda headless: _abrir_contexto(pw, headless, usar_chrome, navegador)), (PlaywrightError,)
+
+
 def _sesion_valida(contexto, base):
     try:
         return contexto.request.get(f"{base}/api/v1/users/self", timeout=15000).status == 200
-    except PlaywrightError:
+    except Exception:  # navegador ocupado redirigiendo o sin red: para nosotros, «todavía no»
         return False
 
 
@@ -113,11 +136,10 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
     Primero prueba sin ventana (si ya hay una sesión guardada); si no alcanza,
     abre el navegador para que entres tú.
     """
-    _cargar()
     navegador = elegir_navegador(navegador, usar_chrome)
-    with sync_playwright() as pw:
+    with _abridor(navegador, usar_chrome) as (abrir, errores):
         if invisible_primero and _hay_perfil(navegador):
-            contexto = _abrir_contexto(pw, True, usar_chrome, navegador)
+            contexto = abrir(True)
             try:
                 page, ua = _pagina(contexto)
                 page.goto(base, wait_until="domcontentloaded", timeout=60000)
@@ -129,13 +151,13 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
             ctx.log("hace falta iniciar sesión a mano", "warning")
 
         ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador.")
-        contexto = _abrir_contexto(pw, False, usar_chrome, navegador)
+        contexto = abrir(False)
         try:
             page, ua = _pagina(contexto)
             page.goto(base, wait_until="domcontentloaded", timeout=60000)
             try:
                 dentro = _esperar_sesion(contexto, page, base, espera_login, 2000)
-            except PlaywrightError as exc:
+            except errores as exc:
                 raise CanvasError("Cerraste el navegador antes de terminar de iniciar sesión.") from exc
             if not dentro:
                 raise CanvasError("Se acabó el tiempo para iniciar sesión en Canvas.")
@@ -150,17 +172,16 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
 
 
 def mensaje_de_error(exc):
-    """Una frase útil para el globo a partir de un error de Playwright."""
-    if "net::ERR" in str(exc):
-        return "No hay conexión: no pude llegar a Canvas."
+    """Una frase útil para el globo a partir de un error del navegador."""
     texto = str(exc)
+    if "net::ERR" in texto:
+        return "No hay conexión: no pude llegar a Canvas."
+    from .firefox import ErrorFirefox
+
+    if isinstance(exc, ErrorFirefox):
+        return texto if texto.startswith(("No encontré", "Falta", "No pude")) else \
+            "No pude abrir Firefox para entrar a Canvas."
     if "Executable doesn't exist" in texto:
-        if elegir_navegador() == "firefox" and "firefox" in texto.lower():
-            return ("Falta Firefox para iniciar sesión. Ejecuta ./instalar.sh o: "
-                    ".venv/bin/python -m playwright install firefox")
         return ("No encontré un navegador. Instala Google Chrome o ejecuta: "
                 "python -m playwright install chromium")
-    if "missing dependencies" in texto.lower():
-        return ("A Firefox le faltan librerías del sistema. Ejecuta: "
-                "sudo .venv/bin/python -m playwright install-deps firefox")
     return "No pude abrir el navegador para entrar a Canvas."
