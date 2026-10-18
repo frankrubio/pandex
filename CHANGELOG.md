@@ -20,6 +20,9 @@ cuando buscas actualizaciones desde el menú.
 - **Carpetas nuevas sin tildes ni ñ.** Pandex crea «Teoria» en vez de «Teoría» (algunas apps y
   OneDrive en Linux fallan con ellas). Tus carpetas existentes se reconocen igual y no se
   renombran. Para volver a usar tildes: `"carpetas_sin_tildes": false` en la tarea.
+- **Comprimir carpeta.** Nueva tarea en el menú: crea un .zip de la carpeta que elijas, listo para
+  subir a un drive. Si tienes Ghostscript, también aligera los PDF (los escaneados bajan mucho:
+  en una prueba, de 4 MB a 0,6 MB). Tus archivos originales no se tocan.
 - **Arreglado:** el horario «de lunes a viernes» corría de martes a sábado.
 - **OneDrive en Linux.** Configuración → OneDrive → *Conectar una cuenta…*: tu OneDrive
   (personal, de la universidad o los dos) aparece como una carpeta y Pandex trabaja directo

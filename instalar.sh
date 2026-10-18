@@ -77,6 +77,10 @@ if .venv/bin/python -c "import markitdown" >/dev/null 2>&1 && ! command -v tesse
     echo
     echo " Opcional: para leer PDFs escaneados (OCR): sudo apt install tesseract-ocr tesseract-ocr-spa"
 fi
+if ! command -v gs >/dev/null 2>&1; then
+    echo
+    echo " Opcional: para aligerar PDFs al comprimir carpetas: sudo apt install ghostscript"
+fi
 echo
 echo " Listo. Abre Pandex desde el menú de aplicaciones o con:  .venv/bin/python main.py"
 echo " La primera vez te va a guiar para conectar tu Canvas."

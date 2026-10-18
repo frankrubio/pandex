@@ -39,7 +39,7 @@ class Configuracion(unittest.TestCase):
 class Descubrir(unittest.TestCase):
     def test_las_tareas_del_proyecto(self):
         ids = {t.id for t in tareas.descubrir(TASKS_DIR)}
-        self.assertEqual(ids, {"sync_canvas", "convertir_md", "ejemplo_saludo"})
+        self.assertEqual(ids, {"sync_canvas", "convertir_md", "ejemplo_saludo", "comprimir"})
 
     def test_un_archivo_roto_no_tumba_nada(self):
         carpeta = Path(tempfile.mkdtemp())
