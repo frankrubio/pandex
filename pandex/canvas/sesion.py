@@ -1,18 +1,21 @@
 """Iniciar sesión en Canvas con un navegador de verdad, y cerrarlo enseguida.
 
 Pandex nunca ve ni guarda tu usuario o contraseña: inicias sesión tú, en una
-ventana de Chrome con un perfil propio (``%LOCALAPPDATA%\\Pandex\\browser-profile``).
+ventana de Chrome (Windows) o de Firefox (Linux) con un perfil propio, dentro de la
+carpeta de datos de Pandex.
 Ese perfil recuerda la sesión, así que las siguientes veces entra solo y sin
 ventanas. De ahí se sacan las cookies para hablar con la API; el navegador se
 cierra apenas la sesión es válida.
 """
 
+import sys
 import time
 
 from ..rutas import DATOS
 from .cliente import CanvasError
 
 PERFIL = DATOS / "browser-profile"
+PERFIL_FIREFOX = DATOS / "browser-profile-firefox"
 ESPERA_SSO = 20  # segundos para que un login institucional (SSO) termine solo
 
 
@@ -38,10 +41,31 @@ def error_navegador():
     return PlaywrightError
 
 
-def _abrir_contexto(pw, headless, usar_chrome):
-    PERFIL.mkdir(parents=True, exist_ok=True)
-    opciones = {"user_data_dir": str(PERFIL), "headless": headless,
+def elegir_navegador(navegador="auto", usar_chrome=True):
+    """``"firefox"`` o ``"chrome"``. ``"auto"``: Firefox en Linux; en Windows, Chrome
+    (o el Chromium de Playwright si no está instalado)."""
+    if navegador in ("firefox", "chrome"):
+        return navegador
+    return "firefox" if sys.platform.startswith("linux") else "chrome"
+
+
+def _perfil(navegador):
+    return PERFIL_FIREFOX if navegador == "firefox" else PERFIL
+
+
+def _hay_perfil(navegador):
+    """¿Ya se inició sesión alguna vez con este navegador? (Si no, ni intentar sin ventana.)"""
+    carpeta = _perfil(navegador)
+    return (carpeta / ("cookies.sqlite" if navegador == "firefox" else "Default")).exists()
+
+
+def _abrir_contexto(pw, headless, usar_chrome, navegador="chrome"):
+    carpeta = _perfil(navegador)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    opciones = {"user_data_dir": str(carpeta), "headless": headless,
                 "viewport": {"width": 1366, "height": 900}}
+    if navegador == "firefox":
+        return pw.firefox.launch_persistent_context(**opciones)
     if usar_chrome:
         try:
             return pw.chromium.launch_persistent_context(channel="chrome", **opciones)
@@ -81,7 +105,8 @@ def _pagina(contexto):
     return page, page.evaluate("navigator.userAgent")
 
 
-def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_primero=True):
+def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_primero=True,
+                   navegador="auto"):
     """Entra a Canvas y devuelve ``(cookies, user_agent)``.
 
     ``ctx`` es cualquier objeto con ``log(msg, nivel)`` y ``decir(texto)``.
@@ -89,9 +114,10 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
     abre el navegador para que entres tú.
     """
     _cargar()
+    navegador = elegir_navegador(navegador, usar_chrome)
     with sync_playwright() as pw:
-        if invisible_primero and (PERFIL / "Default").exists():
-            contexto = _abrir_contexto(pw, True, usar_chrome)
+        if invisible_primero and _hay_perfil(navegador):
+            contexto = _abrir_contexto(pw, True, usar_chrome, navegador)
             try:
                 page, ua = _pagina(contexto)
                 page.goto(base, wait_until="domcontentloaded", timeout=60000)
@@ -103,7 +129,7 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
             ctx.log("hace falta iniciar sesión a mano", "warning")
 
         ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador.")
-        contexto = _abrir_contexto(pw, False, usar_chrome)
+        contexto = _abrir_contexto(pw, False, usar_chrome, navegador)
         try:
             page, ua = _pagina(contexto)
             page.goto(base, wait_until="domcontentloaded", timeout=60000)
@@ -127,7 +153,14 @@ def mensaje_de_error(exc):
     """Una frase útil para el globo a partir de un error de Playwright."""
     if "net::ERR" in str(exc):
         return "No hay conexión: no pude llegar a Canvas."
-    if "Executable doesn't exist" in str(exc):
+    texto = str(exc)
+    if "Executable doesn't exist" in texto:
+        if elegir_navegador() == "firefox" and "firefox" in texto.lower():
+            return ("Falta Firefox para iniciar sesión. Ejecuta ./instalar.sh o: "
+                    ".venv/bin/python -m playwright install firefox")
         return ("No encontré un navegador. Instala Google Chrome o ejecuta: "
                 "python -m playwright install chromium")
+    if "missing dependencies" in texto.lower():
+        return ("A Firefox le faltan librerías del sistema. Ejecuta: "
+                "sudo .venv/bin/python -m playwright install-deps firefox")
     return "No pude abrir el navegador para entrar a Canvas."

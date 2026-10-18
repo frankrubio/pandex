@@ -79,11 +79,14 @@ def raices(extra=()):
         institucion = d.name.removeprefix("OneDrive - ")
         salida.append((f"OneDrive institucional · {institucion}", d))
     # el Escritorio puede estar dentro de OneDrive (copia de seguridad de carpetas)
-    escritorio = next((d for d in (casa / "Desktop", casa / "OneDrive" / "Desktop",
-                                   casa / "OneDrive" / "Escritorio") if d.is_dir()), None)
-    for etiqueta, ruta in (("Escritorio", escritorio), ("Descargas", casa / "Downloads"),
-                           ("Documentos", casa / "Documents")):
-        if ruta is not None and ruta.is_dir():
+    # (en Linux en español se llaman Escritorio, Descargas y Documentos)
+    def primera(*nombres):
+        return next((d for d in (casa / n for n in nombres) if d.is_dir()), None)
+
+    escritorio = primera("Desktop", "Escritorio", "OneDrive/Desktop", "OneDrive/Escritorio")
+    for etiqueta, ruta in (("Escritorio", escritorio), ("Descargas", primera("Downloads", "Descargas")),
+                           ("Documentos", primera("Documents", "Documentos"))):
+        if ruta is not None:
             salida.append((etiqueta, ruta))
     return salida
 

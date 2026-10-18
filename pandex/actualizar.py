@@ -305,4 +305,4 @@ def instalar_dependencias(raiz=RAIZ):
         log.error("pip falló: %s", r.stderr)
         raise ErrorActualizacion(
             "Los archivos se actualizaron, pero no pude instalar las dependencias nuevas. "
-            "Ejecuta instalar.bat para terminar.")
+            "Ejecuta " + ("instalar.bat" if sys.platform == "win32" else "./instalar.sh") + " para terminar.")

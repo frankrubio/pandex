@@ -192,6 +192,7 @@ class Sincronizacion:
             cookies, ua = sesion.iniciar_sesion(
                 ctx, base_url, p.get("usar_chrome_instalado", True),
                 p.get("espera_login_segundos", 300), p.get("headless", True),
+                p.get("navegador", "auto"),
             )
         except CanvasError as exc:
             return {"ok": False, "resumen": str(exc), "detalle": [str(exc)]}

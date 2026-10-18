@@ -3,6 +3,19 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.4.0
+
+- **Pandex funciona en Linux.** Hay un instalador (`./instalar.sh`) y una guía corta:
+  [docs/linux.md](docs/linux.md). Los accesos directos, el arranque automático y las
+  carpetas de datos usan las rutas de Linux.
+- **Canvas con Firefox.** En Linux, iniciar sesión en Canvas usa Firefox; ya no hace falta
+  Chrome ni Chromium. En Windows sigue igual (Chrome), y se puede elegir con
+  `"navegador": "firefox"`.
+- **OCR en Linux** con Tesseract, si lo tienes instalado (opcional).
+- La ventana «Abrir carpeta» del resumen y los nombres de carpetas (Escritorio, Descargas,
+  Documentos) también funcionan en español de Linux.
+- Las pruebas automáticas ahora corren también en Ubuntu.
+
 ## 2.3.1
 
 - **Buscar actualizaciones dice la causa real.** Antes, cualquier falla mostraba «revisa tu

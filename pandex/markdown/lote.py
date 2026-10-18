@@ -6,7 +6,7 @@ Reglas:
 - el .md va junto al original; si ya existe se salta, salvo que se pida forzar;
 - forzar solo reescribe .md que generó Pandex (llevan una marca en la línea 1);
 - audio y video no se tocan: MarkItDown solo los entiende transcribiendo por internet;
-- si el texto sale muy corto, en PDFs e imágenes se intenta el OCR de Windows
+- si el texto sale muy corto, en PDFs e imágenes se intenta el OCR del sistema
   (local y gratis); lo que siga corto se reporta para revisar.
 """
 
@@ -27,7 +27,7 @@ from .archivos import (
     ruta_md,
 )
 from .clasificador import Clasificador
-from .conversion import OcrLocal, crear_markitdown, limpiar_pdf, motivo_legible
+from .conversion import crear_markitdown, crear_ocr, limpiar_pdf, motivo_legible
 
 
 def convertir(ctx):
@@ -87,7 +87,7 @@ def convertir(ctx):
         ctx.decir(f"Reviso {len(convertibles)} archivo(s)…")
         motor = crear_markitdown()
         if ctx.params.get("ocr_local", True):
-            ocr = OcrLocal(int(ctx.params.get("ocr_max_paginas", 60)))
+            ocr = crear_ocr(int(ctx.params.get("ocr_max_paginas", 60)))
             if not ocr.disponible:
                 ctx.log(ocr.motivo, "warning")
 
@@ -127,7 +127,7 @@ def convertir(ctx):
                         ctx.log(f"OCR falló en {archivo.name}: {exc}", "warning")
                     else:
                         if len(texto_ocr.strip()) > len(texto.strip()):
-                            texto, via = texto_ocr, f"OCR de Windows ({ocr.idioma})"
+                            texto, via = texto_ocr, f"{ocr.nombre} ({ocr.idioma})"
                             con_ocr.append((archivo, len(texto.strip()), nota))
 
                 try:
@@ -213,7 +213,7 @@ def _informe(origen, modo, umbral, revisados, reales, ya, fallidos, sin_ia, omit
         fila("Posible contenido-imagen ", len(cortos), "   (revisar)"),
     ]
     if con_ocr:
-        l.append(fila("Leídos con OCR de Windows ", len(con_ocr)))
+        l.append(fila("Leídos con OCR ", len(con_ocr)))
     if protegidos:
         l.append(fila(".md tuyos que no se pisaron ", len(protegidos)))
     if ocr_motivo and cortos:
@@ -230,7 +230,7 @@ def _informe(origen, modo, umbral, revisados, reales, ya, fallidos, sin_ia, omit
         [f"{a.name} — {n} caracteres  [{a.parent}]" for a, n in cortos],
     )
     seccion(
-        "LEÍDOS CON OCR DE WINDOWS  (revisa: el OCR puede confundir letras)",
+        "LEÍDOS CON OCR  (revisa: el OCR puede confundir letras)",
         [f"{a.name} — {n} caracteres" + (f"  ({nota})" if nota else "")
          for a, n, nota in con_ocr],
     )

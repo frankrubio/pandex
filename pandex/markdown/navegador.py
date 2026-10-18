@@ -114,7 +114,7 @@ class Navegador(QDialog):
         self.buscar.setFixedWidth(240)
         self.buscar.textChanged.connect(self._filtrar)
         self.btn_explorador = QPushButton(iconos.icono("carpeta"), "")
-        self.btn_explorador.setToolTip("Abrir esta carpeta en el Explorador de Windows")
+        self.btn_explorador.setToolTip("Abrir esta carpeta en el explorador de archivos")
         self.btn_explorador.clicked.connect(self._abrir_en_explorador)
         barra = QHBoxLayout()
         barra.setSpacing(8)

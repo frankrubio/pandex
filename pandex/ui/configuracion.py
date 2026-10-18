@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, accesos, personaje_nuevo
+from .. import __version__, accesos, personaje_nuevo, rutas
 from . import iconos, logo, personajes, tema
 
 HORARIOS = (("manual", "Solo cuando lo pida"), ("diario", "Todos los días"),
@@ -434,8 +434,8 @@ class DialogoConfiguracion(QDialog):
                                "En reposo siempre queda quieto y no gasta CPU.")
         self.animar.setChecked(bool(m.get("animar", True)))
         interno.addWidget(self.animar)
-        self.inicio = QCheckBox("Arrancar con Windows")
-        self.inicio.setChecked(accesos.arranca_con_windows())
+        self.inicio = QCheckBox("Arrancar con Windows" if rutas.WINDOWS else "Arrancar al iniciar sesión")
+        self.inicio.setChecked(accesos.arranca_con_el_sistema())
         interno.addWidget(self.inicio)
         self.avisar_nuevas = QCheckBox("Avisarme cuando haya una versión nueva (revisa una vez al día)")
         self.avisar_nuevas.setChecked(bool(self.config.datos.get("buscar_actualizaciones", True)))
@@ -555,7 +555,7 @@ class DialogoConfiguracion(QDialog):
             QMessageBox.warning(self, "Acceso directo", f"No pude crearlo:\n{exc}")
             return
         QApplication.restoreOverrideCursor()
-        QMessageBox.information(self, "Acceso directo", f"Listo: «Pandex» está en tu Escritorio.\n{ruta}")
+        QMessageBox.information(self, "Acceso directo", "Listo: «Pandex» está en tu Escritorio" + ("" if rutas.WINDOWS else " y en el menú de aplicaciones") + f".\n{ruta}")
 
     def _buscar_actualizaciones(self):
         if self._al_buscar:
@@ -582,15 +582,15 @@ class DialogoConfiguracion(QDialog):
             if cron is not None:
                 opciones["schedule"] = cron.valor()
 
-        if self.inicio.isChecked() != accesos.arranca_con_windows():
+        if self.inicio.isChecked() != accesos.arranca_con_el_sistema():
             try:
                 if self.inicio.isChecked():
                     accesos.activar_arranque()
                 else:
                     accesos.desactivar_arranque()
             except Exception as exc:
-                QMessageBox.warning(self, "Arranque con Windows", f"No pude cambiarlo:\n{exc}")
-        self.config.datos["arrancar_con_windows"] = accesos.arranca_con_windows()
+                QMessageBox.warning(self, "Arranque automático", f"No pude cambiarlo:\n{exc}")
+        self.config.datos["arrancar_con_windows"] = accesos.arranca_con_el_sistema()
 
         self.config.guardar()
         self.accept()

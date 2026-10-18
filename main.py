@@ -1,11 +1,12 @@
 """Punto de entrada de Pandex.
 
-    .venv\\Scripts\\pythonw.exe main.py          (sin consola; es lo que usa el acceso directo)
+    .venv\\Scripts\\pythonw.exe main.py          (Windows, sin consola; es lo que usa el acceso directo)
     .venv\\Scripts\\python.exe  main.py --test   (abre y se cierra a los 3 s: prueba de humo)
+    .venv/bin/python main.py                     (Linux)
 """
 
-import ctypes
 import getpass
+import os
 import sys
 
 from PyQt6.QtCore import QLibraryInfo, QTimer, QTranslator
@@ -23,10 +24,21 @@ CANAL = f"Pandex-{getpass.getuser()}"
 
 def identidad_en_windows():
     """Sin esto la barra de tareas agrupa a Pandex bajo el ícono de Python."""
+    if sys.platform != "win32":
+        return
     try:
+        import ctypes
+
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(ID_APP)
     except (AttributeError, OSError):
         pass
+
+
+def preparar_linux():
+    """En Wayland una ventana no puede moverse ni quedar siempre encima: la mascota necesita
+    ambas cosas, así que se abre por XWayland (``xcb``) salvo que el usuario elija otra."""
+    if sys.platform.startswith("linux") and os.environ.get("WAYLAND_DISPLAY"):
+        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
 
 def avisar_al_que_ya_corre():
@@ -59,9 +71,11 @@ def escuchar(app):
 
 def main():
     identidad_en_windows()
+    preparar_linux()
     qapp = QApplication(sys.argv)
     qapp.setQuitOnLastWindowClosed(False)
     qapp.setApplicationName("Pandex")
+    qapp.setDesktopFileName("pandex")  # une la ventana con pandex.desktop (ícono y agrupación en Linux)
     # «Cerrar», «Guardar», «Cancelar»… en vez de Close/Save/Cancel
     traductor = QTranslator(qapp)
     if traductor.load("qtbase_es", QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)):

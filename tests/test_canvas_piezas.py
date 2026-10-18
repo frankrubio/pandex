@@ -228,14 +228,15 @@ class Sesion(unittest.TestCase):
 
     def test_sin_ventana_aunque_la_pagina_siga_navegando(self):
         abiertos = self.navegador(2)
-        cookies, ua = sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu")
+        cookies, ua = sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="chrome")
         self.assertEqual(ua, "Mozilla/5.0")
         self.assertTrue(abiertos[0].headless and abiertos[0].cerrado)
 
     def test_con_ventana_cuando_hace_falta(self):
         abiertos = self.navegador(10 ** 9, 3)
         ctx = self.ctx()
-        cookies, ua = sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", espera_login=60)
+        cookies, ua = sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", espera_login=60,
+                                                navegador="chrome")
         self.assertEqual(len(ctx.globos), 2)
         self.assertTrue(all(c.cerrado for c in abiertos))
         self.assertFalse(abiertos[1].headless)

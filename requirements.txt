@@ -1,11 +1,13 @@
-# Pandex: dependencias directas, con las versiones probadas (Windows 11, Python 3.14).
+# Pandex: dependencias directas, con las versiones probadas (Windows 11 y Linux, Python 3.12 a 3.14).
 # Instalar:  .venv\Scripts\python.exe -m pip install -r requirements.txt   (o ejecuta instalar.bat)
+#            .venv/bin/python -m pip install -r requirements.txt           (o ejecuta ./instalar.sh)
 
 # Interfaz y tareas programadas
 PyQt6==6.11.0
 APScheduler==3.11.3
 
-# Sincronizar Canvas: un navegador solo para iniciar sesión, y la API de Canvas
+# Sincronizar Canvas: un navegador solo para iniciar sesión (Chrome en Windows, Firefox en Linux),
+# y la API de Canvas
 playwright==1.63.0
 requests==2.34.2
 
@@ -15,11 +17,11 @@ pypdfium2==5.13.0
 pillow==12.3.0
 charset-normalizer==3.5.1
 
-# OCR que trae Windows (respaldo para PDFs escaneados)
-winrt-runtime==3.2.1
-winrt-Windows.Foundation==3.2.1
-winrt-Windows.Foundation.Collections==3.2.1
-winrt-Windows.Globalization==3.2.1
-winrt-Windows.Graphics.Imaging==3.2.1
-winrt-Windows.Media.Ocr==3.2.1
-winrt-Windows.Storage.Streams==3.2.1
+# OCR que trae Windows (respaldo para PDFs escaneados). En Linux se usa Tesseract, si está instalado.
+winrt-runtime==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation==3.2.1; sys_platform == "win32"
+winrt-Windows.Foundation.Collections==3.2.1; sys_platform == "win32"
+winrt-Windows.Globalization==3.2.1; sys_platform == "win32"
+winrt-Windows.Graphics.Imaging==3.2.1; sys_platform == "win32"
+winrt-Windows.Media.Ocr==3.2.1; sys_platform == "win32"
+winrt-Windows.Storage.Streams==3.2.1; sys_platform == "win32"

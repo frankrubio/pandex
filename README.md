@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/frankrubio/pandex/actions/workflows/pruebas.yml"><img alt="Pruebas" src="https://github.com/frankrubio/pandex/actions/workflows/pruebas.yml/badge.svg"></a>
-  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-3B6EA8">
+  <img alt="Windows 10/11 y Linux" src="https://img.shields.io/badge/Windows%20%7C%20Linux-3B6EA8">
   <img alt="Python 3.12+" src="https://img.shields.io/badge/Python-3.12%2B-3B6EA8">
   <img alt="Licencia MIT" src="https://img.shields.io/badge/licencia-MIT-D97757">
 </p>
@@ -26,7 +26,7 @@
 
 ## Instalar (5 minutos)
 
-Necesitas **Windows 10 u 11** y **Python**.
+Necesitas **Windows 10 u 11** y **Python**. ¿Usas **Linux**? Ve a [docs/linux.md](docs/linux.md): son 4 comandos y usa Firefox.
 
 1. **Instala Python** desde [python.org/downloads](https://www.python.org/downloads/).
    En la primera pantalla del instalador marca **☑ Add python.exe to PATH**.
@@ -129,7 +129,7 @@ con un clic. Tus cursos y tu configuración no se tocan.
 | Qué pasa | Qué hacer |
 |---|---|
 | Windows bloquea un archivo al abrirlo | Te faltó el paso 3. En PowerShell: `Get-ChildItem "ruta\de\pandex" -Recurse \| Unblock-File`. No desactives el *Control de aplicaciones inteligente*. |
-| *"No encontré un navegador"* | Instala Google Chrome. |
+| *"No encontré un navegador"* | Instala Google Chrome (en Linux: ver [docs/linux.md](docs/linux.md)). |
 | Perdí el acceso directo | Doble clic en **`Pandex.pyw`**, dentro de la carpeta. Luego, en Pandex: Configuración → Comportamiento → **Crear en el Escritorio**. |
 | Empezó otro ciclo | Clic derecho → **Configurar Canvas…** |
 | *"🔒 aún sin abrir en Canvas"* | El docente lo programó para más adelante; Pandex lo baja solo cuando se abra. |

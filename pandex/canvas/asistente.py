@@ -199,7 +199,7 @@ class _AvisosDeSesion:
 def _conectar(estado, avisar):
     cookies, ua = sesion.iniciar_sesion(
         _AvisosDeSesion(avisar), estado.url, estado.params.get("usar_chrome_instalado", True),
-        estado.params.get("espera_login_segundos", 300), True,
+        estado.params.get("espera_login_segundos", 300), True, estado.params.get("navegador", "auto"),
     )
     canvas = Canvas(estado.url, cookies, ua)
     avisar("Leyendo tus cursos…")

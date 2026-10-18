@@ -1,10 +1,9 @@
 """Ventana de resumen al terminar una tarea (si ``run`` devolvió ``"informe"``)."""
 
-import os
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFontMetrics, QGuiApplication
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices, QFontMetrics, QGuiApplication
 from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -48,7 +47,7 @@ class DialogoInforme(QDialog):
         botones.addWidget(copiar)
         if carpeta and Path(carpeta).is_dir():
             abrir = QPushButton("Abrir carpeta")
-            abrir.clicked.connect(lambda: os.startfile(str(carpeta)))
+            abrir.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(carpeta))))
             botones.addWidget(abrir)
         botones.addStretch()
         botones.addWidget(cerrar)
