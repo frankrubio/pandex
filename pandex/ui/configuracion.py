@@ -161,12 +161,17 @@ class DialogoConfiguracion(QDialog):
         self.navegacion.setFixedWidth(180)
         self.navegacion.setIconSize(QSize(16, 16))
         self.paginas = QStackedWidget()
-        for nombre, icono, pagina in (
+        paginas = [
             ("Apariencia", "mostrar", self._pagina_apariencia()),
             ("Comportamiento", "engranaje", self._pagina_comportamiento()),
             ("Tareas", "tarea", self._pagina_tareas()),
             ("Acerca de", "hola", self._pagina_acerca()),
-        ):
+        ]
+        if not rutas.WINDOWS:  # en Windows ya lo hace la app de OneDrive
+            from .onedrive import PaginaOneDrive
+
+            paginas.insert(3, ("OneDrive", "carpeta", PaginaOneDrive(_titulo, _tarjeta)))
+        for nombre, icono, pagina in paginas:
             QListWidgetItem(iconos.icono(icono), nombre, self.navegacion)
             self.paginas.addWidget(pagina)
         self.navegacion.currentRowChanged.connect(self.paginas.setCurrentIndex)

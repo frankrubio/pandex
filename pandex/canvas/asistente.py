@@ -224,7 +224,9 @@ def _carpeta_sugerida():
         onedrive = sorted(d for d in casa.iterdir() if d.name.startswith("OneDrive - ") and d.is_dir())
     except OSError:
         onedrive = []
-    return onedrive[0] if onedrive else casa / "Documents"
+    if onedrive:
+        return onedrive[0]
+    return next((d for d in (casa / "Documents", casa / "Documentos") if d.is_dir()), casa / "Documents")
 
 
 def _texto(html):
@@ -449,7 +451,9 @@ class PaginaCarpeta(QWizardPage):
         caja.addWidget(self.existente)
         caja.addLayout(fila_existente)
         caja.addWidget(_texto("<small>Consejo: si tu universidad te da OneDrive, ponla ahí y "
-                              "tendrás tus cursos respaldados y en el celular.</small>"))
+                              "tendrás tus cursos respaldados y en el celular."
+                              + ("" if os.name == "nt" else " En Linux, primero conéctalo en "
+                                 "Configuración → OneDrive.") + "</small>"))
         caja.addStretch()
         # cada opción habilita solo sus propios campos
         for w in (self.padre, elegir_padre, self.nombre):

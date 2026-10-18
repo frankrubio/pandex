@@ -17,6 +17,7 @@ devuelven.
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
+| `pandex/onedrive.py` | Linux: conecta y monta OneDrive con rclone (`~/OneDrive`, `~/OneDrive - Nombre`); `asegurar()` impide escribir si no está montado. La pantalla está en `pandex/ui/onedrive.py`. |
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque) y su ícono. |
 | `pandex/horas.py` | Horas y fechas para el usuario, en formato de 12 horas (*7:05 p. m.*). |
 | `pandex/personaje_nuevo.py` | «Añadir personaje…»: convierte una imagen o un GIF en un personaje (Pillow, solo al usarlo). |

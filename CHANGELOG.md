@@ -11,6 +11,10 @@ cuando buscas actualizaciones desde el menú.
 - **Canvas con Firefox.** En Linux, iniciar sesión en Canvas usa Firefox; ya no hace falta
   Chrome ni Chromium. En Windows sigue igual (Chrome), y se puede elegir con
   `"navegador": "firefox"`.
+- **OneDrive en Linux.** Configuración → OneDrive → *Conectar una cuenta…*: tu OneDrive
+  (personal, de la universidad o los dos) aparece como una carpeta y Pandex trabaja directo
+  ahí, igual que en Windows. Usa rclone. Si OneDrive no está disponible, Pandex no sincroniza
+  y avisa, para no dejar archivos solo en tu PC.
 - **OCR en Linux** con Tesseract, si lo tienes instalado (opcional).
 - La ventana «Abrir carpeta» del resumen y los nombres de carpetas (Escritorio, Descargas,
   Documentos) también funcionan en español de Linux.

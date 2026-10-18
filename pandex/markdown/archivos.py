@@ -78,6 +78,8 @@ def raices(extra=()):
     for d in onedrives:
         institucion = d.name.removeprefix("OneDrive - ")
         salida.append((f"OneDrive institucional · {institucion}", d))
+    if (casa / "OneDrive").is_dir():
+        salida.append(("OneDrive personal", casa / "OneDrive"))
     # el Escritorio puede estar dentro de OneDrive (copia de seguridad de carpetas)
     # (en Linux en español se llaman Escritorio, Descargas y Documentos)
     def primera(*nombres):

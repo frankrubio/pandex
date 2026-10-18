@@ -27,6 +27,27 @@ class Interfaz(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.carpeta, ignore_errors=True)
 
+    def test_pagina_de_onedrive_solo_fuera_de_windows(self):
+        from unittest import mock
+
+        from pandex import onedrive, rutas
+        from pandex.ui.configuracion import DialogoConfiguracion
+
+        cuenta = onedrive.Cuenta("pandex-utec", "UTEC", "business", str(self.carpeta / "OneDrive - UTEC"))
+        with mock.patch.object(onedrive, "cuentas", return_value=[cuenta]), \
+                mock.patch.object(onedrive, "disponible", return_value=True):
+            for windows, esperado in ((False, True), (True, False)):
+                with mock.patch.object(rutas, "WINDOWS", windows):
+                    dlg = DialogoConfiguracion(self.config, [])
+                    nombres = [dlg.navegacion.item(i).text() for i in range(dlg.navegacion.count())]
+                    self.assertEqual("OneDrive" in nombres, esperado)
+                    if esperado:
+                        pagina = dlg.paginas.widget(nombres.index("OneDrive"))
+                        self.assertEqual(pagina.lista.count(), 1)
+                        self.assertIn("UTEC", pagina.lista.item(0).text())
+                        self.assertTrue(pagina.quitar.isEnabled())
+                    dlg.deleteLater()
+
     def test_cada_personaje_un_cuadro_fijo_por_estado(self):
         from pandex.ui import personajes
 

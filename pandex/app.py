@@ -14,7 +14,7 @@ from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
-from . import accesos, actualizar, horas
+from . import accesos, actualizar, horas, onedrive
 from . import tareas as plugins
 from .config import Config
 from .ejecutor import Ejecutor
@@ -81,11 +81,22 @@ class PandexApp(QObject):
         self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
         log.info("Pandex iniciado con %d tarea(s)", len(self.tareas))
         QTimer.singleShot(1500, self._primera_vez)
+        self._abrir_onedrive()
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
         self._reloj_actualizaciones = QTimer(self)
         self._reloj_actualizaciones.timeout.connect(self._revisar_actualizaciones)
         self._reloj_actualizaciones.start(REVISAR_CADA)
         QTimer.singleShot(REVISAR_TRAS, self._revisar_actualizaciones)
+
+    def _abrir_onedrive(self):
+        """Linux: monta las cuentas de OneDrive conectadas (en segundo plano, sin esperar)."""
+        if not onedrive.cuentas():
+            return
+        self._hilo_onedrive = HiloFondo(lambda _aviso: onedrive.montar_todas())
+        self._hilo_onedrive.listo.connect(
+            lambda errores: errores and self.mascota.decir(
+                "No pude abrir tu OneDrive. " + errores[0], tipo="error", segundos=12))
+        self._hilo_onedrive.start()
 
     def _primera_vez(self):
         """Abre el asistente de las tareas que aún no se configuraron (una sola vez)."""

@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
-from .. import horas
+from .. import horas, onedrive
 from ..rutas import DATOS
 from . import sesion
 from .cliente import Canvas, CanvasError, SinConexion
@@ -168,6 +168,11 @@ class Sincronizacion:
         if not esta_configurado(p) or not base_url:
             return {"ok": False, "resumen": "Falta configurar Canvas: clic derecho → Configurar Canvas.",
                     "detalle": ["sin canvas_url, destino o cursos en config.json"]}
+        # si la carpeta está en un OneDrive montado con rclone (Linux), que esté abierto:
+        # si no, se escribiría en la carpeta vacía de la PC y no en la nube
+        problema = onedrive.asegurar(self.raiz)
+        if problema:
+            return {"ok": False, "resumen": problema, "detalle": [problema]}
         if not self.raiz.is_dir():
             return {"ok": False, "resumen": "No encuentro tu carpeta de cursos.",
                     "detalle": [f"no existe: {self.raiz}"]}

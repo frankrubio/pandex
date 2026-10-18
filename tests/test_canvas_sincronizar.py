@@ -127,6 +127,17 @@ class ConfiguracionClasica(ConCarpetaTemporal):
         r, _ = self.sincronizar(self.params)
         self.assertIn("ninguna semana del ciclo", r["resumen"])
 
+    def test_onedrive_sin_abrir_no_escribe_en_la_pc(self):
+        from unittest import mock
+
+        from pandex import onedrive
+
+        with mock.patch.object(onedrive, "asegurar", return_value="Tu OneDrive «UTEC» no está disponible"):
+            r, _ = self.sincronizar(self.params)
+        self.assertFalse(r["ok"])
+        self.assertIn("OneDrive", r["resumen"])
+        self.assertEqual(CanvasFalso.llamadas["descargar"], 0)
+
     def test_sin_configurar(self):
         r, _ = self.sincronizar({})
         self.assertFalse(r["ok"])

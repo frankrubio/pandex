@@ -47,6 +47,10 @@ if ! ldconfig -p 2>/dev/null | grep -q libxcb-cursor; then
     echo " AVISO: falta libxcb-cursor0, que necesita la ventana de Pandex."
     echo "   Debian/Ubuntu: sudo apt install libxcb-cursor0     Fedora/Arch: xcb-util-cursor"
 fi
+if ! command -v rclone >/dev/null 2>&1; then
+    echo
+    echo " Opcional: para usar tu OneDrive (Configuración → OneDrive): sudo apt install rclone fuse3"
+fi
 if ! command -v tesseract >/dev/null 2>&1; then
     echo
     echo " Opcional: para leer PDFs escaneados (OCR): sudo apt install tesseract-ocr tesseract-ocr-spa"
