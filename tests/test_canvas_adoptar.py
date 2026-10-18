@@ -112,7 +112,7 @@ class Reordenar(unittest.TestCase):
 
     def test_plan_aplicar_y_deshacer(self):
         plan = adoptar.planificar(self.candidatos, self.metas, {"Programacion_I": self.prog}, {})
-        destino = self.prog / "Sem 4" / "Teoría" / "Material de clase" / "Clase 4.pptx"
+        destino = self.prog / "Sem 4" / "Teoria" / "Material de clase" / "Clase 4.pptx"
         self.assertEqual([(m.origen.name, m.destino) for m in plan.movimientos], [("Clase 4.pptx", destino)])
         self.assertEqual({motivo for _, _, motivo in plan.dudosos},
                          {"ya hay otro archivo con ese nombre donde va", "tienes 2 copias"})

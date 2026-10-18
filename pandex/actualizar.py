@@ -164,16 +164,21 @@ def aplicar(raiz=RAIZ, avisar=lambda texto: None, zip_local=None):
 
     ``zip_local`` (pruebas): usa ese ZIP en vez de descargarlo.
     """
-    antes = _huella(raiz / "requirements.txt")
+    antes = _huellas(raiz)
     if zip_local is None and modo(raiz) == "git":
         resultado = _con_git(raiz, avisar)
     else:
         resultado = _con_zip(raiz, avisar, zip_local)
-    resultado["dependencias"] = _huella(raiz / "requirements.txt") != antes
+    resultado["dependencias"] = _huellas(raiz) != antes
     if resultado["dependencias"] and zip_local is None:
         avisar("Instalando dependencias nuevas…")
         instalar_dependencias(raiz)
     return resultado
+
+
+def _huellas(raiz):
+    """Las de todos los ``requirements*.txt``: si cambia el de una función opcional, también."""
+    return tuple(_huella(r) for r in sorted(raiz.glob("requirements*.txt")))
 
 
 def _git(raiz, *args):
@@ -296,13 +301,19 @@ def python_del_proyecto(raiz=RAIZ):
 
 
 def instalar_dependencias(raiz=RAIZ):
+    """Las de siempre y las de las funciones opcionales que ya tenías (nunca agrega otras)."""
+    from . import extras
+
+    python = python_del_proyecto(raiz)
+    archivos = ["-r", str(raiz / "requirements.txt")]
+    for extra in extras.instalados_en(python):
+        archivos += ["-r", str(raiz / extras.EXTRAS[extra]["archivo"])]
     r = subprocess.run(
-        [str(python_del_proyecto(raiz)), "-m", "pip", "install", "-r", str(raiz / "requirements.txt"),
-         "--quiet", "--disable-pip-version-check"],
+        [str(python), "-m", "pip", "install", *archivos, "--quiet", "--disable-pip-version-check"],
         capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=_SIN_VENTANA,
     )
     if r.returncode != 0:
         log.error("pip falló: %s", r.stderr)
         raise ErrorActualizacion(
             "Los archivos se actualizaron, pero no pude instalar las dependencias nuevas. "
-            "Ejecuta instalar.bat para terminar.")
+            "Ejecuta " + ("instalar.bat" if sys.platform == "win32" else "./instalar.sh") + " para terminar.")

@@ -3,12 +3,16 @@
 Dos lugares separados a propósito:
 
 - La carpeta del proyecto: el código, los recursos y tu ``config.json``.
-- ``%LOCALAPPDATA%\\Pandex``: lo que Pandex genera y no debe ir a GitHub ni a
-  OneDrive (la sesión del navegador, el historial de Canvas, temporales).
+- ``%LOCALAPPDATA%\\Pandex`` en Windows, ``~/.local/share/Pandex`` en Linux: lo que
+  Pandex genera y no debe ir a GitHub ni a OneDrive (la sesión del navegador, el
+  historial de Canvas, temporales).
 """
 
 import os
+import sys
 from pathlib import Path
+
+WINDOWS = sys.platform == "win32"
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -21,12 +25,15 @@ LOG_FILE = LOGS_DIR / "pandex.log"
 
 
 def _carpeta_de_datos():
-    """``%LOCALAPPDATA%\\Pandex``. La variable ``PANDEX_DATOS`` la reemplaza
-    (las pruebas la usan para no tocar nunca tus datos reales)."""
+    """``%LOCALAPPDATA%\\Pandex`` (Windows) o ``~/.local/share/Pandex`` (Linux). La variable
+    ``PANDEX_DATOS`` la reemplaza (las pruebas la usan para no tocar nunca tus datos reales)."""
     propia = os.environ.get("PANDEX_DATOS")
     if propia:
         return Path(propia)
-    base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    if WINDOWS:
+        base = Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+    else:
+        base = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
     datos = base / "Pandex"
     legado = base / "MascotaUTEC"  # nombre que usaban las primeras versiones
     if not legado.is_dir():

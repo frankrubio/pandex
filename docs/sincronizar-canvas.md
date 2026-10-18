@@ -133,6 +133,7 @@ El asistente escribe todo esto en `config.json → tareas → sync_canvas`. Se p
 | `destino` | — | La carpeta donde están las carpetas de tus cursos. |
 | `cursos` | — | Lista de cursos (ver abajo). |
 | `formato_semana` | `"Sem {n}"` | Nombre de las carpetas de semana. `"Semana {n:02d}"` da `Semana 03`. Siempre se reconocen además `Sem N` y `Semana N`. |
+| `carpetas_sin_tildes` | `true` | Las carpetas nuevas se crean sin tildes ni ñ (`Teoria`, `Diseno`). Las que ya existen no se renombran. Los nombres de archivo no cambian. |
 | `secciones` | `{}` | Subencabezado de Canvas → carpeta. La etiqueta vale como prefijo (`"material de clase"` cubre «Material de clases») y gana la más larga. |
 | `schedule` | `null` | Horario cron (p. ej. `"0 19 * * *"`). |
 | `dedupe_por_tamano` | `true` | Saltar archivos con el mismo tamaño aunque cambie el nombre. |

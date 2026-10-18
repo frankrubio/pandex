@@ -23,9 +23,9 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
-from .. import horas
+from .. import horas, onedrive
 from ..rutas import DATOS
-from . import sesion
+from . import nombres, sesion
 from .cliente import Canvas, CanvasError, SinConexion
 from .destinos import (
     IndiceCurso,
@@ -150,6 +150,7 @@ class Sincronizacion:
         self.reglas = self.p.get("cursos", [])
         self.secciones = self.p.get("secciones", {})
         self.formato = self.p.get("formato_semana", "Sem {n}")
+        nombres.CARPETAS_SIN_TILDES = bool(self.p.get("carpetas_sin_tildes", True))
         self.dedupe_por_tamano = bool(self.p.get("dedupe_por_tamano", True))
         self._indices = {}
         self._carpetas = {}
@@ -168,6 +169,11 @@ class Sincronizacion:
         if not esta_configurado(p) or not base_url:
             return {"ok": False, "resumen": "Falta configurar Canvas: clic derecho → Configurar Canvas.",
                     "detalle": ["sin canvas_url, destino o cursos en config.json"]}
+        # si la carpeta está en un OneDrive montado con rclone (Linux), que esté abierto:
+        # si no, se escribiría en la carpeta vacía de la PC y no en la nube
+        problema = onedrive.asegurar(self.raiz)
+        if problema:
+            return {"ok": False, "resumen": problema, "detalle": [problema]}
         if not self.raiz.is_dir():
             return {"ok": False, "resumen": "No encuentro tu carpeta de cursos.",
                     "detalle": [f"no existe: {self.raiz}"]}
@@ -192,6 +198,7 @@ class Sincronizacion:
             cookies, ua = sesion.iniciar_sesion(
                 ctx, base_url, p.get("usar_chrome_instalado", True),
                 p.get("espera_login_segundos", 300), p.get("headless", True),
+                p.get("navegador", "auto"),
             )
         except CanvasError as exc:
             return {"ok": False, "resumen": str(exc), "detalle": [str(exc)]}
@@ -281,7 +288,7 @@ class Sincronizacion:
         if nombre not in self._carpetas:
             carpeta = buscar_subcarpeta(self.raiz, nombre)
             if carpeta is None:
-                carpeta = self.raiz / nombre
+                carpeta = self.raiz / nombres.nombre_de_carpeta(nombre)
                 carpeta.mkdir(parents=True, exist_ok=True)
                 self.ctx.log(f"creé la carpeta de curso {carpeta}")
             self._carpetas[nombre] = carpeta

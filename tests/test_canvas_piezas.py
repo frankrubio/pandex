@@ -19,6 +19,17 @@ class Nombres(unittest.TestCase):
         self.assertEqual(nombres.nombre_destino("", "real.docx"), "real.docx")
         self.assertLessEqual(len(nombres.nombre_destino("x" * 400, "a.pdf")), 200)
 
+    def test_carpetas_nuevas_sin_tildes_ni_enie(self):
+        self.assertEqual(nombres.nombre_de_carpeta("Diseño: Teoría"), "Diseno- Teoria")
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        self.assertEqual(destinos.resolver_subcarpeta(tmp, "Teoría").name, "Teoria")
+        (tmp / "Programación").mkdir()  # la que ya tienes se respeta
+        self.assertEqual(destinos.resolver_subcarpeta(tmp, "Programación").name, "Programación")
+        nombres.CARPETAS_SIN_TILDES = False
+        self.addCleanup(setattr, nombres, "CARPETAS_SIN_TILDES", True)
+        self.assertEqual(nombres.nombre_de_carpeta("Teoría"), "Teoría")
+
     def test_semanas(self):
         self.assertEqual(nombres.numero_de_semana("Semana 7"), 7)
         self.assertEqual(nombres.numero_de_semana("Week 03 - Intro"), 3)
@@ -74,13 +85,13 @@ class Destinos(unittest.TestCase):
         regla = {"crear_secciones": True, "subcarpeta_fija": "Teoría"}
         d = destinos.carpeta_destino(self.curso, regla, self.item("Lecturas"), 2, {}, "Semana {n:02d}",
                                      crear=False)
-        self.assertEqual(d, self.curso / "Semana 02" / "Teoría" / "Lecturas")
+        self.assertEqual(d, self.curso / "Semana 02" / "Teoria" / "Lecturas")
         self.assertEqual(list(self.curso.iterdir()), [])
 
     def test_modulo_sin_semana(self):
         d = destinos.carpeta_destino(self.curso, {"crear_secciones": True},
                                      self.item(None, "Sílabo: y anexo"), None, {})
-        self.assertEqual(d, self.curso / "Sílabo- y anexo")
+        self.assertEqual(d, self.curso / "Silabo- y anexo")
 
     def test_modo_lista(self):
         regla = {"modo": "lab_comunicacion", "subcarpeta_raiz": "Material de Laboratorio"}
@@ -166,6 +177,8 @@ class Sesion(unittest.TestCase):
     def setUp(self):
         self.perfil_original = sesion.PERFIL
         self.sync_original = sesion.sync_playwright
+        self.error_original = sesion.PlaywrightError
+        sesion.PlaywrightError = type("ErrorDePlaywright", (Exception,), {})  # sin Playwright instalado
         self.espera_original = sesion.ESPERA_SSO
         sesion.ESPERA_SSO = 0.3  # no esperar 20 s de verdad
         sesion.PERFIL = Path(tempfile.mkdtemp()) / "perfil"
@@ -175,6 +188,7 @@ class Sesion(unittest.TestCase):
         shutil.rmtree(sesion.PERFIL.parent, ignore_errors=True)
         sesion.PERFIL = self.perfil_original
         sesion.sync_playwright = self.sync_original
+        sesion.PlaywrightError = self.error_original
         sesion.ESPERA_SSO = self.espera_original
 
     def navegador(self, *valida_tras):
@@ -228,14 +242,15 @@ class Sesion(unittest.TestCase):
 
     def test_sin_ventana_aunque_la_pagina_siga_navegando(self):
         abiertos = self.navegador(2)
-        cookies, ua = sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu")
+        cookies, ua = sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="chrome")
         self.assertEqual(ua, "Mozilla/5.0")
         self.assertTrue(abiertos[0].headless and abiertos[0].cerrado)
 
     def test_con_ventana_cuando_hace_falta(self):
         abiertos = self.navegador(10 ** 9, 3)
         ctx = self.ctx()
-        cookies, ua = sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", espera_login=60)
+        cookies, ua = sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", espera_login=60,
+                                                navegador="chrome")
         self.assertEqual(len(ctx.globos), 2)
         self.assertTrue(all(c.cerrado for c in abiertos))
         self.assertFalse(abiertos[1].headless)

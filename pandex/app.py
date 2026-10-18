@@ -14,7 +14,7 @@ from PyQt6.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
-from . import accesos, actualizar, horas
+from . import accesos, actualizar, despertador, extras, horas, onedrive, pendientes
 from . import tareas as plugins
 from .config import Config
 from .ejecutor import Ejecutor
@@ -32,6 +32,8 @@ from .ui.visor_registro import VisorRegistro
 
 log = get_logger("pandex.app")
 
+PENDIENTES_CADA = 10 * 60 * 1000  # ms
+SALIR_TRAS = 9000  # ms: lo justo para leer el último globo
 PROGRESO_CADA = 0.25  # s: el globo de avance se refresca como mucho 4 veces por segundo
 REVISAR_TRAS = 45_000          # ms tras abrir: la primera revisión no frena el arranque
 REVISAR_CADA = 24 * 3600_000   # ms: una consulta pequeña a GitHub al día, como mucho
@@ -40,9 +42,11 @@ REVISAR_CADA = 24 * 3600_000   # ms: una consulta pequeña a GitHub al día, com
 class PandexApp(QObject):
     _disparo_programado = pyqtSignal(str)
 
-    def __init__(self, qapp):
+    def __init__(self, qapp, salir_al_terminar=False):
         super().__init__()
         self.qapp = qapp
+        # lo abrió el sistema a la hora de una tarea: la hace y se cierra (modo «a la hora»)
+        self.salir_al_terminar = salir_al_terminar
         self.config = Config()
         self.tareas = plugins.descubrir()
         self._dialogos = []
@@ -78,14 +82,64 @@ class PandexApp(QObject):
         self.mascota.show()
         self.mascota.raise_()
         nombre = self.config.mascota.get("nombre", "Pandex")
+        log.info("Pandex iniciado con %d tarea(s)%s", len(self.tareas),
+                 " (a la hora de una tarea)" if self.salir_al_terminar else "")
+        self._abrir_onedrive()
+        # tareas programadas que se perdieron con la PC apagada: al abrir y cada 10 min
+        # (también cubre la PC suspendida, que el reloj interno no ve)
+        self._reloj_pendientes = QTimer(self)
+        self._reloj_pendientes.timeout.connect(self._ponerse_al_dia)
+        self._reloj_pendientes.start(PENDIENTES_CADA)
+        QTimer.singleShot(3000 if not self.salir_al_terminar else 500, self._ponerse_al_dia)
+        if self.salir_al_terminar:
+            self.mascota.decir(f"¡{horas.saludo()}! Vengo a hacer lo que toca y me voy.")
+            return
         self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
-        log.info("Pandex iniciado con %d tarea(s)", len(self.tareas))
         QTimer.singleShot(1500, self._primera_vez)
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
         self._reloj_actualizaciones = QTimer(self)
         self._reloj_actualizaciones.timeout.connect(self._revisar_actualizaciones)
         self._reloj_actualizaciones.start(REVISAR_CADA)
         QTimer.singleShot(REVISAR_TRAS, self._revisar_actualizaciones)
+
+    def _ponerse_al_dia(self):
+        """Corre la siguiente tarea programada que quedó pendiente (una a la vez)."""
+        if self.ejecutor.ocupado:
+            return  # al terminar la actual se vuelve a revisar
+        por_defecto = {t.id: t.schedule for t in self.tareas if t.schedule}
+        try:
+            vencidas = pendientes.vencidas(self.config.datos, por_defecto=por_defecto)
+        except Exception:
+            log.exception("no pude revisar las tareas pendientes")
+            vencidas = []
+        for task_id in vencidas:
+            tarea = next((t for t in self.tareas if t.id == task_id), None)
+            if tarea is not None and extras.disponible(tarea) and getattr(tarea, "programable", True):
+                log.info("tarea pendiente: %s", task_id)
+                self.ejecutor.ejecutar(tarea)
+                return
+        if self.salir_al_terminar:
+            # nada más que hacer: dejar leer el último globo y cerrarse
+            QTimer.singleShot(SALIR_TRAS, self._salir_si_toca)
+
+    def _salir_si_toca(self):
+        if self.salir_al_terminar and not self.ejecutor.ocupado and not self._dialogos:
+            log.info("tareas listas: Pandex se cierra hasta la próxima")
+            self._cerrar()
+
+    def _me_usan(self):
+        """Si abres el menú o la configuración, ya no se cierra solo."""
+        self.salir_al_terminar = False
+
+    def _abrir_onedrive(self):
+        """Linux: monta las cuentas de OneDrive conectadas (en segundo plano, sin esperar)."""
+        if not onedrive.cuentas():
+            return
+        self._hilo_onedrive = HiloFondo(lambda _aviso: onedrive.montar_todas())
+        self._hilo_onedrive.listo.connect(
+            lambda errores: errores and self.mascota.decir(
+                "No pude abrir tu OneDrive. " + errores[0], tipo="error", segundos=12))
+        self._hilo_onedrive.start()
 
     def _primera_vez(self):
         """Abre el asistente de las tareas que aún no se configuraron (una sola vez)."""
@@ -194,6 +248,8 @@ class PandexApp(QObject):
 
         seccion("Tareas")
         for tarea in self.tareas:
+            if not extras.disponible(tarea):  # función opcional no instalada: ni se muestra
+                continue
             accion(tarea.nombre, tarea.icono, lambda _c=False, t=tarea: self.ejecutor.ejecutar(t),
                    tarea.descripcion)
         if not self.tareas:
@@ -201,7 +257,8 @@ class PandexApp(QObject):
             vacio.setEnabled(False)
             menu.addAction(vacio)
 
-        configurables = [t for t in self.tareas if callable(getattr(t, "configurar", None))]
+        configurables = [t for t in self.tareas
+                         if callable(getattr(t, "configurar", None)) and extras.disponible(t)]
         for tarea in configurables:
             texto = getattr(tarea, "configurar_texto", None) or f"Configurar «{tarea.nombre}»…"
             accion(texto, "engranaje", lambda _c=False, t=tarea: self._configurar(t))
@@ -221,6 +278,7 @@ class PandexApp(QObject):
         return menu
 
     def _abrir_menu(self, punto_global):
+        self._me_usan()
         menu = self._construir_menu(self.mascota)
         # se libera al cerrarse: antes quedaba un QMenu huérfano por cada clic derecho
         menu.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
@@ -232,6 +290,9 @@ class PandexApp(QObject):
         tarea = next((t for t in self.tareas if t.id == task_id), None)
         if tarea is None:
             log.warning("el reloj pidió '%s' pero esa tarea ya no existe", task_id)
+            return
+        if not extras.disponible(tarea):
+            log.info("%s no está instalada: no la corro", task_id)
             return
         log.info("disparo programado de %s", task_id)
         self.ejecutor.ejecutar(tarea)
@@ -248,6 +309,7 @@ class PandexApp(QObject):
             self.mascota.decir("No pude abrir la configuración. Mira el registro.")
             return
         self.programador.montar(self.tareas)  # el asistente puede haber puesto un horario
+        self.actualizar_despertador()
         if entrada is not None:
             self.ejecutor.ejecutar(tarea, entrada)
 
@@ -270,6 +332,11 @@ class PandexApp(QObject):
         self.mascota.progreso(f"Voy {hechos} de {total}…", hechos, total)
 
     def _tarea_terminada(self, task_id, resultado):
+        tarea = next((t for t in self.tareas if t.id == task_id), None)
+        cron = self.config.tarea(task_id).get("schedule", getattr(tarea, "schedule", None))
+        if cron:
+            pendientes.marcar(task_id, cron)
+        QTimer.singleShot(1000, self._ponerse_al_dia)  # ¿quedó otra pendiente?
         ok = resultado["ok"]
         self.mascota.set_estado("feliz" if ok else "error", 4)
         resumen = resultado["resumen"] or ("Listo." if ok else "Algo falló.")
@@ -279,6 +346,8 @@ class PandexApp(QObject):
             dlg = DialogoInforme(self._nombre_de(task_id), resultado["informe"], resultado.get("carpeta"))
             self._dialogos.append(dlg)
             dlg.finished.connect(lambda _r, d=dlg: self._dialogos.remove(d))
+            # modo «a la hora»: se cierra cuando ya leíste el resumen
+            dlg.finished.connect(lambda _r: QTimer.singleShot(SALIR_TRAS, self._salir_si_toca))
             dlg.show()
             dlg.raise_()
             dlg.activateWindow()
@@ -293,13 +362,23 @@ class PandexApp(QObject):
     # ---------- diálogos ----------
 
     def _abrir_configuracion(self):
+        self._me_usan()
         dlg = DialogoConfiguracion(self.config, self.tareas, al_buscar_actualizaciones=self.buscar_actualizaciones)
         if dlg.exec():
             self.mascota.recargar_apariencia()
             self.programador.montar(self.tareas)
+            self.actualizar_despertador()
             self.aplicar_logo()
             self.bandeja.setToolTip(self.config.mascota.get("nombre", "Pandex"))
             self.mascota.decir("Configuración guardada.", tipo="exito")
+
+    def actualizar_despertador(self):
+        """Modo «a la hora»: que el sistema abra Pandex a la hora de cada tarea."""
+        try:
+            despertador.actualizar(self.config.datos, {t.id: t.schedule for t in self.tareas if t.schedule})
+        except Exception as exc:
+            log.warning("no pude programar el despertador: %s", exc)
+            self.mascota.decir(f"No pude programar que me abra solo: {exc}", tipo="error", segundos=12)
 
     def _abrir_registro(self):
         VisorRegistro().exec()

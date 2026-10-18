@@ -99,13 +99,13 @@ class Asistente(ConCarpetaTemporal):
         reglas = self.params["cursos"]
         self.assertEqual([(r["canvas_id"], r.get("subcarpeta_fija")) for r in reglas],
                          [(1, "Teoría"), (2, "Lab")])
-        self.assertTrue((raiz / "Programación I" / "Sem 1" / "Teoría").is_dir(), "arma el esqueleto")
-        self.assertTrue((raiz / "Programación I" / "Sem 1" / "Lab").is_dir())
+        self.assertTrue((raiz / "Programacion I" / "Sem 1" / "Teoria").is_dir(), "arma el esqueleto")
+        self.assertTrue((raiz / "Programacion I" / "Sem 1" / "Lab").is_dir())
 
         # y la primera sincronización respeta lo elegido
         r, _ = self.sincronizar(self.params, w.entrada)
-        self.assertTrue((raiz / "Programación I" / "Sem 2" / "Teoría" / "Material de clase" / "Clase 2.pdf").exists())
-        self.assertFalse((raiz / "Programación I" / "Sem 1" / "Teoría" / "Material de clase").exists(),
+        self.assertTrue((raiz / "Programacion I" / "Sem 2" / "Teoria" / "Material de clase" / "Clase 2.pdf").exists())
+        self.assertFalse((raiz / "Programacion I" / "Sem 1" / "Teoria" / "Material de clase").exists(),
                          "la semana 1 quedó fuera por elección")
 
     def test_carpeta_existente_se_ordena_y_se_puede_deshacer(self):
@@ -136,7 +136,7 @@ class Asistente(ConCarpetaTemporal):
         w.next()
         w.accept()
 
-        movido = prog / "Semana 01" / "Teoría" / "Material de clase" / "Clase 1.pdf"
+        movido = prog / "Semana 01" / "Teoria" / "Material de clase" / "Clase 1.pdf"
         self.assertTrue(movido.exists(), "el archivo de Canvas fue a su lugar, con tu estilo")
         self.assertTrue((prog / "Mis notas.docx").exists(), "lo tuyo no se toca")
         self.assertEqual(self.params["formato_semana"], "Semana {n:02d}")

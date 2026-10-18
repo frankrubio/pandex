@@ -127,6 +127,17 @@ class ConfiguracionClasica(ConCarpetaTemporal):
         r, _ = self.sincronizar(self.params)
         self.assertIn("ninguna semana del ciclo", r["resumen"])
 
+    def test_onedrive_sin_abrir_no_escribe_en_la_pc(self):
+        from unittest import mock
+
+        from pandex import onedrive
+
+        with mock.patch.object(onedrive, "asegurar", return_value="Tu OneDrive «UTEC» no está disponible"):
+            r, _ = self.sincronizar(self.params)
+        self.assertFalse(r["ok"])
+        self.assertIn("OneDrive", r["resumen"])
+        self.assertEqual(CanvasFalso.llamadas["descargar"], 0)
+
     def test_sin_configurar(self):
         r, _ = self.sincronizar({})
         self.assertFalse(r["ok"])
@@ -197,7 +208,7 @@ class TeoriaYLaboratorio(ConCarpetaTemporal):
         self.assertTrue((self.pi / "Sem 6" / "Teoría" / "Guia comun.pdf").exists())
         self.assertFalse((lab6 / "Guia comun.pdf").exists(), "el MISMO archivo en los dos se baja una vez")
         self.assertFalse((lab6 / "Glosario.pdf").exists(), "lo suelto en la raíz cuenta para los dos")
-        self.assertEqual((self.pi / "Sem 7" / "Teoría" / "semana 7.pptx").stat().st_size, 4000)
+        self.assertEqual((self.pi / "Sem 7" / "Teoria" / "semana 7.pptx").stat().st_size, 4000)
         self.assertEqual((self.pi / "Sem 7" / "Lab" / "semana 7.pptx").stat().st_size, 4100)
         lab_com = self.com / "Material de Laboratorio" / "Sem 6" / "Clase.pptx"
         self.assertEqual(lab_com.stat().st_size, 8000, "modo lista: va a la semana del calendario")
@@ -235,8 +246,8 @@ class ConfiguracionDelAsistente(ConCarpetaTemporal):
 
     def test_copia_la_organizacion_de_canvas(self):
         r, _ = self.sincronizar(self.params)
-        fisica = self.raiz / "Física I"
-        self.assertTrue((fisica / "Sílabo y anexo" / "Sílabo.pdf").exists(), "módulos sin semana: su carpeta")
+        fisica = self.raiz / "Fisica I"
+        self.assertTrue((fisica / "Silabo y anexo" / "Sílabo.pdf").exists(), "módulos sin semana: su carpeta")
         self.assertTrue((fisica / "Semana 01" / "Bienvenida.pdf").exists(), "sin subencabezado: en la semana")
         self.assertTrue((fisica / "Semana 01" / "Material de clase" / "Clase 1.pdf").exists())
         self.assertTrue((fisica / "Semana 01" / "Lecturas" / "Lectura 1.pdf").exists(),
@@ -246,10 +257,10 @@ class ConfiguracionDelAsistente(ConCarpetaTemporal):
 
     def test_descarga_inicial_desde_una_semana(self):
         r, _ = self.sincronizar(self.params, {"inicial": "desde", "desde_semana": 2})
-        fisica = self.raiz / "Física I"
+        fisica = self.raiz / "Fisica I"
         self.assertFalse((fisica / "Semana 01").exists(), "lo anterior a la semana elegida no baja")
         self.assertTrue((fisica / "Semana 02" / "Material de clase" / "Clase 2.pdf").exists())
-        self.assertTrue((fisica / "Sílabo y anexo" / "Sílabo.pdf").exists(), "lo general sí baja")
+        self.assertTrue((fisica / "Silabo y anexo" / "Sílabo.pdf").exists(), "lo general sí baja")
 
         r, _ = self.sincronizar(self.params)
         self.assertFalse((fisica / "Semana 01").exists(), "y no baja después: quedó como omitido")

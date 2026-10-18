@@ -27,6 +27,19 @@ echo Instalando dependencias: la primera vez tarda unos minutos...
 ".venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet || goto :fallo
 
+rem 3b. "Convertir a Markdown" es opcional (unos 280 MB); se puede anadir despues en Configuracion - Tareas
+".venv\Scripts\python.exe" -c "import markitdown" >nul 2>nul && goto :con_markdown
+set "QUIERE=%PANDEX_MARKDOWN%"
+if not defined QUIERE set /p "QUIERE=Instalar tambien Convertir a Markdown (PDF, Word, PowerPoint a .md; unos 280 MB)? [s/N] "
+if /i "%QUIERE%"=="s" goto :con_markdown
+if /i "%QUIERE%"=="si" goto :con_markdown
+echo Sin Convertir a Markdown: Pandex queda mas liviano.
+goto :sin_markdown
+:con_markdown
+echo Instalando Convertir a Markdown...
+".venv\Scripts\python.exe" -m pip install -r requirements-markdown.txt --quiet || goto :fallo
+:sin_markdown
+
 rem 4. Navegador para iniciar sesión en Canvas: Google Chrome si lo tienes; si no, Chromium
 set "CHROME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=1"

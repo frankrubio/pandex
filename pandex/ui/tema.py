@@ -1,7 +1,7 @@
 """El aspecto de Pandex: colores, tipografía y una sola hoja de estilos para toda la app.
 
 Base neutra y cálida (marfil de día, grafito de noche) con el azul del panda como
-acento. Sigue el modo claro/oscuro de Windows. Todo se calcula una vez: no hay
+acento. Sigue el modo claro/oscuro del sistema. Todo se calcula una vez: no hay
 nada animándose en segundo plano.
 """
 

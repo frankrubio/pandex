@@ -3,6 +3,36 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.4.0
+
+- **Pandex funciona en Linux.** Hay un instalador (`./instalar.sh`) y una guía corta:
+  [docs/linux.md](docs/linux.md). Los accesos directos, el arranque automático y las
+  carpetas de datos usan las rutas de Linux.
+- **Canvas con tu Firefox.** En Linux, iniciar sesión en Canvas usa el Firefox que ya tienes
+  (con un perfil aparte): no se descarga ningún navegador. En Windows sigue igual (Chrome).
+- **Más liviano: «Convertir a Markdown» es opcional.** El instalador pregunta; si no lo quieres,
+  Pandex no lo instala ni lo muestra (en Linux: 340 MB en vez de unos 840 MB). Se puede añadir
+  después en Configuración → Tareas → Instalar.
+- **A su hora, aunque la PC haya estado apagada.** Si una tarea tocaba con la PC apagada o
+  suspendida, se hace apenas vuelves. Y en Configuración → Comportamiento puedes elegir que
+  Pandex se cierre y el sistema lo abra solo a la hora de sus tareas (no ocupa memoria el resto
+  del día).
+- **Carpetas nuevas sin tildes ni ñ.** Pandex crea «Teoria» en vez de «Teoría» (algunas apps y
+  OneDrive en Linux fallan con ellas). Tus carpetas existentes se reconocen igual y no se
+  renombran. Para volver a usar tildes: `"carpetas_sin_tildes": false` en la tarea.
+- **Comprimir carpeta.** Nueva tarea en el menú: crea un .zip de la carpeta que elijas, listo para
+  subir a un drive. Si tienes Ghostscript, también aligera los PDF (los escaneados bajan mucho:
+  en una prueba, de 4 MB a 0,6 MB). Tus archivos originales no se tocan.
+- **Arreglado:** el horario «de lunes a viernes» corría de martes a sábado.
+- **OneDrive en Linux.** Configuración → OneDrive → *Conectar una cuenta…*: tu OneDrive
+  (personal, de la universidad o los dos) aparece como una carpeta y Pandex trabaja directo
+  ahí, igual que en Windows. Usa rclone. Si OneDrive no está disponible, Pandex no sincroniza
+  y avisa, para no dejar archivos solo en tu PC.
+- **OCR en Linux** con Tesseract, si lo tienes instalado (opcional).
+- La ventana «Abrir carpeta» del resumen y los nombres de carpetas (Escritorio, Descargas,
+  Documentos) también funcionan en español de Linux.
+- Las pruebas automáticas ahora corren también en Ubuntu.
+
 ## 2.3.1
 
 - **Buscar actualizaciones dice la causa real.** Antes, cualquier falla mostraba «revisa tu

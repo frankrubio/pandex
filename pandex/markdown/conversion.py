@@ -1,6 +1,9 @@
-"""El motor: MarkItDown local (sin plugins ni IA) y el OCR que trae Windows."""
+"""El motor: MarkItDown local (sin plugins ni IA) y el OCR local (Windows o Tesseract)."""
 
 import io
+import shutil
+import subprocess
+import sys
 
 from .archivos import TEXTO_PLANO
 
@@ -62,8 +65,90 @@ def crear_markitdown():
     return MarkItDownPorExtension(enable_plugins=False)
 
 
-class OcrLocal:
+class _OcrBase:
+    """Lo común: recorrer un PDF página por página o leer una imagen."""
+
+    nombre = "OCR"
+    motivo = None
+    idioma = None
+
+    def _reconocer(self, imagen):
+        raise NotImplementedError
+
+    def cerrar(self):
+        pass
+
+    def leer(self, archivo):
+        """Devuelve (texto, nota). Nota explica si se cortó por tamaño."""
+        if archivo.suffix.lower() == ".pdf":
+            import pypdfium2 as pdfium
+
+            doc = pdfium.PdfDocument(str(archivo))
+            try:
+                total = len(doc)
+                paginas = []
+                for i in range(min(total, self.max_paginas)):
+                    texto = self._reconocer(doc[i].render(scale=2).to_pil())
+                    if texto.strip():
+                        paginas.append(f"## Página {i + 1}\n\n{texto.strip()}")
+            finally:
+                doc.close()
+            nota = None
+            if total > self.max_paginas:
+                nota = f"OCR solo de las primeras {self.max_paginas} de {total} páginas"
+            return "\n\n".join(paginas), nota
+
+        from PIL import Image
+
+        with Image.open(archivo) as imagen:
+            return self._reconocer(imagen).strip(), None
+
+
+class OcrTesseract(_OcrBase):
+    """El OCR de Linux/macOS: el programa ``tesseract``, si está instalado. Local y gratis.
+
+    Instalarlo (Debian/Ubuntu): ``sudo apt install tesseract-ocr tesseract-ocr-spa``.
+    """
+
+    nombre = "Tesseract"
+    PREFERIDOS = ("spa", "eng")
+
+    def __init__(self, max_paginas=60):
+        self.max_paginas = max_paginas
+        self.exe = shutil.which("tesseract")
+        if self.exe is None:
+            self.motivo = ("Tesseract no está instalado "
+                           "(sudo apt install tesseract-ocr tesseract-ocr-spa)")
+            return
+        try:
+            salida = subprocess.run([self.exe, "--list-langs"], capture_output=True, text=True,
+                                    timeout=20).stdout.split()
+        except (OSError, subprocess.SubprocessError):
+            salida = []
+        idiomas = [i for i in self.PREFERIDOS if i in salida]
+        if not idiomas:
+            self.exe = None
+            self.motivo = ("Tesseract no tiene el idioma español ni inglés "
+                           "(sudo apt install tesseract-ocr-spa)")
+        else:
+            self.idioma = "+".join(idiomas)
+
+    @property
+    def disponible(self):
+        return self.exe is not None
+
+    def _reconocer(self, imagen):
+        buffer = io.BytesIO()
+        imagen.convert("RGB").save(buffer, "PNG")
+        r = subprocess.run([self.exe, "stdin", "stdout", "-l", self.idioma],
+                           input=buffer.getvalue(), capture_output=True, timeout=180)
+        return r.stdout.decode("utf-8", errors="replace")
+
+
+class OcrLocal(_OcrBase):
     """El OCR que trae Windows (Windows.Media.Ocr). Local, gratis, sin internet."""
+
+    nombre = "OCR de Windows"
 
     def __init__(self, max_paginas=60):
         self.max_paginas = max_paginas
@@ -134,32 +219,13 @@ class OcrLocal:
         imagen.convert("RGB").save(buffer, "PNG")
         return buffer.getvalue()
 
-    def leer(self, archivo):
-        """Devuelve (texto, nota). Nota explica si se cortó por tamaño."""
-        ext = archivo.suffix.lower()
-        if ext == ".pdf":
-            import pypdfium2 as pdfium
+    def _reconocer(self, imagen):
+        return self._esperar(self._leer_png(self._png(imagen)))
 
-            doc = pdfium.PdfDocument(str(archivo))
-            try:
-                total = len(doc)
-                paginas = []
-                for i in range(min(total, self.max_paginas)):
-                    imagen = doc[i].render(scale=2).to_pil()
-                    texto = self._esperar(self._leer_png(self._png(imagen)))
-                    if texto.strip():
-                        paginas.append(f"## Página {i + 1}\n\n{texto.strip()}")
-            finally:
-                doc.close()
-            nota = None
-            if total > self.max_paginas:
-                nota = f"OCR solo de las primeras {self.max_paginas} de {total} páginas"
-            return "\n\n".join(paginas), nota
 
-        from PIL import Image
-
-        with Image.open(archivo) as imagen:
-            return self._esperar(self._leer_png(self._png(imagen))).strip(), None
+def crear_ocr(max_paginas=60):
+    """El OCR del sistema: el de Windows allí, Tesseract en los demás."""
+    return OcrLocal(max_paginas) if sys.platform == "win32" else OcrTesseract(max_paginas)
 
 
 def limpiar_pdf(texto):

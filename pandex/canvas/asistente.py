@@ -23,7 +23,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from playwright.sync_api import Error as PlaywrightError
 from PyQt6.QtCore import QLocale, Qt, QThread, QTime, pyqtSignal
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -59,7 +58,7 @@ from .cliente import Canvas, CanvasError
 from .destinos import alias_semana, nombre_semana, resolver_subcarpeta
 from .estructura import agrupar, emparejar_cursos, nombre_corto, resumir
 from .historial import Historial
-from .nombres import limpiar_nombre
+from .nombres import nombre_de_carpeta
 from .sincronizar import candidatos_de, metadatos
 
 log = get_logger("pandex.canvas.asistente")
@@ -175,7 +174,7 @@ class _Trabajo(QThread):
             self.listo.emit(self._funcion(self.aviso.emit))
         except CanvasError as exc:
             self.fallo.emit(str(exc))
-        except PlaywrightError as exc:
+        except sesion.error_navegador() as exc:
             log.warning("navegador: %s", exc)
             self.fallo.emit(sesion.mensaje_de_error(exc))
         except Exception as exc:
@@ -199,7 +198,7 @@ class _AvisosDeSesion:
 def _conectar(estado, avisar):
     cookies, ua = sesion.iniciar_sesion(
         _AvisosDeSesion(avisar), estado.url, estado.params.get("usar_chrome_instalado", True),
-        estado.params.get("espera_login_segundos", 300), True,
+        estado.params.get("espera_login_segundos", 300), True, estado.params.get("navegador", "auto"),
     )
     canvas = Canvas(estado.url, cookies, ua)
     avisar("Leyendo tus cursos…")
@@ -224,7 +223,9 @@ def _carpeta_sugerida():
         onedrive = sorted(d for d in casa.iterdir() if d.name.startswith("OneDrive - ") and d.is_dir())
     except OSError:
         onedrive = []
-    return onedrive[0] if onedrive else casa / "Documents"
+    if onedrive:
+        return onedrive[0]
+    return next((d for d in (casa / "Documents", casa / "Documentos") if d.is_dir()), casa / "Documents")
 
 
 def _texto(html):
@@ -409,7 +410,7 @@ class PaginaCursos(QWizardPage):
         for fila, g in enumerate(self.estado.grupos):
             item = self.tabla.item(fila, 0)
             g.elegido = item.checkState() == Qt.CheckState.Checked
-            g.carpeta = limpiar_nombre(item.text().strip() or g.nombre)
+            g.carpeta = nombre_de_carpeta(item.text().strip() or g.nombre)
             if g.elegido and g.carpeta.casefold() in usados:
                 QMessageBox.warning(self, "Carpetas", f"Dos cursos usan la carpeta «{g.carpeta}».")
                 return False
@@ -449,7 +450,9 @@ class PaginaCarpeta(QWizardPage):
         caja.addWidget(self.existente)
         caja.addLayout(fila_existente)
         caja.addWidget(_texto("<small>Consejo: si tu universidad te da OneDrive, ponla ahí y "
-                              "tendrás tus cursos respaldados y en el celular.</small>"))
+                              "tendrás tus cursos respaldados y en el celular."
+                              + ("" if os.name == "nt" else " En Linux, primero conéctalo en "
+                                 "Configuración → OneDrive.") + "</small>"))
         caja.addStretch()
         # cada opción habilita solo sus propios campos
         for w in (self.padre, elegir_padre, self.nombre):
@@ -465,7 +468,7 @@ class PaginaCarpeta(QWizardPage):
                 QMessageBox.warning(self, "Carpeta", "No encuentro la carpeta donde crearla.")
                 return False
             self.estado.modo = "nueva"
-            self.estado.raiz = padre / limpiar_nombre(self.nombre.text().strip() or "Cursos Canvas")
+            self.estado.raiz = padre / nombre_de_carpeta(self.nombre.text().strip() or "Cursos Canvas")
         else:
             raiz = Path(self.ruta_existente.text().strip())
             if not str(raiz) or not raiz.is_dir():

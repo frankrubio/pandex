@@ -33,6 +33,24 @@ def limpiar_nombre(nombre):
     return limpio or "archivo"
 
 
+# Carpetas nuevas sin tildes ni ñ («Teoría» → «Teoria»): algunas apps y la sincronización
+# con OneDrive en Linux se llevan mal con ellas. Las carpetas que ya tienes no se renombran.
+# Se desactiva con ``"carpetas_sin_tildes": false`` en los parámetros de la tarea.
+CARPETAS_SIN_TILDES = True
+
+
+def sin_tildes(texto):
+    """``"Diseño Teoría"`` -> ``"Diseno Teoria"``."""
+    texto = unicodedata.normalize("NFKD", str(texto))
+    return unicodedata.normalize("NFC", "".join(c for c in texto if not unicodedata.combining(c)))
+
+
+def nombre_de_carpeta(nombre):
+    """El nombre con que se crea una carpeta nueva."""
+    limpio = limpiar_nombre(nombre)
+    return (limpiar_nombre(sin_tildes(limpio)) if CARPETAS_SIN_TILDES else limpio)
+
+
 def separar_extension(nombre_real):
     """La extensión de verdad, sacada del nombre del archivo en Canvas.
 
