@@ -14,6 +14,7 @@ exista con un nombre parecido (``"Sem 3"`` = ``"Semana 3"``, ``"Lab"`` =
 ``"Laboratorio"`` si así se configuró) y solo se crea si no hay ninguna.
 """
 
+from . import nombres
 from .nombres import limpiar_nombre, normalizar
 
 # --------------------------------------------------------------------------
@@ -40,7 +41,7 @@ def resolver_subcarpeta(padre, nombre, alias=(), crear=True):
     existente = buscar_subcarpeta(padre, nombre, alias)
     if existente:
         return existente
-    nueva = padre / nombre
+    nueva = padre / nombres.nombre_de_carpeta(nombre)
     if crear:
         nueva.mkdir(parents=True, exist_ok=True)
     return nueva

@@ -58,7 +58,7 @@ from .cliente import Canvas, CanvasError
 from .destinos import alias_semana, nombre_semana, resolver_subcarpeta
 from .estructura import agrupar, emparejar_cursos, nombre_corto, resumir
 from .historial import Historial
-from .nombres import limpiar_nombre
+from .nombres import nombre_de_carpeta
 from .sincronizar import candidatos_de, metadatos
 
 log = get_logger("pandex.canvas.asistente")
@@ -410,7 +410,7 @@ class PaginaCursos(QWizardPage):
         for fila, g in enumerate(self.estado.grupos):
             item = self.tabla.item(fila, 0)
             g.elegido = item.checkState() == Qt.CheckState.Checked
-            g.carpeta = limpiar_nombre(item.text().strip() or g.nombre)
+            g.carpeta = nombre_de_carpeta(item.text().strip() or g.nombre)
             if g.elegido and g.carpeta.casefold() in usados:
                 QMessageBox.warning(self, "Carpetas", f"Dos cursos usan la carpeta «{g.carpeta}».")
                 return False
@@ -468,7 +468,7 @@ class PaginaCarpeta(QWizardPage):
                 QMessageBox.warning(self, "Carpeta", "No encuentro la carpeta donde crearla.")
                 return False
             self.estado.modo = "nueva"
-            self.estado.raiz = padre / limpiar_nombre(self.nombre.text().strip() or "Cursos Canvas")
+            self.estado.raiz = padre / nombre_de_carpeta(self.nombre.text().strip() or "Cursos Canvas")
         else:
             raiz = Path(self.ruta_existente.text().strip())
             if not str(raiz) or not raiz.is_dir():

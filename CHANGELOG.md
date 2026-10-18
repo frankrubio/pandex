@@ -17,6 +17,9 @@ cuando buscas actualizaciones desde el menú.
   suspendida, se hace apenas vuelves. Y en Configuración → Comportamiento puedes elegir que
   Pandex se cierre y el sistema lo abra solo a la hora de sus tareas (no ocupa memoria el resto
   del día).
+- **Carpetas nuevas sin tildes ni ñ.** Pandex crea «Teoria» en vez de «Teoría» (algunas apps y
+  OneDrive en Linux fallan con ellas). Tus carpetas existentes se reconocen igual y no se
+  renombran. Para volver a usar tildes: `"carpetas_sin_tildes": false` en la tarea.
 - **Arreglado:** el horario «de lunes a viernes» corría de martes a sábado.
 - **OneDrive en Linux.** Configuración → OneDrive → *Conectar una cuenta…*: tu OneDrive
   (personal, de la universidad o los dos) aparece como una carpeta y Pandex trabaja directo

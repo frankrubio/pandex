@@ -25,7 +25,7 @@ from pathlib import Path
 
 from .. import horas, onedrive
 from ..rutas import DATOS
-from . import sesion
+from . import nombres, sesion
 from .cliente import Canvas, CanvasError, SinConexion
 from .destinos import (
     IndiceCurso,
@@ -150,6 +150,7 @@ class Sincronizacion:
         self.reglas = self.p.get("cursos", [])
         self.secciones = self.p.get("secciones", {})
         self.formato = self.p.get("formato_semana", "Sem {n}")
+        nombres.CARPETAS_SIN_TILDES = bool(self.p.get("carpetas_sin_tildes", True))
         self.dedupe_por_tamano = bool(self.p.get("dedupe_por_tamano", True))
         self._indices = {}
         self._carpetas = {}
@@ -287,7 +288,7 @@ class Sincronizacion:
         if nombre not in self._carpetas:
             carpeta = buscar_subcarpeta(self.raiz, nombre)
             if carpeta is None:
-                carpeta = self.raiz / nombre
+                carpeta = self.raiz / nombres.nombre_de_carpeta(nombre)
                 carpeta.mkdir(parents=True, exist_ok=True)
                 self.ctx.log(f"creé la carpeta de curso {carpeta}")
             self._carpetas[nombre] = carpeta
