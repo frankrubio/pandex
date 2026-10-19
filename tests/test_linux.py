@@ -56,8 +56,9 @@ class AccesosLinux(unittest.TestCase):
         self.assertIn("Exec=", texto)
 
     def test_ruta_con_espacios_queda_entre_comillas(self):
-        with mock.patch.object(accesos, "RAIZ", Path("/home/ana/mi carpeta/pandex")):
-            self.assertIn("'/home/ana/mi carpeta/pandex/main.py'", accesos._entrada_desktop(None))
+        raiz = Path("/home/ana/mi carpeta/pandex")
+        with mock.patch.object(accesos, "RAIZ", raiz):
+            self.assertIn(f"'{raiz / 'main.py'}'", accesos._entrada_desktop(None))
 
 
 class NavegadorDeCanvas(unittest.TestCase):
@@ -103,7 +104,8 @@ class NavegadorDeCanvas(unittest.TestCase):
         from pandex.canvas import firefox
 
         with mock.patch.object(firefox, "_es_snap", return_value=True):
-            self.assertIn("snap/firefox/common", str(firefox.perfil_para(Path("/x/perfil"), "/snap/bin/firefox")))
+            perfil = firefox.perfil_para(Path("/x/perfil"), "/snap/bin/firefox")
+        self.assertEqual(perfil.parts[-4:], ("snap", "firefox", "common", "pandex-perfil"))
 
     def test_iniciar_sesion_con_firefox_no_carga_playwright(self):
         from pandex.canvas import firefox
