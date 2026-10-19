@@ -109,6 +109,8 @@ paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-v
 - **Clic derecho → Convertir a Markdown**: eliges una carpeta y convierte PDF, Word,
   PowerPoint y Excel a `.md`. El explorador te dice qué es material de estudio y qué ya
   convertiste.
+- **Clic derecho → Comprimir carpeta**: crea un `.zip` listo para subir a un drive y, si
+  tienes Ghostscript, aligera los PDF. Tus archivos originales no se tocan.
 - **Clic derecho → Configuración**: personaje (Rusty, BMO, Robot… o **el tuyo**, desde una
   imagen o un GIF), logo de la app, tamaño, horario automático, arrancar con Windows y crear
   el acceso directo.
@@ -140,7 +142,8 @@ con un clic. Tus cursos y tu configuración no se tocan.
 **Más dudas y errores frecuentes** (con lo que significa cada mensaje de Rusty): [docs/ayuda.md](docs/ayuda.md).
 
 **Tu privacidad:** todo pasa en tu PC. Pandex solo habla con tu Canvas y, cuando se lo pides,
-con GitHub para actualizarse. Sin servidores, sin telemetría y sin IA en la nube.
+con GitHub para actualizarse. Sin servidores, sin telemetría y sin IA en la nube. Qué guarda y
+dónde: [docs/privacidad.md](docs/privacidad.md).
 
 ---
 
@@ -157,6 +160,7 @@ pandex/        núcleo: app, tareas (contrato de plug-ins), ejecutor (hilos), pr
 └── markdown/  Convertir a Markdown: clasificador, lote, proceso aparte, navegador
 tasks/         los plug-ins (delgados: la lógica vive en pandex/)
 tests/         pruebas sin internet (Canvas falso, carpetas temporales)
+specs/         qué se va a cambiar y por qué: principios, specs, planes y tareas
 herramientas/  íconos, capturas del README y skins/ (personajes en el estilo de Rusty)
 ```
 
@@ -185,6 +189,12 @@ class Task:
 | Crear tareas: `ctx`, `preparar`, `configurar`, horarios | [docs/crear-tareas.md](docs/crear-tareas.md) |
 | Cómo decide Sincronizar Canvas dónde va cada archivo | [docs/sincronizar-canvas.md](docs/sincronizar-canvas.md) |
 | Cómo convierte y clasifica Convertir a Markdown | [docs/convertir-markdown.md](docs/convertir-markdown.md) |
+| Cómo contribuir (personas y agentes de IA) | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Las reglas del proyecto y las tareas pendientes, con su spec | [specs/principios.md](specs/principios.md) · [specs/tablero.md](specs/tablero.md) |
+| Estilo, nombres, registro, ramas y versiones | [docs/convenciones.md](docs/convenciones.md) |
+| Cómo se escriben y corren las pruebas | [docs/pruebas.md](docs/pruebas.md) |
+| Qué datos guarda Pandex y con quién habla | [docs/privacidad.md](docs/privacidad.md) |
+| Reportar un problema de seguridad | [SECURITY.md](SECURITY.md) |
 
 ## Créditos
 

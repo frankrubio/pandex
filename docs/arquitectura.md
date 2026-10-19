@@ -24,6 +24,7 @@ devuelven.
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque) y su ícono. |
 | `pandex/horas.py` | Horas y fechas para el usuario, en formato de 12 horas (*7:05 p. m.*). |
 | `pandex/personaje_nuevo.py` | «Añadir personaje…»: convierte una imagen o un GIF en un personaje (Pillow, solo al usarlo). |
+| `pandex/comprimir.py` | «Comprimir carpeta»: crea el `.zip` y, si hay Ghostscript, aligera los PDF (los originales no se tocan). |
 | `pandex/ui/` | `mascota.py` (la ventana, estática), `personajes.py` (el catálogo de `assets/personajes/`), `logo.py` (el logo y los íconos), `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
 | `pandex/markdown/proceso.py` | Corre la conversión a Markdown en un proceso hijo (la memoria del conversor se libera al terminar). |
 | `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. Al arrancar aparta los archivos que dejaron versiones anteriores (`OBSOLETOS`), porque el ZIP solo agrega y reemplaza. |
@@ -132,6 +133,9 @@ antes de importar nada. `tests/apoyo.py` trae un **Canvas falso** (cursos, módu
 archivos fijos; cuenta llamadas y puede fallar a propósito) y un `ctx` falso. Hay pruebas de
 punta a punta de la sincronización, del reordenamiento con deshacer y del asistente completo
 manejado por código. Ninguna usa internet.
+
+Qué cubre cada archivo, reglas y cómo convertir un escenario de una spec en una prueba:
+[pruebas.md](pruebas.md).
 
 ## Decisiones de diseño
 
