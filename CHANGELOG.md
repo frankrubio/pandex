@@ -23,6 +23,9 @@ cuando buscas actualizaciones desde el menú.
 - **Comprimir carpeta.** Nueva tarea en el menú: crea un .zip de la carpeta que elijas, listo para
   subir a un drive. Si tienes Ghostscript, también aligera los PDF (los escaneados bajan mucho:
   en una prueba, de 4 MB a 0,6 MB). Tus archivos originales no se tocan.
+- **Un solo Pandex por PC.** Si instalas una copia en otra carpeta, el instalador trae tu
+  configuración, deja el acceso directo y el arranque automático en la nueva y te dice qué carpeta
+  puedes borrar. `instalar.sh` avisa si lo abres en Windows (ahí va `instalar.bat`).
 - **Arreglado:** el horario «de lunes a viernes» corría de martes a sábado.
 - **OneDrive en Linux.** Configuración → OneDrive → *Conectar una cuenta…*: tu OneDrive
   (personal, de la universidad o los dos) aparece como una carpeta y Pandex trabaja directo

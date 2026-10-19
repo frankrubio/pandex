@@ -38,6 +38,27 @@ class AccesosLinux(unittest.TestCase):
         self.assertIn("Icon=", texto)
         self.assertTrue((self.tmp / "pandex" / "iconos").is_dir())  # el .ico pasó a PNG
 
+    def test_instalar_otra_copia_no_deja_pandex_dos_veces(self):
+        vieja, nueva = self.tmp / "Descargas" / "pandex", self.tmp / "Documentos" / "pandex"
+        for carpeta in (vieja, nueva):
+            carpeta.mkdir(parents=True)
+            (carpeta / "main.py").write_text("", encoding="utf-8")
+        (vieja / "config.json").write_text('{"mis": "cursos"}', encoding="utf-8")
+        with mock.patch.object(accesos, "INSTALACION", self.tmp / "pandex" / "instalacion.json"), \
+                mock.patch.object(accesos, "RAIZ", vieja):
+            self.assertIsNone(accesos.instalar_aqui(vieja, vieja / "config.json"), "primera vez: nada que avisar")
+            accesos.activar_arranque()
+            self.assertIsNone(accesos.instalar_aqui(vieja, vieja / "config.json"), "reinstalar en la misma carpeta")
+        with mock.patch.object(accesos, "INSTALACION", self.tmp / "pandex" / "instalacion.json"), \
+                mock.patch.object(accesos, "RAIZ", nueva):
+            self.assertEqual(accesos.instalar_aqui(nueva, nueva / "config.json"), vieja)
+            self.assertIsNone(accesos.instalacion_anterior(nueva), "solo se avisa una vez")
+        self.assertEqual((nueva / "config.json").read_text(encoding="utf-8"), '{"mis": "cursos"}')
+        for acceso in (self.escritorio / "pandex.desktop", accesos.ruta_inicio()):
+            texto = acceso.read_text(encoding="utf-8")
+            self.assertIn(str(nueva), texto, f"{acceso.name} abre la copia nueva")
+            self.assertNotIn(str(vieja), texto)
+
     def test_arranque_se_activa_y_se_desactiva(self):
         self.assertFalse(accesos.arranca_con_el_sistema())
         accesos.activar_arranque()
