@@ -142,7 +142,8 @@ def abrir(perfil, headless):
         driver = webdriver.Firefox(options=opciones, service=servicio)
     except Exception as exc:
         log.error("Firefox no abrió: %s", exc)
-        raise ErrorFirefox(f"No pude abrir Firefox: {str(exc).splitlines()[0] if str(exc) else exc}") from exc
+        raise ErrorFirefox("No pude abrir Firefox. Revisa tu internet (la primera vez descarga un "
+                           "componente de 3 MB) y vuelve a intentar. El detalle está en «Ver registro».") from exc
     try:
         driver.set_window_size(1366, 900)
     except Exception:

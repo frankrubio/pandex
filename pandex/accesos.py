@@ -253,5 +253,53 @@ def desactivar_arranque():
     return not arranca_con_el_sistema()
 
 
+# ---------- una sola copia instalada ----------
+
+INSTALACION = DATOS / "instalacion.json"  # en qué carpeta se instaló Pandex la última vez
+
+
+def instalacion_anterior(raiz=RAIZ):
+    """La carpeta de otra copia de Pandex instalada antes en esta PC (que sigue ahí), o None."""
+    try:
+        previa = Path(json.loads(INSTALACION.read_text(encoding="utf-8"))["carpeta"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+    if not (previa / "main.py").is_file():
+        return None
+    try:
+        if previa.resolve() == Path(raiz).resolve():
+            return None
+    except OSError:
+        return None
+    return previa
+
+
+def instalar_aqui(raiz=RAIZ, config=CONFIG_FILE):
+    """Lo que hace el instalador: deja los accesos apuntando a esta copia.
+
+    Si ya había otra copia, trae su ``config.json`` (tus cursos y ajustes) y mueve el
+    arranque automático a esta; así no quedan dos Pandex compitiendo. Devuelve la
+    carpeta de la copia anterior (para avisar que se puede borrar) o None.
+    """
+    previa = instalacion_anterior(raiz)
+    if previa is not None:
+        vieja = previa / "config.json"
+        if vieja.is_file() and not Path(config).exists():
+            Path(config).write_bytes(vieja.read_bytes())
+            log.info("configuración traída de %s", previa)
+    crear_en_escritorio()
+    if arranca_con_el_sistema():
+        activar_arranque()  # el que había apuntaba a la otra copia
+    INSTALACION.parent.mkdir(parents=True, exist_ok=True)
+    INSTALACION.write_text(json.dumps({"carpeta": str(raiz)}, ensure_ascii=False), encoding="utf-8")
+    return previa
+
+
 if __name__ == "__main__":
-    print(f"Acceso directo creado: {crear_en_escritorio()}")
+    previa = instalar_aqui()
+    print(" Acceso directo creado.")
+    if previa is not None:
+        print()
+        print(f" Ya tenías Pandex en: {previa}")
+        print(" Traje tu configuración y ahora el acceso directo abre esta copia.")
+        print(" Puedes borrar esa carpeta para no tener Pandex dos veces.")

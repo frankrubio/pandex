@@ -5,6 +5,12 @@
 set -u
 cd "$(dirname "$0")"
 
+case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*)
+        echo " Estás en Windows: usa instalar.bat (doble clic), no este archivo."
+        exit 1 ;;
+esac
+
 fallo() { echo; echo " Algo falló. Lee el mensaje de arriba; si no se entiende, abre un issue en GitHub."; exit 1; }
 
 echo
