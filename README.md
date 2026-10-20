@@ -26,18 +26,22 @@
 
 ## Instalar (5 minutos)
 
-Es **un solo Pandex para Windows y Linux**: el mismo código; solo cambia el instalador.
+Es **un solo Pandex para Windows y Linux**: el mismo código; solo cambia el instalador. Sigue
+**solo los pasos de tu sistema** y descárgalo **de una sola forma** (ZIP o git, no las dos).
 
 | Tu sistema | Qué haces |
 |---|---|
-| **Windows 10 u 11** | Los pasos de abajo: doble clic en **`instalar.bat`**. |
+| **Windows 10 u 11** | [Los pasos de abajo](#en-windows): doble clic en **`instalar.bat`**. |
 | **Linux** (Mint, Ubuntu…) | [docs/linux.md](docs/linux.md): `./instalar.sh`. Usa tu Firefox. |
 
 **¿Ya lo tienes instalado?** No lo descargues otra vez: usa **clic derecho → Buscar
-actualizaciones…**. Si igual instalas una copia en otra carpeta, el instalador lo nota: trae tu
+actualizaciones…**. Si igual instalas una copia en otra carpeta, el instalador trae tu
 configuración, deja el acceso directo en la copia nueva y te dice qué carpeta puedes borrar.
+¿No sabes si lo tienes dos veces? [Así lo revisas](docs/ayuda.md#tengo-pandex-dos-veces).
 
 El instalador pregunta si quieres **«Convertir a Markdown»** (unos 280 MB). Si no lo usas, di que no: Pandex queda mucho más liviano.
+
+### En Windows
 
 1. **Instala Python** desde [python.org/downloads](https://www.python.org/downloads/).
    En la primera pantalla del instalador marca **☑ Add python.exe to PATH**.
@@ -55,7 +59,7 @@ El instalador pregunta si quieres **«Convertir a Markdown»** (unos 280 MB). Si
 
 Listo: abre **Pandex** desde el Escritorio.
 
-**Otras formas de descargarlo** (todas terminan igual: doble clic en `instalar.bat`):
+**Otras formas de descargarlo en Windows** (elige una; todas terminan igual: doble clic en `instalar.bat`):
 
 <details>
 <summary><b>Con GitHub Desktop</b> (si te gusta tener una app para tus repositorios)</summary>
@@ -143,7 +147,7 @@ con un clic. Tus cursos y tu configuración no se tocan.
 |---|---|
 | Windows bloquea un archivo al abrirlo | Te faltó el paso 3. En PowerShell: `Get-ChildItem "ruta\de\pandex" -Recurse \| Unblock-File`. No desactives el *Control de aplicaciones inteligente*. |
 | *"No encontré un navegador"* | Instala Google Chrome (en Linux: ver [docs/linux.md](docs/linux.md)). |
-| Perdí el acceso directo | Doble clic en **`Pandex.pyw`**, dentro de la carpeta. Luego, en Pandex: Configuración → Comportamiento → **Crear en el Escritorio**. |
+| Perdí el acceso directo | Windows: doble clic en **`Pandex.pyw`**, dentro de la carpeta. Linux: en la Terminal, `~/pandex/.venv/bin/python ~/pandex/main.py`. Luego, en Pandex: Configuración → Comportamiento → **Crear en el Escritorio**. |
 | Empezó otro ciclo | Clic derecho → **Configurar Canvas…** |
 | *"🔒 aún sin abrir en Canvas"* | El docente lo programó para más adelante; Pandex lo baja solo cuando se abra. |
 | Algo no se bajó o no sé por qué | Clic derecho → **Ver registro**: cada decisión dice el motivo. |
@@ -187,8 +191,12 @@ class Task:
 ```
 
 ```bash
+# Windows
 .venv\Scripts\python.exe -m unittest discover -s tests -t .   # pruebas
 .venv\Scripts\python.exe main.py --test                       # abre y se cierra a los 3 s
+# Linux
+QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -t .
+QT_QPA_PLATFORM=offscreen .venv/bin/python main.py --test
 ```
 
 | Para saber… | Lee |
