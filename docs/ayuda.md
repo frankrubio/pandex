@@ -87,10 +87,30 @@ Pandex revisa una vez al día mientras está abierto. Si hay una versión nueva,
 Clic derecho → **Configurar Canvas…** y vuelve a marcar tus cursos. La lista anterior se guarda en una copia.
 
 **¿Puedo moverlo a otra carpeta?**
-Mejor no, porque el acceso directo apunta a la carpeta original. Si ya lo moviste, abre **`Pandex.pyw`** desde su carpeta nueva y crea de nuevo el acceso directo: **Configuración → Comportamiento → Crear en el Escritorio**.
+Mejor no, porque el acceso directo apunta a la carpeta original. Si ya lo moviste, ejecuta otra vez el instalador desde la carpeta nueva (`instalar.bat` en Windows, `./instalar.sh` en Linux): rehace el acceso directo para esa carpeta.
 
 **¿Funciona en Mac o Linux?**
-No. Pandex está hecho para Windows 10 y 11.
+En Linux sí (Mint, Ubuntu y parecidos): sigue [la guía de Linux](linux.md). En Mac, no.
+
+## ¿Tengo Pandex dos veces?
+
+Pasa si lo descargaste de dos formas (el ZIP y con git) o en dos carpetas. No se mezclan, pero
+ocupan el doble y tu acceso directo abre solo una.
+
+1. **Mira cuál abre tu acceso directo:** esa es la que se queda.
+   - Windows: clic derecho sobre **Pandex** en el Escritorio → **Propiedades** → *Iniciar en*.
+   - Linux: en la Terminal, `grep '^Exec' ~/.local/share/applications/pandex.desktop`.
+2. **Busca otras copias:** carpetas llamadas `pandex` o `pandex-main` (en Descargas,
+   Documentos o tu carpeta personal). En Linux: `ls -d ~/pandex* ~/Descargas/pandex* ~/Documentos/pandex* 2>/dev/null`.
+3. **Cierra Pandex.** Si tus cursos estaban configurados en la otra copia, copia su
+   `config.json` a la que se queda. Luego borra la otra carpeta completa.
+4. **Ejecuta otra vez el instalador de la que se queda** (`instalar.bat` o `./instalar.sh`; es
+   rápido porque ya tiene todo): deja el acceso directo y el arranque automático en esa copia.
+5. Si usas «Cerrarse, y abrirse sola a la hora de sus tareas», abre **Configuración** y pulsa
+   **Guardar** una vez: así el sistema la abre a ella.
+
+Tu sesión de Canvas y tu historial están aparte (`%LOCALAPPDATA%\Pandex` o
+`~/.local/share/Pandex`) y sirven para cualquier copia: esa carpeta no la borres.
 
 ## Errores frecuentes
 

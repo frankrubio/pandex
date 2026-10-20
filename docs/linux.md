@@ -8,6 +8,9 @@ descarga ningún navegador), OneDrive se conecta desde Pandex y el OCR usa Tesse
 Todo se hace en la **Terminal** (en Linux Mint: menú → Terminal, o `Ctrl+Alt+T`). Cuando abre, ya
 estás en tu carpeta personal (`~`, es decir `/home/tu-usuario`). Copia y pega cada bloque.
 
+**¿Ya lo tienes?** Si `ls ~/pandex/main.py` lo encuentra, no lo descargues otra vez: actualízalo
+con clic derecho → **Buscar actualizaciones…** (o `cd ~/pandex && git pull`).
+
 **1. Programas del sistema** (pide tu contraseña; da igual en qué carpeta estés):
 
 ```bash
@@ -26,6 +29,7 @@ git clone https://github.com/frankrubio/pandex.git
 Sí, conviene tener el repositorio **clonado con git**: así «Buscar actualizaciones…» se actualiza
 con un clic. ¿Prefieres sin git? Descarga el ZIP (**Code → Download ZIP**) y extráelo en tu carpeta
 personal; luego renombra la carpeta `pandex-main` a `pandex`. También se actualiza solo.
+Elige **una** de las dos formas: con las dos te quedan dos copias (`~/pandex` y `~/pandex-main`).
 
 **3. Instalar** (siempre dentro de la carpeta de Pandex):
 
@@ -51,6 +55,23 @@ cd ~/pandex
 
 La primera vez te guía para conectar tu Canvas: se abre **tu Firefox** con una ventana aparte
 (perfil propio de Pandex: no toca tus pestañas ni tus contraseñas) para que inicies sesión.
+
+## Dónde queda
+
+Pandex no tiene paquete `.deb`, AppImage ni `pip install`: es solo la carpeta `~/pandex` con su
+propio Python dentro (`.venv`). No usa `sudo` ni instala nada fuera de estos lugares:
+
+| Qué | Dónde |
+|---|---|
+| Pandex, su Python, tu configuración y el registro | `~/pandex/` (`.venv/`, `config.json`, `logs/`) |
+| Acceso en el menú de aplicaciones | `~/.local/share/applications/pandex.desktop` |
+| Acceso en el Escritorio | `~/Escritorio/pandex.desktop` |
+| Arrancar al iniciar sesión (si lo activas) | `~/.config/autostart/pandex.desktop` |
+| Abrirse sola a su hora (si lo activas) | `~/.config/systemd/user/pandex.service` y `pandex.timer` |
+| Tu sesión de Canvas e historial | `~/.local/share/Pandex/` |
+| Perfil de Firefox (solo con el Firefox de snap) | `~/snap/firefox/common/pandex-perfil/` |
+
+¿Ves dos «Pandex» en el menú o dos carpetas? [¿Tengo Pandex dos veces?](ayuda.md#tengo-pandex-dos-veces)
 
 ## Que corra a su hora y se cierre
 
