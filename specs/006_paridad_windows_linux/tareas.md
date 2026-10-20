@@ -57,3 +57,14 @@
 - **Cambio:** `error.yml` con sistema operativo; README con «Funciona en / No funciona en»;
   mensajes claros en instaladores para ARM y macOS.
 - **Terminado cuando:** revisión de Frank.
+
+## T006.7 · Un solo Pandex: también el despertador y las copias de antes
+
+- **Requisitos:** PLA-11, PLA-12
+- **Depende de:** —
+- **Prueba primero:** en `tests/test_linux.py`, que instalar otra copia reescriba
+  `pandex.service` con la carpeta nueva (y no lo cree si no estaba), que reconozca una copia
+  sin `instalacion.json` por el `Path=` del menú, y su par en Windows con PowerShell simulado.
+- **Cambio:** `despertador.mover_aqui()` (solo cambia qué se abre, no los horarios) y
+  `accesos.instalacion_anterior()` con la lectura de los accesos; versión 2.4.1.
+- **Terminado cuando:** las pruebas pasan en Windows y Ubuntu.

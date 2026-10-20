@@ -88,10 +88,8 @@ def a_oncalendar(cron):
     return f"{semana + ' ' if semana else ''}*-{dos(mes)}-{dos(dia)} {dos(hora)}:{dos(minuto)}:00"
 
 
-def unidades(horarios):
-    """El texto de ``pandex.service`` y ``pandex.timer`` para esos ``{task_id: cron}``."""
-    calendarios = sorted({a_oncalendar(c) or CADA_15 for c in horarios.values()})
-    servicio = "\n".join([
+def _servicio():
+    return "\n".join([
         "[Unit]",
         "Description=Pandex: tareas a su hora",
         "",
@@ -102,6 +100,11 @@ def unidades(horarios):
         "TimeoutStartSec=infinity",
         "",
     ])
+
+
+def unidades(horarios):
+    """El texto de ``pandex.service`` y ``pandex.timer`` para esos ``{task_id: cron}``."""
+    calendarios = sorted({a_oncalendar(c) or CADA_15 for c in horarios.values()})
     temporizador = "\n".join([
         "[Unit]",
         "Description=Pandex: tareas a su hora (y al volver, si la PC estaba apagada)",
@@ -116,7 +119,7 @@ def unidades(horarios):
         "WantedBy=timers.target",
         "",
     ])
-    return servicio, temporizador
+    return _servicio(), temporizador
 
 
 def _carpeta_systemd():
@@ -196,13 +199,17 @@ def disparadores_windows(horarios):
     return salida
 
 
-def script_windows(horarios):
+def _accion_windows():
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     exe = pythonw if pythonw.exists() else Path(sys.executable)
+    return (f"$a = New-ScheduledTaskAction -Execute {_ps(exe)} "
+            f"-Argument {_ps(chr(34) + str(RAIZ / 'main.py') + chr(34) + ' --pendientes')} "
+            f"-WorkingDirectory {_ps(RAIZ)}")
+
+
+def script_windows(horarios):
     return ";".join([
-        f"$a = New-ScheduledTaskAction -Execute {_ps(exe)} "
-        f"-Argument {_ps(chr(34) + str(RAIZ / 'main.py') + chr(34) + ' --pendientes')} "
-        f"-WorkingDirectory {_ps(RAIZ)}",
+        _accion_windows(),
         "$t = @(" + ", ".join(f"({d})" for d in disparadores_windows(horarios)) + ")",
         "$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries "
         "-DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds 0)",
@@ -216,6 +223,7 @@ def _powershell(script):
                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if r.returncode != 0:
         raise ErrorDespertador(r.stderr.strip()[:300] or "el Programador de tareas no respondió")
+    return r.stdout
 
 
 # ---------- lo que usa la app ----------
@@ -234,6 +242,33 @@ def actualizar(config_datos, por_defecto=None):
     else:
         _instalar_linux(horarios)
     return True
+
+
+def mover_aqui():
+    """Si el despertador ya está puesto, que abra esta copia de Pandex (lo usa el instalador).
+
+    Solo cambia qué se abre: los horarios quedan como estaban. Si no está puesto, no lo crea.
+    Devuelve True si lo movió.
+    """
+    if WINDOWS:
+        salida = _powershell(
+            "if (Get-ScheduledTask -TaskName 'Pandex' -ErrorAction SilentlyContinue) {"
+            f" {_accion_windows()}; Set-ScheduledTask -TaskName 'Pandex' -Action $a | Out-Null;"
+            " Write-Output 'movido' }"
+        )
+        movido = "movido" in (salida or "")
+    else:
+        carpeta = _carpeta_systemd()
+        movido = (carpeta / f"{NOMBRE}.timer").exists()
+        if movido:
+            (carpeta / f"{NOMBRE}.service").write_text(_servicio(), encoding="utf-8")
+            try:
+                _systemctl("daemon-reload")
+            except (ErrorDespertador, OSError, subprocess.SubprocessError):
+                pass  # el archivo ya está bien: systemd lo lee al volver a iniciar sesión
+    if movido:
+        log.info("el despertador ahora abre %s", RAIZ)
+    return movido
 
 
 def quitar():

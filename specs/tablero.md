@@ -62,6 +62,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T006.4 | Mismo árbol en los dos sistemas | 006 | — | libre |
 | T006.5 | Rutas con espacios, tildes y ñ | 006 | — | libre |
 | T006.6 | Plantilla de issue y sistemas no soportados | 006 | — | libre |
+| T006.7 | Un solo Pandex: también el despertador y las copias de antes | 006 | — | en curso (arreglo/una-sola-copia) |
 | T005.2 | Globo conciso y errores con acción | 005 | — | libre |
 | T005.3 | Una acción principal por ventana | 005 | T005.1 | libre |
 | T005.4 | Primera vez solo con la URL | 005 | — | libre |
