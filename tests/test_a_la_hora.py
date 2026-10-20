@@ -70,11 +70,13 @@ class Pendientes(unittest.TestCase):
 class DiasDeLaSemana(unittest.TestCase):
     def test_lunes_a_viernes_es_lunes_a_viernes(self):
         """APScheduler cuenta 0 = lunes; cron, 0 = domingo. Antes «1-5» corría de martes a sábado."""
+        # weekday() y no strftime("%a"): Qt pone el idioma del sistema y en español «%a» da «lun»
         disparo = pendientes.disparador("0 19 * * 1-5")
         sabado = momento(24, 20)
-        self.assertEqual(disparo.get_next_fire_time(None, sabado).strftime("%a %d"), "Mon 26")
-        self.assertEqual(pendientes.disparador("0 8 * * 0").get_next_fire_time(None, sabado).strftime("%a"), "Sun")
-        self.assertEqual(pendientes.disparador("0 8 * * 7").get_next_fire_time(None, sabado).strftime("%a"), "Sun")
+        siguiente = disparo.get_next_fire_time(None, sabado)
+        self.assertEqual((siguiente.weekday(), siguiente.day), (0, 26), "lunes 26")
+        self.assertEqual(pendientes.disparador("0 8 * * 0").get_next_fire_time(None, sabado).weekday(), 6, "domingo")
+        self.assertEqual(pendientes.disparador("0 8 * * 7").get_next_fire_time(None, sabado).weekday(), 6, "domingo")
 
 
 class Despertador(unittest.TestCase):

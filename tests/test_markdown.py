@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from pandex import extras
 from pandex.markdown import archivos, conversion, lote
 from pandex.markdown.clasificador import Clasificador
 from tests.apoyo import CtxFalso
@@ -66,6 +67,8 @@ class LimpiarPdf(unittest.TestCase):
         self.assertEqual(conversion.limpiar_pdf(crudo), "Fundamentos de Cálculo\n\nEjemplo: y = x²")
 
 
+@unittest.skipUnless(extras.instalado("markdown"),
+                     "«Convertir a Markdown» es opcional y no está instalado (requirements-markdown.txt)")
 class Conversion(unittest.TestCase):
     """Una conversión de verdad con MarkItDown (un CSV: rápido y sin OCR)."""
 

@@ -40,6 +40,12 @@ Antes de abrir un PR: toda la suite en verde y `main.py --test` abre y se cierra
 8. **Lo que depende del sistema** se prueba en los dos (la CI corre en Windows y Ubuntu). Si
    una prueba solo tiene sentido en uno, se salta en el otro con
    `@unittest.skipUnless(rutas.WINDOWS, "solo Windows")` y un motivo.
+9. **Sin depender del idioma.** Qt adopta el idioma del sistema al crear la app, así que
+   `strftime("%a")` da `lun` en una PC en español: compara números (`weekday()`, `day`), no
+   textos. La CI de Ubuntu corre en español (`es_PE.UTF-8`) para notarlo.
+10. **Lo opcional se salta si no está instalado.** Las pruebas de una función opcional llevan
+    `@unittest.skipUnless(extras.instalado("markdown"), "…")`, para que la suite pase en un
+    Pandex sin ella. La CI instala todo, así que ahí siempre corren.
 
 ## Qué cubre cada archivo
 
