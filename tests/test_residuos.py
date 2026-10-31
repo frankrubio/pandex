@@ -203,5 +203,92 @@ class Limites(unittest.TestCase):
         self.assertEqual(r, {"liberado": 0, "externos": []})
 
 
+class Desinstalar(unittest.TestCase):
+    """RES-07 a RES-10: desinstalar quita todo lo que Pandex creó, salvo tus cursos."""
+
+    def setUp(self):
+        from pandex import accesos, desinstalar, despertador, inventario, onedrive
+
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+        self.casa = self.tmp / "casa"
+        self.datos = self.tmp / "datos"
+        self.raiz = self.tmp / "pandex"
+        self.cursos = self.casa / "OneDrive" / "Cursos"
+        for carpeta in (self.casa / "Escritorio", self.datos, self.raiz / ".venv", self.cursos):
+            carpeta.mkdir(parents=True)
+        (self.cursos / "Sem 1.pdf").write_bytes(b"mio")
+        (self.raiz / "config.json").write_text("{}", encoding="utf-8")
+        entorno = {"XDG_CONFIG_HOME": str(self.casa / ".config"), "XDG_DATA_HOME": str(self.casa / ".local/share")}
+        parches = [
+            mock.patch.dict("os.environ", entorno),
+            mock.patch.object(Path, "home", return_value=self.casa),
+            mock.patch.object(accesos, "WINDOWS", False),
+            mock.patch.object(desinstalar, "WINDOWS", False),
+            mock.patch.object(despertador, "WINDOWS", False),
+            mock.patch.object(desinstalar, "DATOS", self.datos),
+            mock.patch.object(inventario, "ARCHIVO", self.datos / "inventario.json"),
+            mock.patch.object(accesos, "_carpeta_escritorio", return_value=self.casa / "Escritorio"),
+            mock.patch.object(accesos.subprocess, "run"),  # gio
+            mock.patch.object(onedrive, "disponible", return_value=False),
+            mock.patch.object(despertador, "_systemctl"),
+        ]
+        for parche in parches:
+            parche.start()
+            self.addCleanup(parche.stop)
+        self.accesos, self.desinstalar, self.despertador, self.inventario = accesos, desinstalar, despertador, inventario
+
+    def instalar_todo(self):
+        self.accesos._crear_linux(self.tmp / "no-hay.ico")
+        self.accesos.activar_arranque()
+        with mock.patch.object(self.despertador.shutil, "which", return_value="/usr/bin/systemctl"):
+            self.despertador._instalar_linux({"sync_canvas": "0 19 * * *"})
+        (self.datos / "historial_canvas.json").write_text("{}", encoding="utf-8")
+
+    def test_inventario_registra_accesos_y_despertador(self):
+        self.instalar_todo()
+        motivos = sorted(d["motivo"] for d in self.inventario.todo())
+        self.assertEqual(motivos, ["acceso directo"] * 3 + ["despertador"] * 2)
+        self.accesos.desactivar_arranque()
+        self.assertEqual(len(self.inventario.todo()), 4)
+
+    def test_desinstalar_quita_todo_lo_inventariado(self):
+        self.instalar_todo()
+        pasos = self.desinstalar.plan(self.raiz, conservar_config=True)
+        nombres = " ".join(p.nombre for p in pasos)
+        for esperado in ("Despertador", "Accesos directos", "Datos de Pandex", "Entorno de Python"):
+            self.assertIn(esperado, nombres)
+        quedan = self.desinstalar.ejecutar(pasos)
+        self.assertEqual(quedan, [])
+        restos = [p for p in self.casa.rglob("*") if p.is_file() and not p.is_relative_to(self.cursos)]
+        self.assertEqual(restos, [], "no queda nada de Pandex en la casa")
+        self.assertFalse(self.datos.exists())
+        self.assertFalse((self.raiz / ".venv").exists())
+
+    def test_desinstalar_no_toca_la_carpeta_de_cursos(self):
+        self.instalar_todo()
+        self.desinstalar.ejecutar(self.desinstalar.plan(self.raiz, conservar_config=False))
+        self.assertEqual((self.cursos / "Sem 1.pdf").read_bytes(), b"mio")
+
+    def test_desinstalar_puede_conservar_config(self):
+        self.desinstalar.ejecutar(self.desinstalar.plan(self.raiz, conservar_config=True))
+        self.assertTrue((self.raiz / "config.json").exists())
+        self.desinstalar.ejecutar(self.desinstalar.plan(self.raiz, conservar_config=False))
+        self.assertFalse((self.raiz / "config.json").exists())
+
+    def test_desinstalar_pide_confirmacion(self):
+        self.instalar_todo()
+        with mock.patch.object(self.desinstalar, "RAIZ", self.raiz), \
+                mock.patch("builtins.input", side_effect=["", "n"]), \
+                mock.patch("builtins.print"):
+            self.assertEqual(self.desinstalar._cli([]), 2)
+        self.assertTrue(self.datos.exists())
+        self.assertTrue((self.casa / "Escritorio" / "pandex.desktop").exists())
+
+    def test_hay_un_desinstalador_por_sistema(self):
+        for nombre in ("desinstalar.sh", "desinstalar.bat"):
+            self.assertIn("pandex.desinstalar", (RAIZ / nombre).read_text(encoding="utf-8"), nombre)
+
+
 if __name__ == "__main__":
     unittest.main()

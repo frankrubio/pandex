@@ -20,6 +20,8 @@ devuelven.
 | `pandex/pendientes.py` | Qué tarea programada se perdió (PC apagada o suspendida) y hay que hacer ya. Sin Qt. |
 | `pandex/despertador.py` | Modo «a la hora»: temporizador de systemd (Linux) o tarea programada (Windows) que lanza `main.py --pendientes`. |
 | `pandex/extras.py` | Funciones opcionales (hoy, «Convertir a Markdown» = `requirements-markdown.txt`): instalar y quitar. |
+| `pandex/inventario.py` | Lo que Pandex crea fuera de sus carpetas (accesos, despertador, perfiles de snap), anotado en `DATOS/inventario.json` para poder quitarlo. |
+| `pandex/desinstalar.py` | Desinstalar: lista exacta, confirmación y borrado en orden (despertador → accesos → OneDrive → datos → `.venv`). Lo usan `desinstalar.sh`, `desinstalar.bat` y Configuración. Nunca toca la carpeta de cursos. |
 | `pandex/limpieza.py` | «Liberar espacio»: lo que sobra y cuánto pesa. Lo de Pandex (paquetes huérfanos, respaldos de más) se limpia solo al estrenar una versión; lo de fuera (cachés viejas, otras copias de Pandex) se pregunta en `ui/limpieza.py`. |
 | `pandex/paquetes.py` | Todo `pip` pasa por aquí: sin caché ni `.pyc` de sobra; `huerfanos()` dice qué paquetes ya no pide nadie (se quitan al actualizar). |
 | `pandex/onedrive.py` | Linux: conecta y monta OneDrive con rclone (`~/OneDrive`, `~/OneDrive - Nombre`); `asegurar()` impide escribir si no está montado. La pantalla está en `pandex/ui/onedrive.py`. |

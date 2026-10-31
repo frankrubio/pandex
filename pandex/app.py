@@ -385,7 +385,8 @@ class PandexApp(QObject):
 
     def _abrir_configuracion(self):
         self._me_usan()
-        dlg = DialogoConfiguracion(self.config, self.tareas, al_buscar_actualizaciones=self.buscar_actualizaciones)
+        dlg = DialogoConfiguracion(self.config, self.tareas, al_buscar_actualizaciones=self.buscar_actualizaciones,
+                                   al_desinstalar=self._cerrar)
         if dlg.exec():
             self.mascota.recargar_apariencia()
             self.programador.montar(self.tareas)

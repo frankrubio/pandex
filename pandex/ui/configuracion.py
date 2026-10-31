@@ -149,11 +149,12 @@ def _titulo(texto, subtitulo=None):
 
 
 class DialogoConfiguracion(QDialog):
-    def __init__(self, config, tareas, parent=None, al_buscar_actualizaciones=None):
+    def __init__(self, config, tareas, parent=None, al_buscar_actualizaciones=None, al_desinstalar=None):
         super().__init__(parent)
         self.config = config
         self.tareas = tareas
         self._al_buscar = al_buscar_actualizaciones
+        self._al_desinstalar = al_desinstalar
         self.setWindowTitle("Configuración de Pandex")
         self.resize(720, 560)
 
@@ -482,15 +483,30 @@ class DialogoConfiguracion(QDialog):
         fila = QHBoxLayout(espacio)
         fila.setContentsMargins(16, 12, 16, 12)
         texto = QLabel("<b>Espacio en disco</b><br>Quita lo que Pandex ya no usa: paquetes viejos, "
-                       "respaldos de más, cachés y otras copias de Pandex.")
+                       "respaldos de más, cachés y otras copias de Pandex. O desinstálalo por completo.")
         texto.setWordWrap(True)
         fila.addWidget(texto, 1)
+        columna = QVBoxLayout()
         liberar = QPushButton("Liberar espacio…")
         liberar.clicked.connect(self._liberar_espacio)
-        fila.addWidget(liberar)
+        columna.addWidget(liberar)
+        quitar = QPushButton("Desinstalar Pandex…")
+        quitar.clicked.connect(self._desinstalar)
+        columna.addWidget(quitar)
+        fila.addLayout(columna)
         caja.addWidget(espacio)
         caja.addStretch()
         return pagina
+
+    def _desinstalar(self):
+        from .desinstalar import DialogoDesinstalar
+
+        def cerrar_pandex():
+            self.reject()  # sin guardar: ya no hay nada que guardar
+            if self._al_desinstalar:
+                self._al_desinstalar()
+
+        DialogoDesinstalar(cerrar_pandex, self).exec()
 
     def _liberar_espacio(self):
         from . import limpieza as ui_limpieza

@@ -143,6 +143,17 @@ paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-v
 con un clic. Tus cursos y tu configuración no se tocan, y lo que la versión nueva ya no usa se
 borra solo.
 
+## Liberar espacio o desinstalar
+
+En **Configuración → Comportamiento**:
+
+- **Liberar espacio…** te muestra cuánto puedes recuperar: paquetes y respaldos que ya no se
+  usan, cachés que dejaban versiones anteriores y otras copias de Pandex. Nada se borra sin que
+  lo marques.
+- **Desinstalar Pandex…** quita todo lo que Pandex creó en tu PC, menos tu carpeta de cursos.
+  También con `desinstalar.bat` (Windows) o `./desinstalar.sh` (Linux). Al final, borra a mano
+  la carpeta de Pandex.
+
 ## Si algo falla
 
 | Qué pasa | Qué hacer |

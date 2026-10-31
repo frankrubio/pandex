@@ -16,6 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from . import inventario
 from .log import get_logger
 from .rutas import ASSETS_DIR, CONFIG_FILE, DATOS, ICONO, RAIZ, WINDOWS
 
@@ -92,6 +93,7 @@ def _crear(carpeta_ps, nombre_lnk, icono=None):
     )
     ruta = Path(salida.stdout.strip().splitlines()[-1])
     log.info("acceso directo creado en %s", ruta)
+    inventario.anotar(ruta, "acceso directo")
     return ruta
 
 
@@ -156,6 +158,7 @@ def _escribir_desktop(carpeta, icono, ejecutable=True):
     carpeta.mkdir(parents=True, exist_ok=True)
     ruta = carpeta / DESKTOP
     ruta.write_text(_entrada_desktop(icono), encoding="utf-8")
+    inventario.anotar(ruta, "acceso directo")
     if ejecutable:
         ruta.chmod(0o755)
         try:  # GNOME pide «Permitir lanzar» salvo que el archivo esté marcado como de confianza
@@ -249,6 +252,7 @@ def desactivar_arranque():
     for acceso in (ruta_inicio(), carpeta_inicio() / LEGADO):
         if acceso.exists():
             acceso.unlink()
+            inventario.quitar(acceso)
             log.info("acceso directo de inicio eliminado: %s", acceso.name)
     return not arranca_con_el_sistema()
 

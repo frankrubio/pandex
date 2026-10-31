@@ -161,6 +161,24 @@ class Interfaz(unittest.TestCase):
         self.assertEqual(self.config.datos["version_vista"], __version__)
         self.assertIn("Liberé 5 MB", falso.mascota.decir.call_args.args[0])
 
+    def test_desinstalar_muestra_la_lista_y_no_borra_sin_confirmar(self):
+        from pathlib import Path
+        from unittest import mock
+
+        from pandex import desinstalar
+        from pandex.ui.desinstalar import DialogoDesinstalar
+
+        pasos = [desinstalar.Paso("Datos de Pandex", [Path("/datos/Pandex")])]
+        with mock.patch.object(desinstalar, "plan", return_value=pasos) as plan, \
+                mock.patch.object(desinstalar, "ejecutar") as ejecutar:
+            dlg = DialogoDesinstalar()
+            self.assertIn("Datos de Pandex", dlg.lista.toPlainText())
+            dlg.conservar.setChecked(False)
+            self.assertFalse(plan.call_args.args[1], "sin conservar config.json")
+            self.assertFalse(dlg.grab().isNull())
+            dlg.reject()
+        ejecutar.assert_not_called()
+
     def test_elegir_navegador_de_canvas(self):
         from unittest import mock
 

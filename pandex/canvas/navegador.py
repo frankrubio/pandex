@@ -284,6 +284,10 @@ def abrir(nombre, headless):
     os.environ["SE_CACHE_PATH"] = str(NAVEGADORES)
 
     carpeta = perfil(nombre, binario)
+    if not carpeta.exists() and not carpeta.is_relative_to(DATOS):
+        from ..inventario import anotar
+
+        anotar(carpeta, f"perfil de {NOMBRES[nombre]} (snap)")
     carpeta.mkdir(parents=True, exist_ok=True)
     opciones = _opciones(webdriver, nombre, binario, carpeta, headless)
     clase, servicio = {

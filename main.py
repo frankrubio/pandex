@@ -80,6 +80,8 @@ def escuchar(app):
             conexion.disconnectFromServer()
             if mensaje == b"pendientes":
                 app._ponerse_al_dia()
+            elif mensaje == b"salir":  # lo pide el desinstalador
+                app._cerrar()
             else:
                 app.asomarse()
 

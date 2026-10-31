@@ -13,6 +13,11 @@ cuando buscas actualizaciones desde el menú.
   2 últimos). Si encuentra cachés que dejaban las versiones anteriores u otra copia de Pandex en
   otra carpeta, te muestra cuánto pesan y te pregunta antes de borrarlas. También está en
   Configuración → Comportamiento → **Liberar espacio…**
+- **Desinstalar Pandex.** En Configuración → Comportamiento → **Desinstalar Pandex…**, o con
+  `desinstalar.bat` (Windows) y `./desinstalar.sh` (Linux). Muestra la lista exacta de lo que va
+  a quitar (accesos directos, arranque automático, despertador, sesión del navegador, datos y el
+  entorno de Python) y pregunta antes. Tu carpeta de cursos y tus archivos de OneDrive no se
+  tocan. Puedes conservar tu configuración para reinstalar.
 - **«Convertir a Markdown» pesa 128 MB menos.** Lee Excel (.xlsx y .xls) sin pandas. Todo
   instalado: 532 MB en vez de 660 MB (medido en Linux).
 - **Canvas con el navegador que elijas.** Por defecto, tu navegador predeterminado (Edge, Chrome o

@@ -6,7 +6,14 @@ Lo de Pandex ya se limpió antes de abrirla; aquí solo se pregunta por lo de fu
 """
 
 from PyQt6.QtCore import QFile
-from PyQt6.QtWidgets import QCheckBox, QDialog, QHBoxLayout, QLabel, QPushButton, QVBoxLayout
+from PyQt6.QtWidgets import (
+    QCheckBox,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+)
 
 from .. import limpieza
 from . import tema
