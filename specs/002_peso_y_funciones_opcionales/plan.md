@@ -66,6 +66,14 @@ python herramientas/medir_peso.py --limite 600
 | Base | 341 MB | sin medir |
 | Completo | 648 MB | sin medir |
 
+| Con ADR-0001 (31/10/2026, job `peso`, Python 3.13) | Linux (ubuntu-latest) | Windows (windows-latest) |
+|---|---|---|
+| Base (≤ 350 MB) | 313 MB | 268 MB |
+| Completo (≤ 600 MB) | 512 MB | 439 MB |
+
+Margen mínimo: 37 MB en la base de Linux y 88 MB en el completo de Linux (T002.4 pedía ≥ 30 MB).
+Desde aquí el job `peso` bloquea el PR si se pasa (sin `continue-on-error`).
+
 ## Riesgos
 
 | Riesgo | Qué se hace |

@@ -15,7 +15,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T006.0 | Dependencias con versión fija y cada una en su sistema | 006 | — | hecha |
 | T007.1 | Contrato de tareas y mapa de módulos en la CI | 007 | — | hecha |
 | T003.1 | Prueba que vigila residuos fuera de los lugares permitidos | 003 | — | libre |
-| T002.1 | Medir el peso y vigilarlo en la CI | 002 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T002.1 | Medir el peso y vigilarlo en la CI | 002 | — | en curso (claude/vibrant-volta-t1vhh9): el job `peso` mide y bloquea |
 | T001.1 | Contar pedidos por fase; separar inicio de sesión manual | 001 | — | libre |
 | T006.1 | Matriz completa en la CI (Ubuntu 22.04/24.04, Windows; Python 3.12–3.14) | 006 | — | libre |
 | T005.1 | Reglas de aspecto como pruebas | 005 | — | libre |
@@ -46,7 +46,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T001.7 | Documentar las cifras reales | 001 | T001.3, T001.4, T001.5 | libre |
 | T002.2 | Extras en un solo lugar (`PANDEX_EXTRAS`) | 002 | — | libre |
 | T002.3 | Quitar un extra desde Configuración | 002 | T002.2 | libre |
-| T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | en curso (claude/vibrant-volta-t1vhh9): Linux 532 MB (opciones a, c' y d de ADR-0001); falta la cifra de Windows del job `peso` |
+| T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | en curso (claude/vibrant-volta-t1vhh9): completo 512 MB en Linux y 439 MB en Windows (CI) |
 | T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T002.6 | Pesos reales en la documentación | 002 | T002.4 | libre |
 | T002.7 | Memoria en reposo ≤ 80 MB de RSS siempre (hoy 74–88 MB) | 002 | — | libre |

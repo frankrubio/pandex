@@ -14,8 +14,6 @@ on:
 jobs:
   peso:
     runs-on: ${{ matrix.os }}
-    # mientras no haya una medición real en Windows, el job informa sin bloquear (T002.1)
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:

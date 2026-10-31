@@ -175,7 +175,6 @@ Se elige **C**. Selenium también puede reutilizar el perfil de Chrome que creó
 - El conversor de Excel es código propio que hay que mantener.
 
 **Por revisar:**
-- Pesos reales en Windows (CI, T002.1).
 - Bajar la memoria en reposo a ≤ 80 MB de RSS de forma estable (T002.7).
 - Si un antivirus bloquea el driver en `DATOS/navegadores`: el error dirá qué hacer.
 
@@ -208,5 +207,5 @@ desinstalar.sh / desinstalar.bat   NUEVOS
 3. [x] T002.5 + T003.3 · Navegador a elección con Selenium; drivers en `DATOS/navegadores` (D1).
 4. [x] T003.4 + D4 · «Liberar espacio» al actualizar y desde Configuración.
 5. [x] T003.6 + T003.7 · Inventario y desinstalador (D5).
-6. [ ] T002.1 · Medir el peso en la CI (Windows y Linux) y anotar las cifras reales. *(El job `peso` ya existe; faltan las cifras de Windows.)*
+6. [x] T002.1 · Medir el peso en la CI (Windows y Linux) y anotar las cifras reales. *(CI, Python 3.13: base 313 MB en Linux y 268 MB en Windows; completo 512 MB y 439 MB.)*
 7. [x] D6 · Frank decidió mantener 80 MB de RSS. Bajar la memoria es T002.7.
