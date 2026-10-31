@@ -49,6 +49,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | en curso (claude/vibrant-volta-t1vhh9): Linux 532 MB (opciones a, c' y d de ADR-0001); falta la cifra de Windows del job `peso` |
 | T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T002.6 | Pesos reales en la documentación | 002 | T002.4 | libre |
+| T002.7 | Memoria en reposo ≤ 80 MB de RSS siempre (hoy 74–88 MB) | 002 | — | libre |
 
 ## Prioridad 4 · Desinstalar, paridad e interfaz
 
@@ -94,6 +95,6 @@ Resumen de lo que bloquea o cambia el diseño. El detalle está en cada spec.
 | 002 | 4 | ¿Dejar MarkItDown por conversores directos? | No por ahora |
 | 003 | 1 | ¿El desinstalador borra la carpeta del proyecto? | No; explica cómo |
 | 003 | 3 | ¿Al actualizar se limpian las cachés que dejaron versiones anteriores (pip, Selenium, Playwright)? | **Respondida (31/10):** sí, con la lista y confirmación (ADR-0001, D4) |
-| 002 | 5 | ¿El presupuesto de memoria pasa a «memoria propia (USS) ≤ 40 MB»? Hoy: 74–88 MB de RSS, de los que ~80 % es Qt compartido | Sigue 80 MB de RSS (ADR-0001, D6) |
+| 002 | 5 | ¿El presupuesto de memoria pasa a «memoria propia (USS) ≤ 40 MB»? Hoy: 74–88 MB de RSS, de los que ~80 % es Qt compartido | **Respondida (31/10):** no; sigue ≤ 80 MB de RSS. Bajarla es T002.7 |
 | 006 | 1 | ¿`uv` para Python portátil en Linux viejo? | Sí, todo dentro de la carpeta |
 | 007 | 1 | ¿Tareas propias del usuario en `DATOS/tareas/`? | Sí, en una versión futura |

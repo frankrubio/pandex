@@ -126,16 +126,16 @@ Solo quita paquetes si el Python es el de `.venv` de Pandex. Nunca toca el Pytho
 - La carpeta del proyecto se borra a mano: se explica cómo (pregunta 1 de la spec 003, que
   queda en su valor por defecto).
 
-### D6. Memoria en reposo: medir antes de cambiar · *pide visto bueno de Frank*
+### D6. Memoria en reposo: el límite sigue en 80 MB de RAM · *decidido por Frank (31/10)*
 
 - Con `smaps`, el 80 % de los 74 MB son código de Qt (Gui, Core, Widgets) y librerías del
   sistema. Es el piso de cualquier app PyQt6.
 - Lo propio de Pandex (`anon` + `heap`) son unos 17 MB.
 - Bajar de 80 MB de RSS de forma estable exige quitar QtNetwork (≈ 5 MB; hoy da la instancia
   única) o cambiar de framework. Esto último está fuera de alcance en la spec 002.
-- **Propuesta:** el presupuesto pasa a **memoria propia (USS) ≤ 40 MB**, y la CI lo mide.
-  Hasta que Frank lo apruebe, el límite sigue siendo 80 MB de RSS y se registra el
-  incumplimiento.
+- Se propuso medir solo la memoria propia (USS ≤ 40 MB). **Frank lo rechazó:** el límite sigue
+  siendo **80 MB de RSS**. Hoy se pasa a veces (hasta 88 MB), así que bajar la memoria queda
+  como tarea propia (T002.7), fuera de este cambio.
 
 ## Opciones consideradas
 
@@ -176,7 +176,7 @@ Se elige **C**. Selenium también puede reutilizar el perfil de Chrome que creó
 
 **Por revisar:**
 - Pesos reales en Windows (CI, T002.1).
-- La propuesta de memoria (D6).
+- Bajar la memoria en reposo a ≤ 80 MB de RSS de forma estable (T002.7).
 - Si un antivirus bloquea el driver en `DATOS/navegadores`: el error dirá qué hacer.
 
 ## Nueva estructura
@@ -209,4 +209,4 @@ desinstalar.sh / desinstalar.bat   NUEVOS
 4. [x] T003.4 + D4 · «Liberar espacio» al actualizar y desde Configuración.
 5. [x] T003.6 + T003.7 · Inventario y desinstalador (D5).
 6. [ ] T002.1 · Medir el peso en la CI (Windows y Linux) y anotar las cifras reales. *(El job `peso` ya existe; faltan las cifras de Windows.)*
-7. [ ] D6 · Visto bueno de Frank sobre el presupuesto de memoria.
+7. [x] D6 · Frank decidió mantener 80 MB de RSS. Bajar la memoria es T002.7.

@@ -37,7 +37,7 @@ cd ~/pandex
 ./instalar.sh
 ```
 
-Te pregunta si quieres **«Convertir a Markdown»** (unos 280 MB más). Si no lo usas, responde `n`:
+Te pregunta si quieres **«Convertir a Markdown»** (unos 200 MB más). Si no lo usas, responde `n`:
 Pandex queda mucho más liviano y no aparece en el menú. Lo puedes añadir cuando quieras desde
 **Configuración → Tareas → Instalar**.
 
