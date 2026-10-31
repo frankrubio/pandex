@@ -203,10 +203,10 @@ desinstalar.sh / desinstalar.bat   NUEVOS
 
 ## Tareas (en el tablero)
 
-1. [ ] T003.2 + T003.5 · `paquetes.py` (sin caché ni `.pyc`; huérfanos al actualizar).
-2. [ ] T002.4 · Excel sin pandas (D2).
-3. [ ] T002.5 + T003.3 · Navegador a elección con Selenium; drivers en `DATOS/navegadores` (D1).
-4. [ ] T003.4 + D4 · «Liberar espacio» al actualizar y desde Configuración.
-5. [ ] T003.6 + T003.7 · Inventario y desinstalador (D5).
-6. [ ] T002.1 · Medir el peso en la CI (Windows y Linux) y anotar las cifras reales.
+1. [x] T003.2 + T003.5 · `paquetes.py` (sin caché ni `.pyc`; huérfanos al actualizar).
+2. [x] T002.4 · Excel sin pandas (D2).
+3. [x] T002.5 + T003.3 · Navegador a elección con Selenium; drivers en `DATOS/navegadores` (D1).
+4. [x] T003.4 + D4 · «Liberar espacio» al actualizar y desde Configuración.
+5. [x] T003.6 + T003.7 · Inventario y desinstalador (D5).
+6. [ ] T002.1 · Medir el peso en la CI (Windows y Linux) y anotar las cifras reales. *(El job `peso` ya existe; faltan las cifras de Windows.)*
 7. [ ] D6 · Visto bueno de Frank sobre el presupuesto de memoria.

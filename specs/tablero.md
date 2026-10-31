@@ -15,7 +15,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T006.0 | Dependencias con versión fija y cada una en su sistema | 006 | — | hecha |
 | T007.1 | Contrato de tareas y mapa de módulos en la CI | 007 | — | hecha |
 | T003.1 | Prueba que vigila residuos fuera de los lugares permitidos | 003 | — | libre |
-| T002.1 | Medir el peso y vigilarlo en la CI | 002 | — | libre |
+| T002.1 | Medir el peso y vigilarlo en la CI | 002 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T001.1 | Contar pedidos por fase; separar inicio de sesión manual | 001 | — | libre |
 | T006.1 | Matriz completa en la CI (Ubuntu 22.04/24.04, Windows; Python 3.12–3.14) | 006 | — | libre |
 | T005.1 | Reglas de aspecto como pruebas | 005 | — | libre |
@@ -24,9 +24,9 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 
 | Tarea | Qué | Spec | Depende de | Estado |
 |---|---|---|---|---|
-| T003.2 | pip sin caché, en un solo lugar | 003 | — | libre |
-| T003.3 | Drivers y navegadores en la carpeta de datos | 003 | — | libre |
-| T003.4 | Límites para respaldos y copias de configuración | 003 | — | libre |
+| T003.2 | pip sin caché, en un solo lugar | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T003.3 | Drivers y navegadores en la carpeta de datos | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T003.4 | Límites para respaldos y copias de configuración | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T004.2 | Filtro de secretos en el registro | 004 | — | libre |
 | T004.3 | Solo hosts permitidos | 004 | — | libre |
 | T004.5 | Permisos privados en Linux | 004 | — | libre |
@@ -46,17 +46,17 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T001.7 | Documentar las cifras reales | 001 | T001.3, T001.4, T001.5 | libre |
 | T002.2 | Extras en un solo lugar (`PANDEX_EXTRAS`) | 002 | — | libre |
 | T002.3 | Quitar un extra desde Configuración | 002 | T002.2 | libre |
-| T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | bloqueada (preguntas 2–4 de 002 para las opciones b, d, e) |
-| T002.5 | Navegador en Windows sin descargas innecesarias (Edge) | 002 | — | libre |
+| T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | en curso (claude/vibrant-volta-t1vhh9): Linux 532 MB (opciones a, c' y d de ADR-0001); falta la cifra de Windows del job `peso` |
+| T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T002.6 | Pesos reales en la documentación | 002 | T002.4 | libre |
 
 ## Prioridad 4 · Desinstalar, paridad e interfaz
 
 | Tarea | Qué | Spec | Depende de | Estado |
 |---|---|---|---|---|
-| T003.5 | Quitar paquetes huérfanos al actualizar | 003 | T003.2 | libre |
-| T003.6 | Inventario de lo creado fuera | 003 | — | libre |
-| T003.7 | Desinstalar Pandex (`desinstalar.sh`, `desinstalar.bat`, botón) | 003 | T003.6 | libre |
+| T003.5 | Quitar paquetes huérfanos al actualizar | 003 | T003.2 | en curso (claude/vibrant-volta-t1vhh9) |
+| T003.6 | Inventario de lo creado fuera | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T003.7 | Desinstalar Pandex (`desinstalar.sh`, `desinstalar.bat`, botón) | 003 | T003.6 | en curso (claude/vibrant-volta-t1vhh9) |
 | T006.2 | La CI ejecuta los instaladores | 006 | T002.2 | libre |
 | T006.3 | Python portátil en Linux viejo | 006 | T006.2 | bloqueada (pregunta 1 de 006) |
 | T006.4 | Mismo árbol en los dos sistemas | 006 | — | libre |
@@ -90,8 +90,10 @@ Resumen de lo que bloquea o cambia el diseño. El detalle está en cada spec.
 | 001 | 3 | ¿Token de Canvas opcional («Modo rápido»)? | No por ahora |
 | 002 | 1 | ¿600 MB con todas las funciones opcionales? | Sí |
 | 002 | 2 | ¿Podar librerías de Qt no usadas? | Sí, con prueba de humo |
-| 002 | 3 | ¿Selenium también en Windows (sin Playwright)? | Evaluar con medición |
+| 002 | 3 | ¿Selenium también en Windows (sin Playwright)? | **Respondida (31/10):** sí; Frank pidió elegir el navegador (ADR-0001, D1) |
 | 002 | 4 | ¿Dejar MarkItDown por conversores directos? | No por ahora |
 | 003 | 1 | ¿El desinstalador borra la carpeta del proyecto? | No; explica cómo |
+| 003 | 3 | ¿Al actualizar se limpian las cachés que dejaron versiones anteriores (pip, Selenium, Playwright)? | **Respondida (31/10):** sí, con la lista y confirmación (ADR-0001, D4) |
+| 002 | 5 | ¿El presupuesto de memoria pasa a «memoria propia (USS) ≤ 40 MB»? Hoy: 74–88 MB de RSS, de los que ~80 % es Qt compartido | Sigue 80 MB de RSS (ADR-0001, D6) |
 | 006 | 1 | ¿`uv` para Python portátil en Linux viejo? | Sí, todo dentro de la carpeta |
 | 007 | 1 | ¿Tareas propias del usuario en `DATOS/tareas/`? | Sí, en una versión futura |
