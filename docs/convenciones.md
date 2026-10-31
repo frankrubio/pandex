@@ -48,7 +48,7 @@ docs/              cómo funciona hoy
 
 - PEP 8, líneas de hasta 120 caracteres, comillas dobles.
 - Importaciones: biblioteca estándar, librerías, Pandex (relativas dentro del paquete).
-- **Lo pesado se importa dentro de la función que lo usa** (Playwright, Selenium, requests,
+- **Lo pesado se importa dentro de la función que lo usa** (Selenium, requests,
   MarkItDown, Pillow, APScheduler), con un comentario de por qué. El arranque no los carga.
 - Constantes en `MAYUSCULAS`; clases en `MayusculaInicial`; lo privado con `_`.
 - Docstring en cada módulo (qué hace y, si no es obvio, por qué así) y en cada función

@@ -781,7 +781,7 @@ class AsistenteCanvas(QWizard):
             "cursos": reglas,
             "schedule": e.horario,
         })
-        for clave, valor in (("headless", True), ("usar_chrome_instalado", True),
+        for clave, valor in (("headless", True), ("navegador", "auto"),
                              ("dedupe_por_tamano", True), ("espera_login_segundos", 300)):
             self.params.setdefault(clave, valor)
         self._guardar_config()

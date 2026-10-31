@@ -530,6 +530,8 @@ class DialogoConfiguracion(QDialog):
             else:
                 cron = Horario(opciones.get("schedule") or tarea.schedule)
                 interno.addWidget(cron)
+            if tarea.id == "sync_canvas":
+                interno.addLayout(self._fila_navegador(opciones.get("navegador", "auto")))
             filas.addWidget(tarjeta)
             self.filas[tarea.id] = (activa, cron)
         filas.addStretch()
@@ -541,6 +543,26 @@ class DialogoConfiguracion(QDialog):
         scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
         caja.addWidget(scroll, 1)
         return pagina
+
+    def _fila_navegador(self, actual):
+        """Con qué navegador inicias sesión en Canvas (ADR-0001): el tuyo, o el que elijas."""
+        from ..canvas import navegador
+
+        fila = QHBoxLayout()
+        fila.addWidget(QLabel("Iniciar sesión con"))
+        self.navegador_canvas = QComboBox()
+        tuyo = navegador.predeterminado()
+        self.navegador_canvas.addItem(
+            "El que uso siempre" + (f" ({navegador.NOMBRES[tuyo]})" if tuyo else ""), "auto")
+        for nombre in navegador.instalados():
+            self.navegador_canvas.addItem(navegador.NOMBRES[nombre], nombre)
+        indice = self.navegador_canvas.findData(actual)
+        self.navegador_canvas.setCurrentIndex(max(indice, 0))
+        self.navegador_canvas.setToolTip("Pandex no descarga navegadores: usa el tuyo con un perfil aparte,\n"
+                                         "sin tocar tus pestañas, tu historial ni tus contraseñas.")
+        fila.addWidget(self.navegador_canvas)
+        fila.addStretch()
+        return fila
 
     def _fila_instalar(self, extra):
         datos = extras.EXTRAS[extra]
@@ -644,6 +666,8 @@ class DialogoConfiguracion(QDialog):
             opciones["activa"] = activa.isChecked()
             if cron is not None:
                 opciones["schedule"] = cron.valor()
+        if getattr(self, "navegador_canvas", None) is not None:
+            self.config.tarea("sync_canvas")["navegador"] = self.navegador_canvas.currentData()
 
         if self.inicio.isChecked() != accesos.arranca_con_el_sistema():
             try:

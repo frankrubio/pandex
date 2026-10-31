@@ -32,7 +32,7 @@ Es **un solo Pandex para Windows y Linux**: el mismo código; solo cambia el ins
 | Tu sistema | Qué haces |
 |---|---|
 | **Windows 10 u 11** | [Los pasos de abajo](#en-windows): doble clic en **`instalar.bat`**. |
-| **Linux** (Mint, Ubuntu…) | [docs/linux.md](docs/linux.md): `./instalar.sh`. Usa tu Firefox. |
+| **Linux** (Mint, Ubuntu…) | [docs/linux.md](docs/linux.md): `./instalar.sh`. |
 
 **¿Ya lo tienes instalado?** No lo descargues otra vez: usa **clic derecho → Buscar
 actualizaciones…**. Si igual instalas una copia en otra carpeta, el instalador trae tu
@@ -108,7 +108,8 @@ Para actualizar: `git pull`, o el menú **Buscar actualizaciones…**
 Rusty aparece en una esquina con un saludo y abre un asistente:
 
 1. Escribe la dirección de tu Canvas (por ejemplo `https://utec.instructure.com`).
-2. Inicia sesión como siempre, en la ventana del navegador. **Pandex nunca ve tu contraseña.**
+2. Inicia sesión como siempre, en la ventana de tu navegador (el predeterminado: Edge, Chrome o
+   Firefox; se cambia en Configuración). **Pandex nunca ve tu contraseña.**
 3. Elige tus cursos y la carpeta donde guardarlos (te recomendamos una dentro de OneDrive).
 4. Elige qué bajar al empezar: todo, desde una semana, o nada.
 
@@ -139,14 +140,15 @@ paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-v
 ## Actualizar
 
 **Clic derecho → Buscar actualizaciones…** Pandex te muestra qué hay de nuevo y se actualiza
-con un clic. Tus cursos y tu configuración no se tocan.
+con un clic. Tus cursos y tu configuración no se tocan, y lo que la versión nueva ya no usa se
+borra solo.
 
 ## Si algo falla
 
 | Qué pasa | Qué hacer |
 |---|---|
 | Windows bloquea un archivo al abrirlo | Te faltó el paso 3. En PowerShell: `Get-ChildItem "ruta\de\pandex" -Recurse \| Unblock-File`. No desactives el *Control de aplicaciones inteligente*. |
-| *"No encontré un navegador"* | Instala Google Chrome (en Linux: ver [docs/linux.md](docs/linux.md)). |
+| *"No encontré Chrome"* (u otro navegador) | En Configuración → Tareas → Sincronizar Canvas, elige «El que uso siempre» u otro navegador. |
 | Perdí el acceso directo | Windows: doble clic en **`Pandex.pyw`**, dentro de la carpeta. Linux: en la Terminal, `~/pandex/.venv/bin/python ~/pandex/main.py`. Luego, en Pandex: Configuración → Comportamiento → **Crear en el Escritorio**. |
 | Empezó otro ciclo | Clic derecho → **Configurar Canvas…** |
 | *"🔒 aún sin abrir en Canvas"* | El docente lo programó para más adelante; Pandex lo baja solo cuando se abra. |

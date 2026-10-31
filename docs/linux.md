@@ -1,7 +1,6 @@
 # Pandex en Linux
 
-Funciona igual que en Windows. Las diferencias: inicias sesión en Canvas con **tu Firefox** (no se
-descarga ningún navegador), OneDrive se conecta desde Pandex y el OCR usa Tesseract.
+Funciona igual que en Windows. Las diferencias: OneDrive se conecta desde Pandex y el OCR usa Tesseract.
 
 ## Instalar (una sola vez)
 
@@ -53,7 +52,7 @@ cd ~/pandex
 .venv/bin/python main.py
 ```
 
-La primera vez te guía para conectar tu Canvas: se abre **tu Firefox** con una ventana aparte
+La primera vez te guía para conectar tu Canvas: se abre **tu navegador** (el predeterminado: Firefox, Chrome o Edge) con una ventana aparte
 (perfil propio de Pandex: no toca tus pestañas ni tus contraseñas) para que inicies sesión.
 
 ## Dónde queda
@@ -93,7 +92,6 @@ PC apagada se hace al abrir Pandex.
 
 | | Windows | Linux |
 |---|---|---|
-| Navegador para iniciar sesión | Chrome | **tu Firefox** |
 | Tus datos (sesión, historial) | `%LOCALAPPDATA%\Pandex` | `~/.local/share/Pandex` |
 | Acceso directo | `.lnk` | `.desktop` |
 | Arrancar con el sistema | Carpeta *Inicio* | `~/.config/autostart` |
@@ -141,8 +139,8 @@ sudo apt install tesseract-ocr tesseract-ocr-spa
 | Qué pasa | Qué hacer |
 |---|---|
 | No abre y dice algo de `xcb` o `libxcb-cursor` | `sudo apt install libxcb-cursor0` |
-| *"No encontré Firefox"* | `sudo apt install firefox` |
-| *"No pude abrir Firefox"* la primera vez | Pandex descarga `geckodriver` (unos 3 MB) la primera vez: revisa tu internet. Si sigue, pásale a quien te ayude el mensaje de «Ver registro». |
+| *"No encontré Firefox"* (u otro) | `sudo apt install firefox`, o elige otro navegador en Configuración → Tareas → Sincronizar Canvas. |
+| *"No pude abrir Firefox"* la primera vez | Pandex descarga el driver de tu navegador (3 a 15 MB) la primera vez: revisa tu internet. Si sigue, pásale a quien te ayude el mensaje de «Ver registro». |
 | No veo el ícono junto al reloj (GNOME) | GNOME no muestra íconos de bandeja por defecto. Instala la extensión *AppIndicator and KStatusNotifierItem Support*. Mientras tanto, clic derecho sobre la mascota abre el mismo menú. |
 | El acceso del Escritorio dice "no confiable" | Clic derecho sobre el ícono → **Permitir lanzar**. |
 | No se abre sola a su hora | `systemctl --user list-timers pandex.timer` debe mostrarlo. Si no, vuelve a guardar en Configuración → Comportamiento. |

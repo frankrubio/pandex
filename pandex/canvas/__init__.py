@@ -3,7 +3,8 @@
 ===================  ==========================================================
 ``nombres``          normalizar texto, nombres válidos en Windows, nº de semana
 ``cliente``          la API REST de Canvas con las cookies de tu sesión
-``sesion``           iniciar sesión con un navegador (Playwright) y cerrarlo
+``navegador``        tu Firefox, Chrome o Edge con Selenium (perfil propio)
+``sesion``           iniciar sesión con ese navegador y cerrarlo enseguida
 ``historial``        qué archivo de Canvas ya está en tu disco y dónde
 ``estructura``       leer cursos y módulos: semanas, secciones, teoría/lab
 ``destinos``         a qué carpeta va cada archivo y si ya lo tienes

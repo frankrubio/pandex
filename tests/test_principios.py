@@ -103,9 +103,7 @@ class Dependencias(unittest.TestCase):
 
     # paquete → marcador que debe llevar
     SOLO_EN = {
-        "playwright": 'sys_platform == "win32"',
         "winrt-": 'sys_platform == "win32"',
-        "selenium": 'sys_platform != "win32"',
     }
 
     def test_versiones_fijas(self):

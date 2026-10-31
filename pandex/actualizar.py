@@ -51,6 +51,7 @@ OBSOLETOS = (
     "herramientas/gif_a_sprite.py",
     "assets/rusty/spritesheet.png",
     "assets/panda_robot/spritesheet.png",
+    "pandex/canvas/firefox.py",
 )
 
 

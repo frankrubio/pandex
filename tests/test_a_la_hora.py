@@ -184,7 +184,8 @@ class FuncionesOpcionales(unittest.TestCase):
         basicos = (RAIZ / "requirements.txt").read_text(encoding="utf-8")
         self.assertNotIn("markitdown", basicos)
         self.assertIn("markitdown", (RAIZ / "requirements-markdown.txt").read_text(encoding="utf-8"))
-        self.assertIn('playwright==1.63.0; sys_platform == "win32"', basicos)
+        self.assertNotIn("playwright", basicos, "un solo motor de navegador: Selenium (ADR-0001)")
+        self.assertIn("selenium==", basicos)
 
 
 if __name__ == "__main__":

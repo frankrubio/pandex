@@ -22,7 +22,7 @@ Instalando dependencias: la primera vez tarda unos minutos...
 ```
 
 - Puede parecer congelada de 2 a 5 minutos mientras descarga. Está trabajando.
-- Si no tienes Google Chrome, también descarga un navegador para entrar a Canvas. Eso agrega un par de minutos.
+- No descarga navegadores: para entrar a Canvas usa el tuyo (Edge, Chrome o Firefox).
 - Al final dice **Listo** y pide presionar una tecla. En tu Escritorio aparece **Pandex** con la cara de Rusty.
 
 **3. Al abrir Pandex.** Rusty aparece en una esquina de la pantalla con un globo que dice *"¡Buenas tardes! Soy Pandex. Clic derecho para ver lo que puedo hacer."* (o buenos días o buenas noches, según la hora). No se abre ninguna ventana grande: **Pandex es la mascota**. También queda un ícono junto al reloj de Windows.
@@ -124,7 +124,7 @@ Tu sesión de Canvas y tu historial están aparte (`%LOCALAPPDATA%\Pandex` o
 | El acceso directo no hace nada o dice que no encuentra el archivo | Moviste o renombraste la carpeta de Pandex. | Doble clic en `Pandex.pyw` y vuelve a crear el acceso directo (ver arriba). |
 | *"¡Aquí estoy! Ya estaba abierto."* | Pandex ya estaba abierto, quizás escondido. | No es un error. Solo puede haber un Rusty a la vez. |
 | *"Cerraste el navegador antes de terminar de iniciar sesión"* o *"Se acabó el tiempo…"* | Se cerró la ventana del login, o pasaron 5 minutos. | En el asistente, pulsa **Reintentar**. Si fue al sincronizar, vuelve a pulsar **Sincronizar Canvas**. |
-| *"No encontré un navegador"* | No tienes Chrome, y la descarga del navegador alternativo falló. | Instala Google Chrome. |
+| *"No encontré Chrome"* (u otro navegador) | Elegiste un navegador que no está instalado. | En Configuración → Tareas → Sincronizar Canvas, elige «El que uso siempre» u otro navegador. |
 | *"No hay conexión: no pude llegar a Canvas"* | Sin internet, o el wifi de la universidad pide iniciar sesión. | Revisa que Canvas abra en tu navegador y vuelve a intentarlo. |
 | *"No reconocí ninguno de tus cursos en Canvas"* | Empezó otro ciclo y tus cursos cambiaron. | Clic derecho → **Configurar Canvas…** |
 | *"No encuentro tu carpeta de cursos"* | Moviste, renombraste o borraste esa carpeta, o OneDrive no terminó de sincronizar. | Devuélvela a su lugar, o elige otra en **Configurar Canvas…** |

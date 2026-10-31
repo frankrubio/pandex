@@ -5,8 +5,9 @@ import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
+from unittest import mock
 
-from pandex.canvas import destinos, estructura, nombres, sesion
+from pandex.canvas import destinos, estructura, navegador, nombres, sesion
 from pandex.canvas.estructura import Item
 
 
@@ -175,24 +176,12 @@ class Sesion(unittest.TestCase):
     """El login no debe reventar si Canvas sigue redirigiendo cuando la sesión ya vale."""
 
     def setUp(self):
-        self.perfil_original = sesion.PERFIL
-        self.sync_original = sesion.sync_playwright
-        self.error_original = sesion.PlaywrightError
-        sesion.PlaywrightError = type("ErrorDePlaywright", (Exception,), {})  # sin Playwright instalado
         self.espera_original = sesion.ESPERA_SSO
         sesion.ESPERA_SSO = 0.3  # no esperar 20 s de verdad
-        sesion.PERFIL = Path(tempfile.mkdtemp()) / "perfil"
-        (sesion.PERFIL / "Default").mkdir(parents=True)
+        self.addCleanup(setattr, sesion, "ESPERA_SSO", self.espera_original)
 
-    def tearDown(self):
-        shutil.rmtree(sesion.PERFIL.parent, ignore_errors=True)
-        sesion.PERFIL = self.perfil_original
-        sesion.sync_playwright = self.sync_original
-        sesion.PlaywrightError = self.error_original
-        sesion.ESPERA_SSO = self.espera_original
-
-    def navegador(self, *valida_tras):
-        """Un Playwright falso: cada contexto da sesión válida tras N esperas."""
+    def navegador(self, *valida_tras, hay_sesion=True):
+        """Un navegador falso: cada contexto da sesión válida tras N esperas."""
         abiertos, plan = [], list(valida_tras)
 
         class Pagina:
@@ -200,7 +189,7 @@ class Sesion(unittest.TestCase):
 
             def evaluate(self, _js):
                 if self.navegando:
-                    raise sesion.PlaywrightError("Execution context was destroyed")
+                    raise navegador.ErrorNavegador("Execution context was destroyed")
                 return "Mozilla/5.0"
 
             def goto(self, *_a, **_k):
@@ -223,17 +212,15 @@ class Sesion(unittest.TestCase):
             def close(self):
                 self.cerrado = True
 
-        class Playwright:
-            chromium = type("C", (), {"launch_persistent_context": lambda _s, **k: (
-                abiertos.append(Contexto(k["headless"])) or abiertos[-1])})()
+        def abrir(_nombre, headless):
+            abiertos.append(Contexto(headless))
+            return abiertos[-1]
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_a):
-                return False
-
-        sesion.sync_playwright = Playwright
+        for nombre, valor in (("abrir", abrir), ("hay_sesion", lambda _n: hay_sesion),
+                              ("elegir", lambda preferido="auto": "chrome")):
+            parche = mock.patch.object(navegador, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
         return abiertos
 
     def ctx(self):
@@ -254,6 +241,11 @@ class Sesion(unittest.TestCase):
         self.assertEqual(len(ctx.globos), 2)
         self.assertTrue(all(c.cerrado for c in abiertos))
         self.assertFalse(abiertos[1].headless)
+
+    def test_sin_sesion_guardada_abre_con_ventana_de_una(self):
+        abiertos = self.navegador(0, hay_sesion=False)
+        sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="chrome")
+        self.assertEqual([c.headless for c in abiertos], [False])
 
 
 if __name__ == "__main__":

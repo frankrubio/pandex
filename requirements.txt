@@ -6,10 +6,8 @@
 PyQt6==6.11.0
 APScheduler==3.11.3
 
-# Sincronizar Canvas: un navegador solo para iniciar sesión (Chrome en Windows, Firefox en Linux),
-# y la API de Canvas
-playwright==1.63.0; sys_platform == "win32"
-selenium==4.51.0; sys_platform != "win32"
+# Sincronizar Canvas: tu navegador (Firefox, Chrome o Edge) solo para iniciar sesión, y la API de Canvas
+selenium==4.51.0
 requests==2.34.2
 
 # Personajes propios e íconos

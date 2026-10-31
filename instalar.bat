@@ -42,15 +42,7 @@ echo Instalando Convertir a Markdown...
 ".venv\Scripts\python.exe" -m pip install -r requirements-markdown.txt --quiet --no-compile || goto :fallo
 :sin_markdown
 
-rem 4. Navegador para iniciar sesión en Canvas: Google Chrome si lo tienes; si no, Chromium
-set "CHROME="
-if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=1"
-if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=1"
-if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=1"
-if not defined CHROME (
-    echo No tienes Google Chrome: descargo Chromium para iniciar sesión en Canvas...
-    ".venv\Scripts\python.exe" -m playwright install chromium || goto :fallo
-)
+rem 4. Navegador para Canvas: el tuyo (Edge, Chrome o Firefox). No se descarga ninguno.
 
 rem 5. Acceso directo en el Escritorio
 ".venv\Scripts\python.exe" -m pandex.accesos || goto :fallo

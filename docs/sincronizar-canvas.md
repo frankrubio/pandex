@@ -7,7 +7,8 @@ del curso. El código vive en `pandex/canvas/`; `tasks/sync_canvas.py` solo lo c
 |---|---|
 | `nombres.py` | Normalizar texto, nombres válidos en Windows, leer el nº de semana, reconocer «Laboratorio». |
 | `cliente.py` | La API REST de Canvas con las cookies de tu sesión. Paginación y reintentos. |
-| `sesion.py` | Iniciar sesión con un navegador real (Playwright) y cerrarlo enseguida. |
+| `navegador.py` | Tu Firefox, Chrome o Edge con Selenium y un perfil propio; el driver va a `DATOS/navegadores`. |
+| `sesion.py` | Iniciar sesión con ese navegador y cerrarlo enseguida. |
 | `historial.py` | Qué archivo de Canvas ya está en tu disco y dónde. |
 | `estructura.py` | Leer cursos y módulos: semanas, secciones, parejas teoría/lab. |
 | `destinos.py` | A qué carpeta va cada archivo y si ya lo tienes (índice de duplicados). |
@@ -138,7 +139,7 @@ El asistente escribe todo esto en `config.json → tareas → sync_canvas`. Se p
 | `schedule` | `null` | Horario cron (p. ej. `"0 19 * * *"`). |
 | `dedupe_por_tamano` | `true` | Saltar archivos con el mismo tamaño aunque cambie el nombre. |
 | `headless` | `true` | Probar primero sin ventana con la sesión guardada. |
-| `usar_chrome_instalado` | `true` | Usar tu Google Chrome; si no está, el Chromium de Playwright. |
+| `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
 | `espera_login_segundos` | `300` | Cuánto esperar a que inicies sesión en la ventana. |
 | `calendario` | — | Opcional: `[{"semana": 1, "inicio": "2026-08-10", "fin": "2026-08-16"}, …]`. Solo lo necesitan los cursos en modo `"lista"`. Si existe y hoy no cae en ninguna semana, no se sincroniza. |
 

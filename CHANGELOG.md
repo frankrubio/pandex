@@ -12,6 +12,11 @@ cuando buscas actualizaciones desde el menú.
   solos.
 - **«Convertir a Markdown» pesa 128 MB menos.** Lee Excel (.xlsx y .xls) sin pandas. Todo
   instalado: 532 MB en vez de 660 MB (medido en Linux).
+- **Canvas con el navegador que elijas.** Por defecto, tu navegador predeterminado (Edge, Chrome o
+  Firefox), en Windows y en Linux. Se cambia en Configuración → Tareas → Sincronizar Canvas.
+  Pandex ya no descarga navegadores (en Windows sin Chrome bajaba Chromium) y quita Playwright:
+  unos 75 MB menos en Windows. La primera vez con un navegador baja un componente pequeño
+  (3 a 15 MB) a la carpeta de datos de Pandex.
 
 ## 2.4.0
 

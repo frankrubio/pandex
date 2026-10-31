@@ -7,7 +7,6 @@ from pathlib import Path
 from unittest import mock
 
 from pandex import accesos
-from pandex.canvas import sesion
 from pandex.markdown import conversion
 
 
@@ -80,80 +79,6 @@ class AccesosLinux(unittest.TestCase):
         raiz = Path("/home/ana/mi carpeta/pandex")
         with mock.patch.object(accesos, "RAIZ", raiz):
             self.assertIn(f"'{raiz / 'main.py'}'", accesos._entrada_desktop(None))
-
-
-class NavegadorDeCanvas(unittest.TestCase):
-    def test_auto_es_firefox_en_linux_y_chrome_en_windows(self):
-        with mock.patch.object(sesion.sys, "platform", "linux"):
-            self.assertEqual(sesion.elegir_navegador("auto"), "firefox")
-        with mock.patch.object(sesion.sys, "platform", "win32"):
-            self.assertEqual(sesion.elegir_navegador("auto"), "chrome")
-
-    def test_se_puede_forzar(self):
-        self.assertEqual(sesion.elegir_navegador("firefox"), "firefox")
-        self.assertEqual(sesion.elegir_navegador("chrome"), "chrome")
-
-    def test_firefox_usa_tu_firefox_con_el_perfil_de_pandex(self):
-        from pandex.canvas import firefox
-
-        webdriver = mock.MagicMock()
-        with tempfile.TemporaryDirectory() as tmp, \
-                mock.patch.object(firefox, "instalado", return_value="/usr/bin/firefox"), \
-                mock.patch.object(firefox, "_es_snap", return_value=False), \
-                mock.patch.dict("sys.modules", {"selenium": mock.MagicMock(webdriver=webdriver),
-                                                "selenium.webdriver": webdriver}):
-            contexto = firefox.abrir(Path(tmp) / "perfil", headless=True)
-            opciones = webdriver.FirefoxOptions.return_value
-            argumentos = [c.args[0] for c in opciones.add_argument.call_args_list]
-            self.assertEqual(opciones.binary_location, "/usr/bin/firefox")
-            self.assertIn("-headless", argumentos)
-            self.assertEqual(argumentos[argumentos.index("-profile") + 1], str(Path(tmp) / "perfil"))
-            self.assertTrue((Path(tmp) / "perfil").is_dir())
-        webdriver.Firefox.assert_called_once()
-        self.assertIs(contexto.driver, webdriver.Firefox.return_value)
-
-    def test_sin_firefox_dice_como_instalarlo(self):
-        from pandex.canvas import firefox
-
-        with mock.patch.object(firefox, "instalado", return_value=None), \
-                self.assertRaises(firefox.ErrorFirefox) as error:
-            firefox.abrir(Path("/tmp/no-importa"), headless=True)
-        self.assertIn("apt install firefox", str(error.exception))
-        self.assertIn("apt install firefox", sesion.mensaje_de_error(error.exception))
-
-    def test_el_snap_de_firefox_guarda_el_perfil_donde_puede_entrar(self):
-        from pandex.canvas import firefox
-
-        with mock.patch.object(firefox, "_es_snap", return_value=True):
-            perfil = firefox.perfil_para(Path("/x/perfil"), "/snap/bin/firefox")
-        self.assertEqual(perfil.parts[-4:], ("snap", "firefox", "common", "pandex-perfil"))
-
-    def test_iniciar_sesion_con_firefox_no_carga_playwright(self):
-        from pandex.canvas import firefox
-
-        class Contexto:
-            pages = [mock.Mock(evaluate=mock.Mock(return_value="Mozilla/5.0 Firefox"))]
-            request = mock.Mock(get=mock.Mock(return_value=mock.Mock(status=200)))
-            cerrado = False
-
-            def cookies(self):
-                return [{"name": "canvas_session", "value": "x"}]
-
-            def close(self):
-                Contexto.cerrado = True
-
-        ctx = mock.Mock()
-        with tempfile.TemporaryDirectory() as tmp, \
-                mock.patch.object(sesion, "PERFIL_FIREFOX", Path(tmp)), \
-                mock.patch.object(firefox, "_es_snap", return_value=False), \
-                mock.patch.object(firefox, "abrir", return_value=Contexto()) as abrir, \
-                mock.patch.object(sesion, "_cargar", side_effect=AssertionError("cargó Playwright")):
-            cookies, ua = sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", navegador="firefox")
-        self.assertEqual(cookies[0]["name"], "canvas_session")
-        self.assertIn("Firefox", ua)
-        self.assertTrue(Contexto.cerrado)
-        abrir.assert_called_once()
-        self.assertFalse(abrir.call_args.args[1], "sin sesión guardada: abre con ventana")
 
 
 class OcrConTesseract(unittest.TestCase):
