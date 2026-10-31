@@ -194,6 +194,57 @@ class Limites(unittest.TestCase):
             with mock.patch.object(limpieza, "tamano", return_value=1):
                 self.assertEqual([e.rutas for e in limpieza.copias_anteriores(nueva)], [[vieja]])
 
+    def test_no_ofrece_una_copia_que_contiene_a_esta(self):
+        """Si descomprimiste la versión nueva dentro de la vieja, borrar la vieja borraría esta."""
+        from pandex import accesos
+
+        vieja = self.tmp / "vieja"
+        nueva = vieja / "pandex-nuevo"
+        dentro = self.tmp / "otra"
+        afuera = dentro / "sub"
+        for c in (vieja, nueva, dentro, afuera):
+            c.mkdir(parents=True)
+            (c / "main.py").touch()
+        registro = self.tmp / "instalacion.json"
+        registro.write_text(json.dumps({"carpeta": str(vieja), "anteriores": [str(nueva / "x")]}),
+                            encoding="utf-8")
+        with mock.patch.object(accesos, "INSTALACION", registro):
+            self.assertEqual(accesos.instalaciones_anteriores(nueva), [])
+        registro.write_text(json.dumps({"carpeta": str(afuera)}), encoding="utf-8")
+        with mock.patch.object(accesos, "INSTALACION", registro):
+            self.assertEqual(accesos.instalaciones_anteriores(dentro), [])  # una copia dentro de esta
+
+    def test_no_ofrece_una_copia_que_guarda_tus_cursos_o_tus_datos(self):
+        from pandex import accesos
+
+        vieja = self.tmp / "vieja"
+        cursos = vieja / "Cursos"
+        cursos.mkdir(parents=True)
+        (vieja / "main.py").touch()
+        with mock.patch.object(accesos, "instalaciones_anteriores", return_value=[vieja]):
+            self.assertEqual(limpieza.copias_anteriores(self.tmp / "nueva", protegidas=[cursos]), [])
+            with mock.patch.object(limpieza, "tamano", return_value=1):
+                self.assertEqual(len(limpieza.copias_anteriores(self.tmp / "nueva", protegidas=[])), 1)
+
+    def test_lee_la_carpeta_de_cursos_para_protegerla(self):
+        raiz = self.tmp / "pandex"
+        raiz.mkdir()
+        (raiz / "config.json").write_text(json.dumps({"tareas": {"sync_canvas": {"destino": "/x/Cursos"}}}),
+                                          encoding="utf-8")
+        self.assertIn(Path("/x/Cursos"), limpieza.carpetas_protegidas(raiz))
+
+    def test_una_copia_que_no_va_a_la_papelera_no_se_borra_para_siempre(self):
+        """P4: borrar otra copia de Pandex necesita poder deshacerse."""
+        copia = self.tmp / "copia"
+        copia.mkdir()
+        (copia / "main.py").touch()
+        liberado, fallidos = limpieza.liberar(
+            [limpieza.Elemento(f"copia:{copia}", "Otra copia", [copia], 5)], lambda _r: False)
+        self.assertTrue((copia / "main.py").exists())
+        self.assertEqual((liberado, fallidos), (0, [copia]))
+        liberado, fallidos = limpieza.liberar([limpieza.Elemento(f"copia:{copia}", "Otra copia", [copia], 5)])
+        self.assertTrue(copia.exists())  # sin papelera, tampoco
+
     def test_al_estrenar_version_sin_venv_propio_no_toca_paquetes(self):
         with mock.patch.object(limpieza, "DATOS", self.tmp), \
                 mock.patch.object(paquetes, "huerfanos") as huerfanos, \
@@ -292,3 +343,21 @@ class Desinstalar(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BorrarVenvEnWindows(unittest.TestCase):
+    def test_espera_con_ping_y_no_con_timeout(self):
+        """«timeout» falla al instante sin consola (DETACHED_PROCESS): borraría el .venv en uso."""
+        from pandex.ui import desinstalar as ui_desinstalar
+
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        (tmp / ".venv").mkdir()
+        with mock.patch.object(ui_desinstalar, "RAIZ", tmp), \
+                mock.patch.object(ui_desinstalar.subprocess, "Popen") as popen:
+            ui_desinstalar._borrar_venv_al_salir()
+        comando = " ".join(popen.call_args.args[0])
+        self.assertIn("ping -n", comando)
+        self.assertNotIn("timeout", comando)
+        self.assertIn(str(tmp / ".venv"), comando)
+

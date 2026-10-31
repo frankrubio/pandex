@@ -11,7 +11,8 @@ cuando buscas actualizaciones desde el menú.
 - **Actualizar también libera espacio.** La primera vez que abres una versión nueva, Pandex quita
   solo los paquetes que ya no usa (p. ej. Playwright o pandas) y los respaldos de más (quedan los
   2 últimos). Si encuentra cachés que dejaban las versiones anteriores u otra copia de Pandex en
-  otra carpeta, te muestra cuánto pesan y te pregunta antes de borrarlas. También está en
+  otra carpeta, te muestra cuánto pesan y te pregunta antes de borrarlas. Una copia de Pandex
+  solo va a la papelera, y nunca se ofrece si guarda tus cursos. También está en
   Configuración → Comportamiento → **Liberar espacio…**
 - **Desinstalar Pandex.** En Configuración → Comportamiento → **Desinstalar Pandex…**, o con
   `desinstalar.bat` (Windows) y `./desinstalar.sh` (Linux). Muestra la lista exacta de lo que va

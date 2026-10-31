@@ -159,18 +159,34 @@ class _Respuesta:
         self.status = status
 
 
+def _del_sitio(dominio, host):
+    """¿Una cookie de ``dominio`` va a ``host``? (Como el navegador: el mismo o uno padre.)"""
+    if not dominio:
+        return True  # sin dominio: es de la página actual
+    dominio = dominio.lstrip(".").lower()
+    host = (host or "").lower()
+    return host == dominio or host.endswith("." + dominio)
+
+
 class _Pedidos:
-    """``contexto.request.get(url).status`` con las cookies que tiene el navegador ahora."""
+    """``contexto.request.get(url).status`` con las cookies del navegador que son de ese sitio.
+
+    Solo las de ese sitio: mientras inicias sesión, la página puede estar en el login de tu
+    institución (p. ej. Microsoft) y sus cookies no deben llegar a Canvas (P1).
+    """
 
     def __init__(self, contexto):
         self._contexto = contexto
 
     def get(self, url, timeout=15000):
+        from urllib.parse import urlsplit
+
         import requests
 
+        host = urlsplit(url).hostname
         try:
             ua = self._contexto.driver.execute_script("return navigator.userAgent")
-            frasco = {c["name"]: c["value"] for c in self._contexto.cookies()}
+            frasco = {c["name"]: c["value"] for c in self._contexto.cookies() if _del_sitio(c.get("domain"), host)}
             r = requests.get(url, cookies=frasco, headers={"User-Agent": ua},
                              timeout=timeout / 1000, allow_redirects=False)
         except Exception as exc:  # navegador cerrado o sin red: para quien llama, «aún no»

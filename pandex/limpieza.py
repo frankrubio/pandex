@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .log import get_logger
-from .rutas import DATOS, RAIZ, WINDOWS
+from .rutas import CONFIG_FILE, DATOS, RAIZ, WINDOWS
 
 log = get_logger("pandex.limpieza")
 
@@ -154,15 +154,44 @@ def caches_viejas():
     return elementos
 
 
-def copias_anteriores(raiz=RAIZ):
-    """Otras copias de Pandex en esta PC (instalaste en otra carpeta)."""
+def carpetas_protegidas(raiz=RAIZ):
+    """Carpetas que nunca se borran con otra copia: tus cursos (Canvas) y los datos de Pandex."""
+    import json
+
+    carpetas = [DATOS]
+    try:
+        datos = json.loads((Path(raiz) / CONFIG_FILE.name).read_text(encoding="utf-8"))
+        destino = datos.get("tareas", {}).get("sync_canvas", {}).get("destino")
+        if destino:
+            carpetas.append(Path(destino))
+    except (OSError, ValueError, AttributeError):
+        pass
+    return carpetas
+
+
+def _contiene(carpeta, otra):
+    try:
+        return Path(otra).resolve().is_relative_to(Path(carpeta).resolve())
+    except OSError:
+        return True  # ante la duda, se protege
+
+
+def copias_anteriores(raiz=RAIZ, protegidas=None):
+    """Otras copias de Pandex en esta PC (instalaste en otra carpeta).
+
+    No se ofrece una copia que guarda tus cursos o los datos de Pandex.
+    """
     from . import accesos
 
+    protegidas = carpetas_protegidas(raiz) if protegidas is None else protegidas
     elementos = []
     for carpeta in accesos.instalaciones_anteriores(raiz):
+        if any(_contiene(carpeta, p) for p in protegidas):
+            log.info("no ofrezco borrar %s: guarda tus cursos o datos de Pandex", carpeta)
+            continue
         elementos.append(Elemento(
             f"copia:{carpeta}", "Otra copia de Pandex", [carpeta], tamano(carpeta), False,
-            f"{carpeta} · Tu configuración ya está en esta copia. Va a la papelera si se puede."))
+            f"{carpeta} · Tu configuración ya está en esta copia. Va a la papelera."))
     return elementos
 
 
@@ -171,7 +200,8 @@ def externos(raiz=RAIZ):
 
 
 def liberar(elementos, papelera=None):
-    """Borra las rutas de ``elementos``. ``papelera(ruta) -> bool`` se usa para copias de Pandex.
+    """Borra las rutas de ``elementos``. Una copia de Pandex solo se manda a la papelera
+    (``papelera(ruta) -> bool``): si no se puede, queda donde está y se lista (P4: deshacer).
 
     Devuelve ``(bytes_liberados, [rutas que no se pudieron borrar])``.
     """
@@ -180,7 +210,10 @@ def liberar(elementos, papelera=None):
         quedan = []
         for ruta in elemento.rutas:
             try:
-                if not (elemento.clave.startswith("copia:") and papelera and papelera(ruta)):
+                if elemento.clave.startswith("copia:"):
+                    if not (papelera and papelera(ruta)):
+                        log.warning("no pude mandar %s a la papelera; no la borro", ruta)
+                else:
                     _borrar(ruta)
             except OSError as exc:
                 log.warning("no pude borrar %s: %s", ruta, exc)

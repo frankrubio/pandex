@@ -286,13 +286,21 @@ def instalaciones_anteriores(raiz=RAIZ):
     except (OSError, ValueError, AttributeError, TypeError):
         return []
     vistas, salida = set(), []
+    try:
+        esta = Path(raiz).resolve()
+    except OSError:
+        return []
     for carpeta in filter(None, carpetas):
         carpeta = Path(carpeta)
         try:
-            if not (carpeta / "main.py").is_file() or carpeta.resolve() == Path(raiz).resolve():
+            if not (carpeta / "main.py").is_file():
                 continue
             clave = carpeta.resolve()
         except OSError:
+            continue
+        # una dentro de la otra (p. ej. el ZIP nuevo descomprimido en la carpeta vieja):
+        # borrar una borraría la otra, así que no cuenta como copia aparte
+        if clave == esta or esta.is_relative_to(clave) or clave.is_relative_to(esta):
             continue
         if clave not in vistas:
             vistas.add(clave)

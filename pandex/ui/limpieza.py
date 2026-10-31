@@ -111,7 +111,7 @@ class DialogoLiberar(QDialog):
         self.titulo.setText(f"✓ Liberé {limpieza.texto_tamano(liberado)}" if liberado else "No pude liberar nada")
         lineas = []
         if fallidos:
-            lineas.append("No pude borrar (quizás está en uso; ciérralo y vuelve a intentar):")
+            lineas.append("No pude quitar (quizás está en uso, o no se pudo mandar a la papelera; ciérralo y vuelve a intentar, o bórralo a mano):")
             lineas += [f"• {ruta}" for ruta in fallidos]
         if error:
             lineas.append(error)

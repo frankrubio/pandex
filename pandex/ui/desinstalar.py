@@ -23,12 +23,16 @@ from .actualizacion import _Hilo
 
 
 def _borrar_venv_al_salir():
-    """En Windows el ``.venv`` está en uso mientras Pandex corre: lo borra cmd unos segundos después."""
+    """En Windows el ``.venv`` está en uso mientras Pandex corre: lo borra cmd unos segundos después.
+
+    Espera con ``ping`` y no con ``timeout``: sin consola (DETACHED_PROCESS), ``timeout``
+    termina al instante y el ``.venv`` se borraría mientras Pandex aún lo usa.
+    """
     venv = RAIZ / ".venv"
     if not venv.exists():
         return
     subprocess.Popen(
-        ["cmd", "/c", f'timeout /t 5 /nobreak >nul & rmdir /s /q "{venv}"'],
+        ["cmd", "/c", f'ping -n 6 127.0.0.1 >nul & rmdir /s /q "{venv}"'],
         creationflags=getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0),
         close_fds=True,
     )

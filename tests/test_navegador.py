@@ -116,6 +116,31 @@ class Abrir(unittest.TestCase):
         self.assertEqual(navegador.PERFILES["chrome"].name, "browser-profile")
 
 
+class Pedidos(unittest.TestCase):
+    """P1: a Canvas solo van las cookies de Canvas, nunca las del login (p. ej. Microsoft)."""
+
+    def test_solo_manda_las_cookies_del_sitio(self):
+        driver = mock.Mock()
+        driver.execute_script.return_value = "UA"
+        driver.get_cookies.return_value = [
+            {"name": "canvas_session", "value": "c", "domain": "canvas.utec.edu.pe"},
+            {"name": "log_session_id", "value": "x", "domain": ".utec.edu.pe"},
+            {"name": "ESTSAUTH", "value": "secreto", "domain": ".login.microsoftonline.com"},
+        ]
+        requests = mock.Mock()
+        requests.get.return_value = mock.Mock(status_code=200)
+        with mock.patch.dict("sys.modules", {"requests": requests}):
+            r = navegador.Contexto(driver).request.get("https://canvas.utec.edu.pe/api/v1/users/self")
+        self.assertEqual(r.status, 200)
+        enviadas = requests.get.call_args.kwargs["cookies"]
+        self.assertEqual(enviadas, {"canvas_session": "c", "log_session_id": "x"})
+
+    def test_dominio_parecido_no_cuenta(self):
+        self.assertFalse(navegador._del_sitio("evilutec.edu.pe", "canvas.utec.edu.pe"))
+        self.assertTrue(navegador._del_sitio(".canvas.utec.edu.pe", "canvas.utec.edu.pe"))
+        self.assertTrue(navegador._del_sitio(None, "canvas.utec.edu.pe"))  # cookie sin dominio: de la página
+
+
 class SinPlaywright(unittest.TestCase):
     def test_iniciar_sesion_no_importa_playwright(self):
         import sys
