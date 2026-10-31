@@ -62,7 +62,11 @@ def crear_markitdown():
                     file_stream.seek(pos)
             return [base_guess.copy_and_update(mimetype=mimetype, charset=charset)]
 
-    return MarkItDownPorExtension(enable_plugins=False)
+    motor = MarkItDownPorExtension(enable_plugins=False)
+    from .excel import convertidor
+
+    motor.register_converter(convertidor(), priority=-1.0)  # Excel sin pandas: antes que el suyo
+    return motor
 
 
 class _OcrBase:
