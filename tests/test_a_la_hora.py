@@ -170,15 +170,15 @@ class FuncionesOpcionales(unittest.TestCase):
         self.assertIn("convertir_md", r.stdout, r.stderr)
 
     def test_al_actualizar_reinstala_tambien_lo_opcional_que_ya_tenias(self):
-        from pandex import actualizar
+        from pandex import actualizar, paquetes
 
         with mock.patch.object(extras, "instalados_en", return_value=["markdown"]), \
-                mock.patch.object(actualizar.subprocess, "run",
-                                  return_value=mock.Mock(returncode=0, stderr="")) as run:
+                mock.patch.object(paquetes, "instalar") as instalar, \
+                mock.patch.object(paquetes, "huerfanos", return_value=[]):
             actualizar.instalar_dependencias(RAIZ)
-        comando = run.call_args.args[0]
-        self.assertIn(str(RAIZ / "requirements.txt"), comando)
-        self.assertIn(str(RAIZ / "requirements-markdown.txt"), comando)
+        archivos = instalar.call_args.args[0]
+        self.assertIn(RAIZ / "requirements.txt", archivos)
+        self.assertIn(RAIZ / "requirements-markdown.txt", archivos)
 
     def test_los_requisitos_basicos_no_traen_el_conversor(self):
         basicos = (RAIZ / "requirements.txt").read_text(encoding="utf-8")

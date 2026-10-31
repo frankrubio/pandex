@@ -4,6 +4,8 @@
 # Uso:  ./instalar.sh      (si no abre:  bash instalar.sh)
 set -u
 cd "$(dirname "$0")"
+# pip no guarda copias de los paquetes fuera de Pandex (~/.cache/pip)
+export PIP_NO_CACHE_DIR=1
 
 case "$(uname -s 2>/dev/null)" in
     MINGW*|MSYS*|CYGWIN*)
@@ -38,8 +40,8 @@ fi
 
 # 3. Dependencias (lo básico: mascota, tareas y Canvas)
 echo " Instalando dependencias: la primera vez tarda unos minutos..."
-.venv/bin/python -m pip install --upgrade pip --quiet
-.venv/bin/python -m pip install -r requirements.txt --quiet || fallo
+.venv/bin/python -m pip install --upgrade pip --quiet --no-compile
+.venv/bin/python -m pip install -r requirements.txt --quiet --no-compile || fallo
 
 # 4. «Convertir a Markdown» es opcional (unos 280 MB). Se puede añadir después en
 #    Configuración → Tareas. Para no preguntar:  PANDEX_MARKDOWN=si ./instalar.sh  (o =no)
@@ -55,7 +57,7 @@ fi
 case "$QUIERE" in
     s|S|si|sí|Si|Sí|SI|y|Y|yes)
         echo " Instalando «Convertir a Markdown»..."
-        .venv/bin/python -m pip install -r requirements-markdown.txt --quiet || fallo ;;
+        .venv/bin/python -m pip install -r requirements-markdown.txt --quiet --no-compile || fallo ;;
     *) echo " Sin «Convertir a Markdown»: Pandex queda más liviano." ;;
 esac
 

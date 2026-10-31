@@ -21,7 +21,7 @@ EXTRAS = {
         "nombre": "Convertir a Markdown",
         "archivo": "requirements-markdown.txt",
         "modulos": ("markitdown", "pypdfium2"),
-        "peso": "unos 280 MB",
+        "peso": "unos 200 MB",
     },
 }
 
@@ -61,15 +61,34 @@ def instalados_en(python):
 
 def instalar(extra, python=None, raiz=RAIZ):
     """``pip install -r <su archivo>`` en el Python de Pandex. Tarda unos minutos."""
+    from . import paquetes
+
     datos = EXTRAS[extra]
-    python = python or sys.executable
     log.info("instalando %s (%s)", extra, datos["archivo"])
-    r = subprocess.run(
-        [str(python), "-m", "pip", "install", "-r", str(raiz / datos["archivo"]),
-         "--quiet", "--disable-pip-version-check"],
-        capture_output=True, text=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-    )
-    if r.returncode != 0:
-        log.error("pip falló instalando %s:\n%s", extra, r.stderr[-3000:])
-        raise ErrorExtra(f"No pude instalar «{datos['nombre']}». ¿Hay internet? El detalle está en «Ver registro».")
+    try:
+        paquetes.instalar([raiz / datos["archivo"]], python or sys.executable)
+    except paquetes.ErrorPaquetes as exc:
+        raise ErrorExtra(f"No pude instalar «{datos['nombre']}». ¿Hay internet? "
+                         "El detalle está en «Ver registro».") from exc
     importlib.invalidate_caches()
+
+
+def quitar(extra, python=None, raiz=RAIZ):
+    """Quita los paquetes que solo usaba ``extra`` (los de la base y de otros extras quedan).
+
+    Devuelve la lista de paquetes quitados.
+    """
+    from . import paquetes
+
+    python = python or sys.executable
+    datos = EXTRAS[extra]
+    siguen = [raiz / "requirements.txt"] + [
+        raiz / EXTRAS[otro]["archivo"] for otro in instalados_en(python) if otro != extra]
+    sobran = paquetes.huerfanos(siguen, python)
+    try:
+        quitados = paquetes.desinstalar(sobran, python)
+    except paquetes.ErrorPaquetes as exc:
+        raise ErrorExtra(f"No pude quitar «{datos['nombre']}» del todo. "
+                         "El detalle está en «Ver registro».") from exc
+    importlib.invalidate_caches()
+    return quitados

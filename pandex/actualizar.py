@@ -301,19 +301,23 @@ def python_del_proyecto(raiz=RAIZ):
 
 
 def instalar_dependencias(raiz=RAIZ):
-    """Las de siempre y las de las funciones opcionales que ya tenías (nunca agrega otras)."""
-    from . import extras
+    """Las de siempre y las de las funciones opcionales que ya tenías (nunca agrega otras).
+
+    Después quita los paquetes que la versión nueva ya no pide (p. ej. Playwright o pandas):
+    así actualizar también libera espacio. Devuelve la lista de paquetes quitados.
+    """
+    from . import extras, paquetes
 
     python = python_del_proyecto(raiz)
-    archivos = ["-r", str(raiz / "requirements.txt")]
-    for extra in extras.instalados_en(python):
-        archivos += ["-r", str(raiz / extras.EXTRAS[extra]["archivo"])]
-    r = subprocess.run(
-        [str(python), "-m", "pip", "install", *archivos, "--quiet", "--disable-pip-version-check"],
-        capture_output=True, text=True, encoding="utf-8", errors="replace", creationflags=_SIN_VENTANA,
-    )
-    if r.returncode != 0:
-        log.error("pip falló: %s", r.stderr)
+    archivos = [raiz / "requirements.txt"]
+    archivos += [raiz / extras.EXTRAS[extra]["archivo"] for extra in extras.instalados_en(python)]
+    try:
+        paquetes.instalar(archivos, python)
+    except paquetes.ErrorPaquetes as exc:
         raise ErrorActualizacion(
             "Los archivos se actualizaron, pero no pude instalar las dependencias nuevas. "
-            "Ejecuta " + ("instalar.bat" if sys.platform == "win32" else "./instalar.sh") + " para terminar.")
+            "Ejecuta " + ("instalar.bat" if sys.platform == "win32" else "./instalar.sh") + " para terminar.") from exc
+    try:
+        return paquetes.desinstalar(paquetes.huerfanos(archivos, python), python)
+    except paquetes.ErrorPaquetes:
+        return []  # lo que no se pudo quitar no impide usar la versión nueva
