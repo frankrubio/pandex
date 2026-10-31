@@ -37,6 +37,7 @@ se notan después, como errores. Una spec cierra esos huecos antes:
 | [005_interfaz_y_configuracion](005_interfaz_y_configuracion/spec.md) | Interfaz bonita, simple y funcional; configuración fácil; se adapta a tu PC |
 | [006_paridad_windows_linux](006_paridad_windows_linux/spec.md) | Mismo comportamiento en Windows y Linux, sin conflictos de versión |
 | [007_tareas_y_cambios_faciles](007_tareas_y_cambios_faciles/spec.md) | Agregar tareas y modificar Pandex sin romper nada |
+| [008_estilo_de_carpetas](008_estilo_de_carpetas/spec.md) | Carpetas nuevas con `_` y sin tildes; o con el estilo que ya tienes |
 
 Las páginas de `docs/` describen **cómo funciona hoy** Pandex. Las specs describen **lo que
 cambia**. Cuando una spec se termina, su comportamiento pasa a `docs/` y la spec queda

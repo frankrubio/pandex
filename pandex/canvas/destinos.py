@@ -33,15 +33,16 @@ def buscar_subcarpeta(padre, nombre, alias=()):
     return None
 
 
-def resolver_subcarpeta(padre, nombre, alias=(), crear=True):
+def resolver_subcarpeta(padre, nombre, alias=(), crear=True, estilo=None):
     """Usa la carpeta que ya exista (aunque se llame algo distinto); si no, la crea.
 
-    Con ``crear=False`` solo calcula la ruta (para vistas previas).
+    Con ``crear=False`` solo calcula la ruta (para vistas previas). La carpeta nueva se
+    escribe según ``estilo`` (ver ``nombres.ESTILOS``; por defecto el de la configuración).
     """
     existente = buscar_subcarpeta(padre, nombre, alias)
     if existente:
         return existente
-    nueva = padre / nombres.nombre_de_carpeta(nombre)
+    nueva = padre / nombres.nombre_de_carpeta(nombre, estilo)
     if crear:
         nueva.mkdir(parents=True, exist_ok=True)
     return nueva

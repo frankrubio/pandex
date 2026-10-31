@@ -3,6 +3,17 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.5.1
+
+- **Carpetas nuevas con «_» y sin tildes.** Si no tienes un estilo propio, Pandex crea las carpetas
+  sin espacios, sin tildes, sin «ñ» ni signos: `Material_de_clase`, `Sem_3`, `Diseno_Teoria`.
+  Si ya tenías tus carpetas ordenadas a tu manera (`Sem 7`, `Teoría`…), Pandex lo lee al
+  configurar Canvas y las nuevas siguen ese estilo. La carpeta de cada curso nueva siempre va
+  con «_». Nunca se renombra una carpeta que ya existe.
+- Quien ya tenía Canvas configurado sigue con sus nombres, para no mezclar estilos dentro de un curso.
+- Nueva herramienta `herramientas/aplicar_config_canvas.py`: pasa tu configuración de Canvas de un
+  archivo a `config.json` sin editarlo a mano.
+
 ## 2.5.0
 
 - **Instalar y actualizar ya no dejan copias fuera de Pandex.** pip ya no guarda una copia de

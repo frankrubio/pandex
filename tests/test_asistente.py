@@ -91,7 +91,7 @@ class Asistente(ConCarpetaTemporal):
         self.assertEqual(w.currentId(), asistente.LISTO)
         w.accept()
 
-        raiz = self.tmp / "Mis cursos"
+        raiz = self.tmp / "Mis_cursos"
         self.assertEqual(self.guardado, [True])
         self.assertEqual(w.entrada, {"inicial": "desde", "desde_semana": 2})
         self.assertEqual(self.params["destino"], str(raiz))
@@ -99,13 +99,14 @@ class Asistente(ConCarpetaTemporal):
         reglas = self.params["cursos"]
         self.assertEqual([(r["canvas_id"], r.get("subcarpeta_fija")) for r in reglas],
                          [(1, "Teoría"), (2, "Lab")])
-        self.assertTrue((raiz / "Programacion I" / "Sem 1" / "Teoria").is_dir(), "arma el esqueleto")
-        self.assertTrue((raiz / "Programacion I" / "Sem 1" / "Lab").is_dir())
+        self.assertEqual(self.params["estilo_carpetas"], "guiones_bajos", "empezó de cero: no hay estilo que copiar")
+        self.assertTrue((raiz / "Programacion_I" / "Sem_1" / "Teoria").is_dir(), "arma el esqueleto")
+        self.assertTrue((raiz / "Programacion_I" / "Sem_1" / "Lab").is_dir())
 
         # y la primera sincronización respeta lo elegido
         r, _ = self.sincronizar(self.params, w.entrada)
-        self.assertTrue((raiz / "Programacion I" / "Sem 2" / "Teoria" / "Material de clase" / "Clase 2.pdf").exists())
-        self.assertFalse((raiz / "Programacion I" / "Sem 1" / "Teoria" / "Material de clase").exists(),
+        self.assertTrue((raiz / "Programacion_I" / "Sem_2" / "Teoria" / "Material_de_clase" / "Clase 2.pdf").exists())
+        self.assertFalse((raiz / "Programacion_I" / "Sem_1" / "Teoria" / "Material_de_clase").exists(),
                          "la semana 1 quedó fuera por elección")
 
     def test_carpeta_existente_se_ordena_y_se_puede_deshacer(self):
@@ -136,10 +137,11 @@ class Asistente(ConCarpetaTemporal):
         w.next()
         w.accept()
 
-        movido = prog / "Semana 01" / "Teoria" / "Material de clase" / "Clase 1.pdf"
+        movido = prog / "Semana 01" / "Teoría" / "Material de clase" / "Clase 1.pdf"
         self.assertTrue(movido.exists(), "el archivo de Canvas fue a su lugar, con tu estilo")
         self.assertTrue((prog / "Mis notas.docx").exists(), "lo tuyo no se toca")
         self.assertEqual(self.params["formato_semana"], "Semana {n:02d}")
+        self.assertEqual(self.params["estilo_carpetas"], "propio", "leyó tu estilo en carpetas que ya tenías")
         self.assertEqual(self.params["cursos"][1]["subcarpeta_fija"], "Laboratorio")
 
         devueltos, _ = adoptar.deshacer()

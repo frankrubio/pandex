@@ -6,7 +6,7 @@ import unittest
 from collections import Counter
 from pathlib import Path
 
-from pandex.canvas import adoptar
+from pandex.canvas import adoptar, nombres
 from pandex.canvas.estructura import Item
 from pandex.canvas.historial import Historial
 from pandex.canvas.sincronizar import Candidato
@@ -111,8 +111,10 @@ class Reordenar(unittest.TestCase):
         shutil.rmtree(self.raiz, ignore_errors=True)
 
     def test_plan_aplicar_y_deshacer(self):
+        self.addCleanup(setattr, nombres, "ESTILO_CARPETAS", nombres.ESTILO_CARPETAS)
+        nombres.ESTILO_CARPETAS = "propio"  # quien ya tiene «Sem 3» y «Teoría»
         plan = adoptar.planificar(self.candidatos, self.metas, {"Programacion_I": self.prog}, {})
-        destino = self.prog / "Sem 4" / "Teoria" / "Material de clase" / "Clase 4.pptx"
+        destino = self.prog / "Sem 4" / "Teoría" / "Material de clase" / "Clase 4.pptx"
         self.assertEqual([(m.origen.name, m.destino) for m in plan.movimientos], [("Clase 4.pptx", destino)])
         self.assertEqual({motivo for _, _, motivo in plan.dudosos},
                          {"ya hay otro archivo con ese nombre donde va", "tienes 2 copias"})

@@ -2,6 +2,7 @@
 # Rutas de tu PC, tus cursos, la posición de la mascota…
 config.json
 config.json.tmp
+config.json.antes-*
 logs/
 # Notas personales que no son parte del proyecto
 prompt-mascota-escritorio.md

@@ -79,6 +79,8 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T007.3 | Tareas documentadas (falta la prueba; el README ya menciona «Comprimir carpeta») | 007 | — | libre |
 | T007.4 | Sin `print` y con estilo (`ruff`) | 007 | — | libre |
 | T007.5 | Errores en los ganchos no tumban la app | 007 | — | libre |
+| T008.1 | Estilo de carpetas (`_` por defecto, o el tuyo) | 008 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Preguntas abiertas para Frank
 
@@ -98,3 +100,4 @@ Resumen de lo que bloquea o cambia el diseño. El detalle está en cada spec.
 | 002 | 5 | ¿El presupuesto de memoria pasa a «memoria propia (USS) ≤ 40 MB»? Hoy: 74–88 MB de RSS, de los que ~80 % es Qt compartido | **Respondida (31/10):** no; sigue ≤ 80 MB de RSS. Bajarla es T002.7 |
 | 006 | 1 | ¿`uv` para Python portátil en Linux viejo? | Sí, todo dentro de la carpeta |
 | 007 | 1 | ¿Tareas propias del usuario en `DATOS/tareas/`? | Sí, en una versión futura |
+| 008 | 1 | ¿La carpeta de curso siempre en `_` aunque el usuario las tenga con espacios? | Sí (ver spec 008) |

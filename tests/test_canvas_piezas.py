@@ -21,14 +21,16 @@ class Nombres(unittest.TestCase):
         self.assertLessEqual(len(nombres.nombre_destino("x" * 400, "a.pdf")), 200)
 
     def test_carpetas_nuevas_sin_tildes_ni_enie(self):
-        self.assertEqual(nombres.nombre_de_carpeta("Diseño: Teoría"), "Diseno- Teoria")
+        """Sin estilo propio: «_», sin tildes ni ñ (más en test_estilo_carpetas.py)."""
+        self.addCleanup(setattr, nombres, "ESTILO_CARPETAS", nombres.ESTILO_CARPETAS)
+        nombres.ESTILO_CARPETAS = "guiones_bajos"
+        self.assertEqual(nombres.nombre_de_carpeta("Diseño: Teoría"), "Diseno_Teoria")
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
         self.assertEqual(destinos.resolver_subcarpeta(tmp, "Teoría").name, "Teoria")
         (tmp / "Programación").mkdir()  # la que ya tienes se respeta
         self.assertEqual(destinos.resolver_subcarpeta(tmp, "Programación").name, "Programación")
-        nombres.CARPETAS_SIN_TILDES = False
-        self.addCleanup(setattr, nombres, "CARPETAS_SIN_TILDES", True)
+        nombres.ESTILO_CARPETAS = "propio"
         self.assertEqual(nombres.nombre_de_carpeta("Teoría"), "Teoría")
 
     def test_semanas(self):
@@ -48,6 +50,8 @@ class Destinos(unittest.TestCase):
     def setUp(self):
         self.curso = Path(tempfile.mkdtemp()) / "Curso"
         self.curso.mkdir()
+        self.addCleanup(setattr, nombres, "ESTILO_CARPETAS", nombres.ESTILO_CARPETAS)
+        nombres.ESTILO_CARPETAS = "propio"  # estas pruebas son de rutas, no de estilo (ver test_estilo_carpetas)
 
     def tearDown(self):
         shutil.rmtree(self.curso.parent, ignore_errors=True)
@@ -86,13 +90,13 @@ class Destinos(unittest.TestCase):
         regla = {"crear_secciones": True, "subcarpeta_fija": "Teoría"}
         d = destinos.carpeta_destino(self.curso, regla, self.item("Lecturas"), 2, {}, "Semana {n:02d}",
                                      crear=False)
-        self.assertEqual(d, self.curso / "Semana 02" / "Teoria" / "Lecturas")
+        self.assertEqual(d, self.curso / "Semana 02" / "Teoría" / "Lecturas")
         self.assertEqual(list(self.curso.iterdir()), [])
 
     def test_modulo_sin_semana(self):
         d = destinos.carpeta_destino(self.curso, {"crear_secciones": True},
                                      self.item(None, "Sílabo: y anexo"), None, {})
-        self.assertEqual(d, self.curso / "Silabo- y anexo")
+        self.assertEqual(d, self.curso / "Sílabo- y anexo")
 
     def test_modo_lista(self):
         regla = {"modo": "lab_comunicacion", "subcarpeta_raiz": "Material de Laboratorio"}

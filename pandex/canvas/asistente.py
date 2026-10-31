@@ -54,11 +54,12 @@ from ..log import get_logger
 from ..rutas import DATOS
 from ..ui import logo, tema
 from . import adoptar, sesion
+from . import nombres as estilos
 from .cliente import Canvas, CanvasError
 from .destinos import alias_semana, nombre_semana, resolver_subcarpeta
 from .estructura import agrupar, emparejar_cursos, nombre_corto, resumir
 from .historial import Historial
-from .nombres import nombre_de_carpeta
+from .nombres import nombre_de_curso
 from .sincronizar import candidatos_de, metadatos
 
 log = get_logger("pandex.canvas.asistente")
@@ -113,6 +114,10 @@ class Estado:
     @property
     def elegidos(self):
         return [g for g in self.grupos if g.elegido]
+
+    def estilo_carpetas(self):
+        """``"propio"`` solo si leyó tu estilo en carpetas que ya tenías; si no, ``"guiones_bajos"``."""
+        return "propio" if self.modo == "existente" and self.convenciones.detectada else "guiones_bajos"
 
     def reglas(self):
         """Los cursos tal como quedan en config.json."""
@@ -410,7 +415,7 @@ class PaginaCursos(QWizardPage):
         for fila, g in enumerate(self.estado.grupos):
             item = self.tabla.item(fila, 0)
             g.elegido = item.checkState() == Qt.CheckState.Checked
-            g.carpeta = nombre_de_carpeta(item.text().strip() or g.nombre)
+            g.carpeta = nombre_de_curso(item.text().strip() or g.nombre)
             if g.elegido and g.carpeta.casefold() in usados:
                 QMessageBox.warning(self, "Carpetas", f"Dos cursos usan la carpeta «{g.carpeta}».")
                 return False
@@ -468,7 +473,7 @@ class PaginaCarpeta(QWizardPage):
                 QMessageBox.warning(self, "Carpeta", "No encuentro la carpeta donde crearla.")
                 return False
             self.estado.modo = "nueva"
-            self.estado.raiz = padre / nombre_de_carpeta(self.nombre.text().strip() or "Cursos Canvas")
+            self.estado.raiz = padre / nombre_de_curso(self.nombre.text().strip() or "Cursos Canvas")
         else:
             raiz = Path(self.ruta_existente.text().strip())
             if not str(raiz) or not raiz.is_dir():
@@ -591,13 +596,15 @@ class PaginaReordenar(QWizardPage):
 
     def _planificar(self, avisar):
         estado = self.estado
+        estilos.ESTILO_CARPETAS = estado.estilo_carpetas()  # los destinos se calculan con tu estilo
         reglas = estado.reglas()
         parejas = emparejar_cursos(estado.cursos, reglas)
         candidatos = candidatos_de(parejas, [estado.modulos.get(c["id"], []) for _, c in parejas])
         avisar(f"Pidiendo a Canvas el tamaño de {len(candidatos)} archivo(s)…")
         metas = metadatos(estado.canvas, candidatos)
         avisar("Buscando cada uno en tu carpeta…")
-        carpetas = {r["carpeta"]: resolver_subcarpeta(estado.raiz, r["carpeta"], crear=False) for r in reglas}
+        carpetas = {r["carpeta"]: resolver_subcarpeta(estado.raiz, r["carpeta"], crear=False, estilo="guiones_bajos")
+                    for r in reglas}
         return adoptar.planificar(candidatos, metas, carpetas, estado.secciones(),
                                   estado.convenciones.formato_semana)
 
@@ -768,18 +775,20 @@ class AsistenteCanvas(QWizard):
             limitar(DATOS, "config-canvas-anterior-*.json", COPIAS_DE_CONFIG_QUE_QUEDAN)  # RES-05
 
         reglas = e.reglas()
+        estilos.ESTILO_CARPETAS = e.estilo_carpetas()
         e.raiz.mkdir(parents=True, exist_ok=True)
         self._crear_esqueleto(reglas)
         if e.mover and e.plan and e.plan.movimientos:
             self._reordenar()
 
-        for clave in ("calendario", "asistente_visto"):
+        for clave in ("calendario", "asistente_visto", "carpetas_sin_tildes"):
             self.params.pop(clave, None)
         self.params.update({
             "activa": True,
             "canvas_url": e.url,
             "destino": str(e.raiz),
             "formato_semana": e.convenciones.formato_semana,
+            "estilo_carpetas": e.estilo_carpetas(),
             "secciones": e.secciones(),
             "cursos": reglas,
             "schedule": e.horario,
@@ -796,7 +805,7 @@ class AsistenteCanvas(QWizard):
         formato = self.estado.convenciones.formato_semana
         por_id = {r.curso["id"]: r for r in self.estado.resumenes}
         for regla in reglas:
-            curso = resolver_subcarpeta(self.estado.raiz, regla["carpeta"])
+            curso = resolver_subcarpeta(self.estado.raiz, regla["carpeta"], estilo="guiones_bajos")
             for n in por_id[regla["canvas_id"]].semanas:
                 semana = resolver_subcarpeta(curso, nombre_semana(n, formato), alias_semana(n))
                 if regla.get("subcarpeta_fija"):
