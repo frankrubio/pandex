@@ -20,6 +20,7 @@ devuelven.
 | `pandex/pendientes.py` | Qué tarea programada se perdió (PC apagada o suspendida) y hay que hacer ya. Sin Qt. |
 | `pandex/despertador.py` | Modo «a la hora»: temporizador de systemd (Linux) o tarea programada (Windows) que lanza `main.py --pendientes`. |
 | `pandex/extras.py` | Funciones opcionales (hoy, «Convertir a Markdown» = `requirements-markdown.txt`): instalar y quitar. |
+| `pandex/limpieza.py` | «Liberar espacio»: lo que sobra y cuánto pesa. Lo de Pandex (paquetes huérfanos, respaldos de más) se limpia solo al estrenar una versión; lo de fuera (cachés viejas, otras copias de Pandex) se pregunta en `ui/limpieza.py`. |
 | `pandex/paquetes.py` | Todo `pip` pasa por aquí: sin caché ni `.pyc` de sobra; `huerfanos()` dice qué paquetes ya no pide nadie (se quitan al actualizar). |
 | `pandex/onedrive.py` | Linux: conecta y monta OneDrive con rclone (`~/OneDrive`, `~/OneDrive - Nombre`); `asegurar()` impide escribir si no está montado. La pantalla está en `pandex/ui/onedrive.py`. |
 | `pandex/accesos.py` | Accesos directos de Windows (Escritorio y arranque) y su ícono. |
@@ -80,7 +81,11 @@ Para Canvas, "configurado" significa tener `destino` y al menos un curso en `cur
 | Código, recursos, documentación | carpeta del proyecto | sí |
 | Tus preferencias y cursos | `config.json` (carpeta del proyecto) | **no** (`.gitignore`) |
 | Registro de eventos | `logs/pandex.log` | **no** |
-| Sesión del navegador (cookies de Canvas) | `%LOCALAPPDATA%\Pandex\browser-profile` | no (fuera del proyecto) |
+| Sesión del navegador (cookies de Canvas) | `%LOCALAPPDATA%\Pandex\browser-profile` (Chrome), `browser-profile-edge`, `browser-profile-firefox` | no (fuera del proyecto) |
+| Driver del navegador (lo baja Selenium la primera vez) | `%LOCALAPPDATA%\Pandex\navegadores` | no |
+| Respaldos de actualizaciones por ZIP | `%LOCALAPPDATA%\Pandex\respaldos` (quedan los 2 últimos) | no |
+| Copias de la configuración de Canvas | `%LOCALAPPDATA%\Pandex\config-canvas-anterior-*.json` (quedan 3) | no |
+| Dónde se instaló Pandex (para no tenerlo dos veces) | `%LOCALAPPDATA%\Pandex\instalacion.json` | no |
 | Historial de Canvas (qué archivo está dónde) | `%LOCALAPPDATA%\Pandex\historial_canvas.json` | no |
 | Diarios de reordenamiento (para deshacer) | `%LOCALAPPDATA%\Pandex\reordenamientos\` | no |
 | Descargas y conversiones a medio hacer | `%LOCALAPPDATA%\Pandex\descargas`, `md_tmp` | no |

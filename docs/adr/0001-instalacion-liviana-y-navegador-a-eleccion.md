@@ -91,18 +91,22 @@ Estas cifras de Windows faltan medir: lo hará la CI (T002.1).
 
 ### D4. Actualizar = actualizar + liberar espacio
 
-`pandex/limpieza.py` arma una lista de lo que sobra, con el tamaño de cada cosa.
-`actualizar.aplicar()` la ejecuta al final. También se puede abrir cuando quieras desde
-**Configuración → Comportamiento → Liberar espacio…**
+`pandex/limpieza.py` arma una lista de lo que sobra, con el tamaño de cada cosa. Corre la
+**primera vez que se abre una versión nueva**, en segundo plano, y no al final de
+`actualizar.aplicar()`: la actualización la ejecuta el código de la versión **anterior**, que
+no sabe limpiar. Así también limpia quien actualiza desde la 2.4. Además se puede abrir cuando
+quieras desde **Configuración → Comportamiento → Liberar espacio…** La ventana solo se abre
+sola si fuera de Pandex hay 20 MB o más que liberar.
+
+Solo quita paquetes si el Python es el de `.venv` de Pandex. Nunca toca el Python del sistema.
 
 | Qué | Cómo se decide | ¿Pregunta? |
 |---|---|---|
 | Paquetes huérfanos en `.venv` (ninguno de los `requirements*.txt` instalados los pide, ni sus dependencias) | `importlib.metadata`; nunca toca `pip`, `setuptools` ni `wheel` | no: `.venv` es de Pandex |
 | Respaldos de actualizaciones | se quedan los 2 más nuevos | no |
 | Copias de configuración de Canvas | se quedan las 3 más nuevas | no |
-| Perfil de Chrome de Playwright, si ya no se usa | solo si no es el navegador elegido | no |
-| Caché de pip, geckodriver viejo (`~/.cache/selenium`), Chromium de Playwright | están **fuera** de Pandex y otros programas podrían usarlos | **sí**: casillas con el tamaño de cada uno, desmarcadas por defecto si no son de Pandex |
-| Otra copia de Pandex (`accesos.instalacion_anterior`) | se compara su versión | **sí**: muestra la ruta; borrar va a la papelera si se puede |
+| Caché de pip, geckodriver viejo (`~/.cache/selenium`), Chromium de Playwright | están **fuera** de Pandex; son cachés: si otro programa las necesita, las vuelve a descargar | **sí**: casillas con el tamaño de cada uno, marcadas |
+| Otra copia de Pandex (`accesos.instalaciones_anteriores`) | el instalador anota cada carpeta donde se instaló | **sí**: desmarcada, con su ruta; va a la papelera si se puede |
 
 - La interfaz es una sola ventana: «Puedo liberar 412 MB», con la lista y un botón
   **Liberar**.

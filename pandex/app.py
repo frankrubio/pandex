@@ -37,6 +37,7 @@ SALIR_TRAS = 9000  # ms: lo justo para leer el último globo
 PROGRESO_CADA = 0.25  # s: el globo de avance se refresca como mucho 4 veces por segundo
 REVISAR_TRAS = 45_000          # ms tras abrir: la primera revisión no frena el arranque
 REVISAR_CADA = 24 * 3600_000   # ms: una consulta pequeña a GitHub al día, como mucho
+ESTRENAR_TRAS = 20_000         # ms tras abrir una versión nueva: limpiar lo que ya no se usa
 
 
 class PandexApp(QObject):
@@ -96,6 +97,7 @@ class PandexApp(QObject):
             return
         self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
         QTimer.singleShot(1500, self._primera_vez)
+        QTimer.singleShot(ESTRENAR_TRAS, self._estrenar_version)
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
         self._reloj_actualizaciones = QTimer(self)
         self._reloj_actualizaciones.timeout.connect(self._revisar_actualizaciones)
@@ -140,6 +142,26 @@ class PandexApp(QObject):
             lambda errores: errores and self.mascota.decir(
                 "No pude abrir tu OneDrive. " + errores[0], tipo="error", segundos=12))
         self._hilo_onedrive.start()
+
+    def _estrenar_version(self):
+        """La primera vez que abre una versión nueva: quita lo que ya no se usa (ADR-0001, D4).
+
+        Lo de Pandex (paquetes que sobran, respaldos viejos) se limpia solo y en otro hilo;
+        si fuera de Pandex hay 20 MB o más que liberar, abre «Liberar espacio» para preguntar.
+        """
+        from . import __version__, limpieza
+        from .ui import limpieza as ui_limpieza
+
+        if self.config.datos.get("version_vista") == __version__:
+            return
+
+        def listo(liberado):
+            self.config.datos["version_vista"] = __version__
+            self.config.guardar()
+            if liberado >= 1024 * 1024:
+                self.mascota.decir(f"Liberé {limpieza.texto_tamano(liberado)} que ya no se usaban.")
+
+        self._hilo_limpieza = ui_limpieza.revisar(None, listo, solo_si_vale_la_pena=True)
 
     def _primera_vez(self):
         """Abre el asistente de las tareas que aún no se configuraron (una sola vez)."""

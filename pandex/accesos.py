@@ -274,6 +274,28 @@ def instalacion_anterior(raiz=RAIZ):
     return previa
 
 
+def instalaciones_anteriores(raiz=RAIZ):
+    """Todas las otras copias de Pandex que se instalaron en esta PC y siguen ahí."""
+    try:
+        datos = json.loads(INSTALACION.read_text(encoding="utf-8"))
+        carpetas = [datos.get("carpeta"), *datos.get("anteriores", [])]
+    except (OSError, ValueError, AttributeError, TypeError):
+        return []
+    vistas, salida = set(), []
+    for carpeta in filter(None, carpetas):
+        carpeta = Path(carpeta)
+        try:
+            if not (carpeta / "main.py").is_file() or carpeta.resolve() == Path(raiz).resolve():
+                continue
+            clave = carpeta.resolve()
+        except OSError:
+            continue
+        if clave not in vistas:
+            vistas.add(clave)
+            salida.append(carpeta)
+    return salida
+
+
 def instalar_aqui(raiz=RAIZ, config=CONFIG_FILE):
     """Lo que hace el instalador: deja los accesos apuntando a esta copia.
 
@@ -290,8 +312,10 @@ def instalar_aqui(raiz=RAIZ, config=CONFIG_FILE):
     crear_en_escritorio()
     if arranca_con_el_sistema():
         activar_arranque()  # el que había apuntaba a la otra copia
+    anteriores = [str(c) for c in instalaciones_anteriores(raiz)]  # para «Liberar espacio»
     INSTALACION.parent.mkdir(parents=True, exist_ok=True)
-    INSTALACION.write_text(json.dumps({"carpeta": str(raiz)}, ensure_ascii=False), encoding="utf-8")
+    INSTALACION.write_text(json.dumps({"carpeta": str(raiz), "anteriores": anteriores}, ensure_ascii=False),
+                           encoding="utf-8")
     return previa
 
 
@@ -302,4 +326,5 @@ if __name__ == "__main__":
         print()
         print(f" Ya tenías Pandex en: {previa}")
         print(" Traje tu configuración y ahora el acceso directo abre esta copia.")
-        print(" Puedes borrar esa carpeta para no tener Pandex dos veces.")
+        print(" Para no tener Pandex dos veces, bórrala desde Pandex: Configuración → Comportamiento →")
+        print(" Liberar espacio (o a mano).")

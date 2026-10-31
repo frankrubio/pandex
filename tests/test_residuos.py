@@ -1,12 +1,13 @@
 """Sin residuos (spec 003): pip no deja copias fuera de Pandex y actualizar quita lo que sobra."""
 
+import json
 import re
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from pandex import actualizar, extras, paquetes
+from pandex import actualizar, extras, limpieza, paquetes
 
 RAIZ = Path(__file__).resolve().parent.parent
 
@@ -68,6 +69,7 @@ class Huerfanos(unittest.TestCase):
     def test_actualizar_quita_huerfanos(self):
         with mock.patch.object(extras, "instalados_en", return_value=[]), \
                 mock.patch.object(paquetes, "instalar"), \
+                mock.patch.object(paquetes, "es_del_proyecto", return_value=True), \
                 mock.patch.object(paquetes, "huerfanos", return_value=["playwright", "pandas"]), \
                 mock.patch.object(paquetes, "desinstalar", side_effect=lambda p, py: p) as desinstalar:
             quitados = actualizar.instalar_dependencias(RAIZ)
@@ -77,9 +79,24 @@ class Huerfanos(unittest.TestCase):
     def test_si_no_puede_quitar_igual_termina_de_actualizar(self):
         with mock.patch.object(extras, "instalados_en", return_value=[]), \
                 mock.patch.object(paquetes, "instalar"), \
+                mock.patch.object(paquetes, "es_del_proyecto", return_value=True), \
                 mock.patch.object(paquetes, "huerfanos", return_value=["pandas"]), \
                 mock.patch.object(paquetes, "desinstalar", side_effect=paquetes.ErrorPaquetes("x")):
             self.assertEqual(actualizar.instalar_dependencias(RAIZ), [])
+
+    def test_nunca_quita_paquetes_fuera_del_venv_de_pandex(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            raiz = Path(tmp)
+            propio = raiz / ".venv" / "bin" / "python"
+            propio.parent.mkdir(parents=True)
+            propio.touch()
+            self.assertTrue(paquetes.es_del_proyecto(propio, raiz))
+            self.assertFalse(paquetes.es_del_proyecto("/usr/bin/python3", raiz))
+        with mock.patch.object(extras, "instalados_en", return_value=[]), \
+                mock.patch.object(paquetes, "instalar"), \
+                mock.patch.object(paquetes, "huerfanos") as huerfanos:
+            self.assertEqual(actualizar.instalar_dependencias(RAIZ / "no-existe"), [])
+        huerfanos.assert_not_called()
 
     def test_quitar_un_extra_deja_la_base(self):
         with mock.patch.object(extras, "instalados_en", return_value=["markdown"]), \
@@ -88,6 +105,102 @@ class Huerfanos(unittest.TestCase):
             quitados = extras.quitar("markdown", "python", RAIZ)
         self.assertEqual(quitados, ["markitdown", "magika"])
         self.assertEqual(huerfanos.call_args.args[0], [RAIZ / "requirements.txt"], "sin el archivo del extra")
+
+
+class Limites(unittest.TestCase):
+    """RES-04/RES-05 y «Liberar espacio» (ADR-0001, D4)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+
+    def crear(self, carpeta, nombres, es_carpeta=False):
+        import os
+        import time
+
+        carpeta.mkdir(parents=True, exist_ok=True)
+        ahora = time.time()
+        for i, nombre in enumerate(nombres):
+            ruta = carpeta / nombre
+            if es_carpeta:
+                ruta.mkdir()
+                (ruta / "a.txt").write_text("x" * 100, encoding="utf-8")
+            else:
+                ruta.write_text("{}", encoding="utf-8")
+            os.utime(ruta, (ahora - 100 * (len(nombres) - i), ahora - 100 * (len(nombres) - i)))
+
+    def test_respaldos_con_limite(self):
+        respaldos = self.tmp / "respaldos"
+        self.crear(respaldos, [f"2.{i}.0" for i in range(5)], es_carpeta=True)
+        liberado = limpieza.limitar(respaldos, "*", 2)
+        self.assertEqual(sorted(p.name for p in respaldos.iterdir()), ["2.3.0", "2.4.0"])
+        self.assertEqual(liberado, 300)
+
+    def test_copias_de_config_con_limite(self):
+        self.crear(self.tmp, [f"config-canvas-anterior-2026100{i}.json" for i in range(5)] + ["otro.json"])
+        limpieza.limitar(self.tmp, "config-canvas-anterior-*.json", 3)
+        quedan = sorted(p.name for p in self.tmp.iterdir())
+        self.assertEqual(len(quedan), 4)
+        self.assertIn("otro.json", quedan, "solo toca lo que coincide")
+        self.assertNotIn("config-canvas-anterior-20261000.json", quedan)
+
+    def test_caches_viejas_con_su_tamano(self):
+        cache = self.tmp / "cache"
+        (cache / "pip" / "http-v2").mkdir(parents=True)
+        (cache / "pip" / "http-v2" / "rueda").write_bytes(b"x" * 2048)
+        with mock.patch.object(limpieza, "WINDOWS", False), \
+                mock.patch.dict("os.environ", {"XDG_CACHE_HOME": str(cache)}), \
+                mock.patch.object(limpieza.Path, "home", return_value=self.tmp / "casa"):
+            elementos = limpieza.caches_viejas()
+        self.assertEqual([(e.clave, e.tamano) for e in elementos], [("pip", 2048)])
+
+    def test_liberar_borra_y_cuenta(self):
+        carpeta = self.tmp / "sobra"
+        carpeta.mkdir()
+        (carpeta / "x").write_bytes(b"x" * 10)
+        elemento = limpieza.Elemento("pip", "Caché", [carpeta], 10)
+        liberado, fallidos = limpieza.liberar([elemento])
+        self.assertEqual((liberado, fallidos), (10, []))
+        self.assertFalse(carpeta.exists())
+
+    def test_otra_copia_va_a_la_papelera_si_se_puede(self):
+        copia = self.tmp / "pandex-viejo"
+        copia.mkdir()
+        papelera = mock.Mock(return_value=True)
+        limpieza.liberar([limpieza.Elemento(f"copia:{copia}", "Otra copia", [copia], 5)], papelera)
+        papelera.assert_called_once_with(copia)
+
+    def test_lo_que_no_se_pudo_borrar_se_lista(self):
+        ruta = self.tmp / "en-uso"
+        ruta.mkdir()
+        with mock.patch.object(limpieza, "_borrar", side_effect=PermissionError("en uso")):
+            liberado, fallidos = limpieza.liberar([limpieza.Elemento("pip", "Caché", [ruta], 10)])
+        self.assertEqual((liberado, fallidos), (0, [ruta]))
+
+    def test_recuerda_todas_las_copias_anteriores(self):
+        from pandex import accesos
+
+        vieja, nueva = self.tmp / "vieja", self.tmp / "nueva"
+        for c in (vieja, nueva):
+            c.mkdir()
+            (c / "main.py").touch()
+        registro = self.tmp / "instalacion.json"
+        registro.write_text(json.dumps({"carpeta": str(vieja)}), encoding="utf-8")
+        with mock.patch.object(accesos, "INSTALACION", registro), \
+                mock.patch.object(accesos, "crear_en_escritorio"), \
+                mock.patch.object(accesos, "arranca_con_el_sistema", return_value=False):
+            accesos.instalar_aqui(nueva, nueva / "config.json")
+            self.assertEqual(accesos.instalaciones_anteriores(nueva), [vieja])
+            with mock.patch.object(limpieza, "tamano", return_value=1):
+                self.assertEqual([e.rutas for e in limpieza.copias_anteriores(nueva)], [[vieja]])
+
+    def test_al_estrenar_version_sin_venv_propio_no_toca_paquetes(self):
+        with mock.patch.object(limpieza, "DATOS", self.tmp), \
+                mock.patch.object(paquetes, "huerfanos") as huerfanos, \
+                mock.patch.object(limpieza, "externos", return_value=[]):
+            r = limpieza.al_estrenar_version(self.tmp)
+        huerfanos.assert_not_called()
+        self.assertEqual(r, {"liberado": 0, "externos": []})
 
 
 if __name__ == "__main__":

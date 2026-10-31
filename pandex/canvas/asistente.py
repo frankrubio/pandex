@@ -763,6 +763,9 @@ class AsistenteCanvas(QWizard):
             copia.parent.mkdir(parents=True, exist_ok=True)
             copia.write_text(json.dumps(self.params, ensure_ascii=False, indent=2), encoding="utf-8")
             log.info("configuración anterior guardada en %s", copia)
+            from ..limpieza import COPIAS_DE_CONFIG_QUE_QUEDAN, limitar
+
+            limitar(DATOS, "config-canvas-anterior-*.json", COPIAS_DE_CONFIG_QUE_QUEDAN)  # RES-05
 
         reglas = e.reglas()
         e.raiz.mkdir(parents=True, exist_ok=True)

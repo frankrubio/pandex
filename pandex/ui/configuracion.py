@@ -476,8 +476,26 @@ class DialogoConfiguracion(QDialog):
         crear.clicked.connect(self._crear_acceso)
         fila.addWidget(crear)
         caja.addWidget(acceso)
+
+        caja.addSpacing(10)
+        espacio = _tarjeta()
+        fila = QHBoxLayout(espacio)
+        fila.setContentsMargins(16, 12, 16, 12)
+        texto = QLabel("<b>Espacio en disco</b><br>Quita lo que Pandex ya no usa: paquetes viejos, "
+                       "respaldos de más, cachés y otras copias de Pandex.")
+        texto.setWordWrap(True)
+        fila.addWidget(texto, 1)
+        liberar = QPushButton("Liberar espacio…")
+        liberar.clicked.connect(self._liberar_espacio)
+        fila.addWidget(liberar)
+        caja.addWidget(espacio)
         caja.addStretch()
         return pagina
+
+    def _liberar_espacio(self):
+        from . import limpieza as ui_limpieza
+
+        self._hilo_limpieza = ui_limpieza.revisar(self)
 
     def _pagina_tareas(self):
         pagina = QWidget()

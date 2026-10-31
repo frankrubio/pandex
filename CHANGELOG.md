@@ -8,8 +8,11 @@ cuando buscas actualizaciones desde el menú.
 - **Instalar y actualizar ya no dejan copias fuera de Pandex.** pip ya no guarda una copia de
   cada paquete en tu carpeta personal (eran cientos de MB) ni prepara archivos que Pandex no
   usa. Instalación base: 326 MB en vez de 341 MB (medido en Linux).
-- **Actualizar también libera espacio.** Los paquetes que la versión nueva ya no usa se quitan
-  solos.
+- **Actualizar también libera espacio.** La primera vez que abres una versión nueva, Pandex quita
+  solo los paquetes que ya no usa (p. ej. Playwright o pandas) y los respaldos de más (quedan los
+  2 últimos). Si encuentra cachés que dejaban las versiones anteriores u otra copia de Pandex en
+  otra carpeta, te muestra cuánto pesan y te pregunta antes de borrarlas. También está en
+  Configuración → Comportamiento → **Liberar espacio…**
 - **«Convertir a Markdown» pesa 128 MB menos.** Lee Excel (.xlsx y .xls) sin pandas. Todo
   instalado: 532 MB en vez de 660 MB (medido en Linux).
 - **Canvas con el navegador que elijas.** Por defecto, tu navegador predeterminado (Edge, Chrome o

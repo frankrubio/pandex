@@ -119,6 +119,15 @@ print(json.dumps(sorted(instalados - usados)))
 """
 
 
+def es_del_proyecto(python, raiz):
+    """¿``python`` es el del ``.venv`` de Pandex? Solo ahí se quitan paquetes (nunca del Python
+    de tu sistema ni del de otro proyecto)."""
+    try:
+        return Path(python).absolute().parent.parent.resolve() == Path(raiz, ".venv").resolve()
+    except (OSError, TypeError):
+        return False
+
+
 def huerfanos(archivos, python=None):
     """Paquetes instalados que no pide ningún ``archivos`` (requirements), ni como dependencia.
 

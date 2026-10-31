@@ -262,6 +262,9 @@ def _con_zip(raiz, avisar, zip_local=None):
             shutil.copy2(nuevo, actual)
             copiados += 1
         log.info("actualizado desde ZIP: %d archivo(s); respaldo en %s", copiados, respaldo)
+        from .limpieza import RESPALDOS_QUE_QUEDAN, limitar
+
+        limitar(respaldo.parent, "*", RESPALDOS_QUE_QUEDAN)  # RES-04: no se acumulan
         return {"modo": "zip", "archivos": copiados, "respaldo": respaldo if respaldo.exists() else None}
     finally:
         shutil.rmtree(trabajo, ignore_errors=True)
@@ -318,6 +321,8 @@ def instalar_dependencias(raiz=RAIZ):
         raise ErrorActualizacion(
             "Los archivos se actualizaron, pero no pude instalar las dependencias nuevas. "
             "Ejecuta " + ("instalar.bat" if sys.platform == "win32" else "./instalar.sh") + " para terminar.") from exc
+    if not paquetes.es_del_proyecto(python, raiz):
+        return []  # sin .venv propio no se quita nada
     try:
         return paquetes.desinstalar(paquetes.huerfanos(archivos, python), python)
     except paquetes.ErrorPaquetes:
