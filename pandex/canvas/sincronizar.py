@@ -175,7 +175,9 @@ class Sincronizacion:
         if problema:
             return {"ok": False, "resumen": problema, "detalle": [problema]}
         if not self.raiz.is_dir():
-            return {"ok": False, "resumen": "No encuentro tu carpeta de cursos.",
+            return {"ok": False,
+                    "resumen": "No encuentro tu carpeta de cursos. Configuración → Sincronizar Canvas → "
+                               "Reconectar carpeta de cursos.",
                     "detalle": [f"no existe: {self.raiz}"]}
 
         # el calendario es opcional: solo lo necesitan los cursos en modo "lista"

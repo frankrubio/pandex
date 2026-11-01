@@ -3,6 +3,14 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.5.2
+
+- **Reconectar la carpeta de cursos.** Si renombras o mueves la carpeta donde Pandex guarda tus
+  cursos, ya no hace falta repetir todo: en Configuración, en Sincronizar Canvas, elige
+  **Reconectar carpeta de cursos…**. Pandex busca la carpeta de cada curso, lee tu estilo, te
+  muestra el resumen y guarda. No mueve ni borra nada. El aviso «No encuentro tu carpeta de
+  cursos» ahora dice dónde está.
+
 ## 2.5.1
 
 - **Carpetas nuevas con «_» y sin tildes.** Si no tienes un estilo propio, Pandex crea las carpetas

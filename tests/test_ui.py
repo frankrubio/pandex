@@ -199,6 +199,44 @@ class Interfaz(unittest.TestCase):
         dlg._guardar()
         self.assertEqual(self.config.tarea("sync_canvas")["navegador"], "auto")
 
+    def test_reconectar_carpeta_de_cursos(self):
+        """Spec 009 (REC-06): un botón para volver a adaptarse a la carpeta renombrada."""
+        import shutil
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        from pandex.ui import configuracion
+        from pandex.ui.configuracion import DialogoConfiguracion
+
+        nueva = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, nueva, True)
+        (nueva / "Programación I").mkdir()
+        canvas = type("T", (), {"id": "sync_canvas", "nombre": "Sincronizar Canvas", "descripcion": "",
+                                "schedule": None, "programable": True})()
+        tarea = self.config.tarea("sync_canvas")
+        tarea.update(destino="/ya/no/existe", cursos=[{"canvas_id": 1, "carpeta": "Programacion_I"}])
+        dlg = DialogoConfiguracion(self.config, [canvas])
+        self.assertEqual(dlg.reconectar.text(), "Reconectar carpeta de cursos…")
+        Mensajes = mock.Mock()
+        Mensajes.StandardButton.Yes = 1
+        Mensajes.question.return_value = 1
+        with mock.patch.object(configuracion.QFileDialog, "getExistingDirectory", return_value=str(nueva)), \
+                mock.patch.object(configuracion, "QMessageBox", Mensajes), \
+                mock.patch("pandex.canvas.reconectar.guardar_copia") as copia:
+            dlg.reconectar.click()
+        self.assertEqual(tarea["destino"], str(nueva))
+        self.assertEqual(tarea["cursos"][0]["carpeta"], "Programación I")
+        copia.assert_called_once()
+        self.assertIn("Programacion_I → Programación I", Mensajes.question.call_args.args[2])
+
+        tarea["destino"] = "/ya/no/existe"  # si dices que no, no cambia nada
+        Mensajes.question.return_value = 0
+        with mock.patch.object(configuracion.QFileDialog, "getExistingDirectory", return_value=str(nueva)), \
+                mock.patch.object(configuracion, "QMessageBox", Mensajes):
+            dlg.reconectar.click()
+        self.assertEqual(tarea["destino"], "/ya/no/existe")
+
     def test_actualizar_con_un_clic_aplica_y_reinicia_solo(self):
         from PyQt6.QtCore import QEventLoop, QTimer
 
