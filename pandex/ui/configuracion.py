@@ -566,6 +566,7 @@ class DialogoConfiguracion(QDialog):
                 interno.addWidget(cron)
             if tarea.id == "sync_canvas":
                 interno.addLayout(self._fila_navegador(opciones.get("navegador", "auto")))
+                interno.addLayout(self._fila_reconectar())
             filas.addWidget(tarjeta)
             self.filas[tarea.id] = (activa, cron)
         filas.addStretch()
@@ -577,6 +578,43 @@ class DialogoConfiguracion(QDialog):
         scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
         caja.addWidget(scroll, 1)
         return pagina
+
+    def _fila_reconectar(self):
+        """Si renombraste o moviste tu carpeta de cursos, Pandex se vuelve a adaptar (spec 009)."""
+        fila = QHBoxLayout()
+        self.reconectar = QPushButton("Reconectar carpeta de cursos…")
+        self.reconectar.setToolTip("Úsalo si renombraste o moviste la carpeta donde Pandex guarda tus cursos.\n"
+                                   "No mueve ni borra nada: solo vuelve a apuntar a ella.")
+        self.reconectar.clicked.connect(self._reconectar_carpeta)
+        fila.addWidget(self.reconectar)
+        fila.addStretch()
+        return fila
+
+    def _reconectar_carpeta(self):
+        from pathlib import Path
+
+        from ..canvas import reconectar
+
+        opciones = self.config.tarea("sync_canvas")
+        actual = Path(opciones.get("destino") or "")
+        inicio = str(actual if actual.is_dir() else actual.parent if actual.parent.is_dir() else Path.home())
+        elegida = QFileDialog.getExistingDirectory(
+            self, "Elige la carpeta donde están las carpetas de tus cursos", inicio)
+        if not elegida:
+            return
+        try:
+            nuevos, informe = reconectar.adaptar(opciones, elegida)
+        except reconectar.ErrorReconectar as exc:
+            QMessageBox.warning(self, "Reconectar carpeta", str(exc))
+            return
+        r = QMessageBox.question(self, "Reconectar carpeta",
+                                 informe.texto() + "\n\nNo se mueve ni se borra nada. ¿Guardo esto?")
+        if r != QMessageBox.StandardButton.Yes:
+            return
+        reconectar.guardar_copia(opciones, rutas.DATOS)
+        opciones.update(nuevos)
+        self.config.guardar()
+        QMessageBox.information(self, "Reconectar carpeta", "Listo. La próxima sincronización usará esa carpeta.")
 
     def _fila_navegador(self, actual):
         """Con qué navegador inicias sesión en Canvas (ADR-0001): el tuyo, o el que elijas."""

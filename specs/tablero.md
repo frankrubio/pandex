@@ -15,7 +15,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T006.0 | Dependencias con versión fija y cada una en su sistema | 006 | — | hecha |
 | T007.1 | Contrato de tareas y mapa de módulos en la CI | 007 | — | hecha |
 | T003.1 | Prueba que vigila residuos fuera de los lugares permitidos | 003 | — | libre |
-| T002.1 | Medir el peso y vigilarlo en la CI | 002 | — | en curso (claude/vibrant-volta-t1vhh9): el job `peso` mide y bloquea |
+| T002.1 | Medir el peso y vigilarlo en la CI | 002 | — | hecha |
 | T001.1 | Contar pedidos por fase; separar inicio de sesión manual | 001 | — | libre |
 | T006.1 | Matriz completa en la CI (Ubuntu 22.04/24.04, Windows; Python 3.12–3.14) | 006 | — | libre |
 | T005.1 | Reglas de aspecto como pruebas | 005 | — | libre |
@@ -24,9 +24,9 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 
 | Tarea | Qué | Spec | Depende de | Estado |
 |---|---|---|---|---|
-| T003.2 | pip sin caché, en un solo lugar | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
-| T003.3 | Drivers y navegadores en la carpeta de datos | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
-| T003.4 | Límites para respaldos y copias de configuración | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T003.2 | pip sin caché, en un solo lugar | 003 | — | hecha |
+| T003.3 | Drivers y navegadores en la carpeta de datos | 003 | — | hecha |
+| T003.4 | Límites para respaldos y copias de configuración | 003 | — | hecha |
 | T004.2 | Filtro de secretos en el registro | 004 | — | libre |
 | T004.3 | Solo hosts permitidos | 004 | — | libre |
 | T004.5 | Permisos privados en Linux | 004 | — | libre |
@@ -46,8 +46,8 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T001.7 | Documentar las cifras reales | 001 | T001.3, T001.4, T001.5 | libre |
 | T002.2 | Extras en un solo lugar (`PANDEX_EXTRAS`) | 002 | — | libre |
 | T002.3 | Quitar un extra desde Configuración | 002 | T002.2 | libre |
-| T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | en curso (claude/vibrant-volta-t1vhh9): completo 512 MB en Linux y 439 MB en Windows (CI) |
-| T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T002.4 | Bajar del límite de 600 MB | 002 | T002.1 | hecha |
+| T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | hecha |
 | T002.6 | Pesos reales en la documentación | 002 | T002.4 | libre |
 | T002.7 | Memoria en reposo ≤ 80 MB de RSS siempre (hoy 74–88 MB) | 002 | — | libre |
 
@@ -55,9 +55,9 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 
 | Tarea | Qué | Spec | Depende de | Estado |
 |---|---|---|---|---|
-| T003.5 | Quitar paquetes huérfanos al actualizar | 003 | T003.2 | en curso (claude/vibrant-volta-t1vhh9) |
-| T003.6 | Inventario de lo creado fuera | 003 | — | en curso (claude/vibrant-volta-t1vhh9) |
-| T003.7 | Desinstalar Pandex (`desinstalar.sh`, `desinstalar.bat`, botón) | 003 | T003.6 | en curso (claude/vibrant-volta-t1vhh9) |
+| T003.5 | Quitar paquetes huérfanos al actualizar | 003 | T003.2 | hecha |
+| T003.6 | Inventario de lo creado fuera | 003 | — | hecha |
+| T003.7 | Desinstalar Pandex (`desinstalar.sh`, `desinstalar.bat`, botón) | 003 | T003.6 | hecha |
 | T006.2 | La CI ejecuta los instaladores | 006 | T002.2 | libre |
 | T006.3 | Python portátil en Linux viejo | 006 | T006.2 | bloqueada (pregunta 1 de 006) |
 | T006.4 | Mismo árbol en los dos sistemas | 006 | — | libre |
@@ -79,8 +79,9 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T007.3 | Tareas documentadas (falta la prueba; el README ya menciona «Comprimir carpeta») | 007 | — | libre |
 | T007.4 | Sin `print` y con estilo (`ruff`) | 007 | — | libre |
 | T007.5 | Errores en los ganchos no tumban la app | 007 | — | libre |
-| T008.1 | Estilo de carpetas (`_` por defecto, o el tuyo) | 008 | — | en curso (claude/vibrant-volta-t1vhh9) |
-| T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T008.1 | Estilo de carpetas (`_` por defecto, o el tuyo) | 008 | — | hecha |
+| T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | hecha |
+| T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Preguntas abiertas para Frank
 

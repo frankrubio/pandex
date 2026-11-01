@@ -182,6 +182,7 @@ Ejemplo escrito a mano:
 | *"No reconocí ninguno de tus cursos"* | Empezó otro ciclo: **Configurar Canvas…** |
 | Una semana o `Lab` queda vacía | Pandex solo ve los módulos **publicados** para alumnos. |
 | *"🔒 aún sin abrir en Canvas"* | El ítem tiene fecha de apertura futura; se baja solo cuando se abra. |
+| *"No encuentro tu carpeta de cursos"* | La renombraste o la moviste: Configuración → Sincronizar Canvas → **Reconectar carpeta de cursos…** y elige la carpeta. No mueve ni borra nada. |
 | No me gustó cómo ordenó mi carpeta | **Configurar Canvas… → Deshacer el último reordenamiento.** |
 | Quiero empezar de cero | Borra `config.json` (y, si quieres, `%LOCALAPPDATA%\Pandex`) y abre Pandex. |
 
