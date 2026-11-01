@@ -117,6 +117,7 @@ class Convenciones:
     alias_teoria: list = field(default_factory=list)
     alias_lab: list = field(default_factory=list)
     secciones: list = field(default_factory=list)  # nombres de carpetas de sección que ya usas
+    detectada: bool = False  # True si salió de tus carpetas y no de los valores de fábrica
 
     def describir(self):
         ejemplo = self.formato_semana.format(n=3)
@@ -167,7 +168,7 @@ def detectar_convenciones(carpetas_curso):
                     mirar_secciones(hijo)
             mirar_secciones(semana)
 
-    conv = Convenciones()
+    conv = Convenciones(detectada=bool(formatos or teorias or labs or secciones))
     if formatos:
         conv.formato_semana = formatos.most_common(1)[0][0]
     if teorias:

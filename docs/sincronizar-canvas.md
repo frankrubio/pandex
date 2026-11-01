@@ -7,7 +7,8 @@ del curso. El código vive en `pandex/canvas/`; `tasks/sync_canvas.py` solo lo c
 |---|---|
 | `nombres.py` | Normalizar texto, nombres válidos en Windows, leer el nº de semana, reconocer «Laboratorio». |
 | `cliente.py` | La API REST de Canvas con las cookies de tu sesión. Paginación y reintentos. |
-| `sesion.py` | Iniciar sesión con un navegador real (Playwright) y cerrarlo enseguida. |
+| `navegador.py` | Tu Firefox, Chrome o Edge con Selenium y un perfil propio; el driver va a `DATOS/navegadores`. |
+| `sesion.py` | Iniciar sesión con ese navegador y cerrarlo enseguida. |
 | `historial.py` | Qué archivo de Canvas ya está en tu disco y dónde. |
 | `estructura.py` | Leer cursos y módulos: semanas, secciones, parejas teoría/lab. |
 | `destinos.py` | A qué carpeta va cada archivo y si ya lo tienes (índice de duplicados). |
@@ -133,12 +134,12 @@ El asistente escribe todo esto en `config.json → tareas → sync_canvas`. Se p
 | `destino` | — | La carpeta donde están las carpetas de tus cursos. |
 | `cursos` | — | Lista de cursos (ver abajo). |
 | `formato_semana` | `"Sem {n}"` | Nombre de las carpetas de semana. `"Semana {n:02d}"` da `Semana 03`. Siempre se reconocen además `Sem N` y `Semana N`. |
-| `carpetas_sin_tildes` | `true` | Las carpetas nuevas se crean sin tildes ni ñ (`Teoria`, `Diseno`). Las que ya existen no se renombran. Los nombres de archivo no cambian. |
+| `estilo_carpetas` | `"guiones_bajos"` | Cómo se escriben las carpetas **nuevas**. `"guiones_bajos"`: sin espacios, tildes, ñ ni signos, solo letras, números y `_` (`Material_de_clase`, `Sem_3`, `Diseno_Teoria`). `"propio"`: tal como las tienes (`Sem 8`, `Teoría`, `Material de clase`). El asistente pone `"propio"` si leyó tu estilo en carpetas que ya tenías. La carpeta de cada **curso** nueva siempre va en `_`. Las carpetas que ya existen se reutilizan y nunca se renombran. Los nombres de archivo no cambian. Si no está y ya tenías cursos configurados, se usa `"propio"` para no mezclar estilos. |
 | `secciones` | `{}` | Subencabezado de Canvas → carpeta. La etiqueta vale como prefijo (`"material de clase"` cubre «Material de clases») y gana la más larga. |
 | `schedule` | `null` | Horario cron (p. ej. `"0 19 * * *"`). |
 | `dedupe_por_tamano` | `true` | Saltar archivos con el mismo tamaño aunque cambie el nombre. |
 | `headless` | `true` | Probar primero sin ventana con la sesión guardada. |
-| `usar_chrome_instalado` | `true` | Usar tu Google Chrome; si no está, el Chromium de Playwright. |
+| `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
 | `espera_login_segundos` | `300` | Cuánto esperar a que inicies sesión en la ventana. |
 | `calendario` | — | Opcional: `[{"semana": 1, "inicio": "2026-08-10", "fin": "2026-08-16"}, …]`. Solo lo necesitan los cursos en modo `"lista"`. Si existe y hoy no cae en ninguna semana, no se sincroniza. |
 
@@ -156,6 +157,11 @@ Cada curso de `cursos`:
 | `alias_subcarpeta` | Otros nombres válidos para esa mitad (`["Laboratorio"]`): si ya existe una, se usa esa. |
 | `modo` | `"semanas"` (normal) o `"lista"`: un curso con un solo módulo plano que se reparte por la semana del `calendario`. Con `subcarpeta_raiz` (carpeta base) y `seccion_unica` (solo los archivos bajo ese subencabezado). |
 | `nunca_escribir` | Carpetas donde Pandex jamás escribe (p. ej. `["Trabajos de laboratorio"]`). |
+
+Si ya tienes tu configuración de Canvas en un archivo `.json` (cursos, calendario, estilo…),
+**`python herramientas/aplicar_config_canvas.py mi_canvas.json`** la mezcla en `config.json`
+sin tocar nada más y deja una copia `config.json.antes-…`. Cierra Pandex antes. Si el archivo no
+es un JSON válido, no cambia nada.
 
 Ejemplo escrito a mano:
 

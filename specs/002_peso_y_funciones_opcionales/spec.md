@@ -47,7 +47,7 @@ Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin**
 | PES-04 | Cada función opcional se puede **instalar y quitar** desde Configuración → Tareas, y quitarla libera su espacio (vuelve al peso base ± 5 MB). | `test_quitar_extra_borra_sus_paquetes` + job `peso` |
 | PES-05 | Una función opcional nueva se declara en **un solo lugar** (`EXTRAS` + su `requirements-<id>.txt`); instaladores, Configuración y menú la recogen solos, sin editar `.sh` ni `.bat`. | `test_instaladores_no_nombran_extras` |
 | PES-06 | Los instaladores preguntan por cada función opcional con su **peso medido**; la respuesta por defecto es «no». Sin preguntar: `PANDEX_EXTRAS=markdown` o `PANDEX_EXTRAS=ninguno`. | `test_instaladores_leen_pandex_extras` + prueba manual |
-| PES-07 | En Windows no se descarga un navegador si hay Chrome **o Edge** (Edge viene con Windows 10/11). Si hiciera falta uno, va a la carpeta de datos y cuenta para el peso. | `test_windows_prefiere_navegador_instalado` |
+| PES-07 | Nunca se descarga un navegador: se usa el tuyo (Firefox, Chrome o Edge; por defecto el predeterminado, y en Windows siempre hay Edge). Solo el driver de Selenium (3–15 MB) va a `DATOS/navegadores`. | `tests/test_navegador.py` |
 | PES-08 | El README y el instalador muestran pesos **medidos** por la CI, no estimados. | revisión |
 | PES-09 | La compatibilidad hacia atrás con `PANDEX_MARKDOWN=si/no` se mantiene un ciclo (aviso de obsoleto). | `test_instaladores_leen_pandex_extras` |
 
@@ -81,7 +81,7 @@ Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin**
 |---|---|---|---|
 | 1 | ¿600 MB es con todas las funciones opcionales (como se especifica) o solo la base? | Con todas. | Frank |
 | 2 | ¿Se acepta podar las librerías de Qt que Pandex no usa (QML, Quick, 3D, Pdf, Designer, multimedia) después de instalar? Ahorra mucho, pero hay que volver a podar tras cada actualización de PyQt6. | Sí, con la lista en un archivo y prueba de humo de toda la interfaz. | Frank |
-| 3 | ¿Se reemplaza Playwright por Selenium también en Windows (con Edge/Chrome)? Ahorra ~75 MB, unifica el código de los dos sistemas (P7) y evita descargar Chromium. | Evaluar en T002.5 con medición; decidir con datos. | Frank |
+| 3 | ¿Se reemplaza Playwright por Selenium también en Windows (con Edge/Chrome)? Ahorra ~75 MB, unifica el código de los dos sistemas (P7) y evita descargar Chromium. | **Sí** (31/10/2026): Frank pidió que el usuario elija su navegador (Firefox, Chrome o Edge). Ver ADR-0001. | Frank |
 | 4 | ¿«Convertir a Markdown» puede dejar de usar MarkItDown (que obliga a instalar magika + onnxruntime + pandas) y llamar directo a sus conversores? | No por ahora; primero las opciones de menor riesgo. | Frank |
 
 ## Historial
@@ -89,3 +89,4 @@ Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin**
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión con mediciones en Linux. | Requisito de Frank: máximo 600 MB. |
+| 2026-10-31 | Nueva medición en Linux: base 341 MB y completo 660 MB, antes de los cambios. Con ADR-0001 (pip `--no-compile`, Excel sin pandas, Selenium en los dos sistemas): base 326 MB y completo 532 MB. PES-07 pasa a «el navegador que elijas». | ADR-0001 |

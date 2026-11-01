@@ -19,8 +19,8 @@ algo aquí contradice al código, se corrige uno de los dos en un PR, no se igno
 - Sin tildes, sin `ñ`, sin espacios (`test_principios.py` lo verifica en lo versionado).
 - Código Python: `minusculas_con_guion_bajo.py`. Documentos de `docs/`: `minusculas-con-guion.md`
   (como los que ya existen). Specs: `NNN_nombre_con_guion_bajo/`.
-- Las carpetas que Pandex crea para el usuario siguen `carpetas_sin_tildes` (por defecto, sin
-  tildes ni `ñ`).
+- Las carpetas que Pandex crea para el usuario siguen `estilo_carpetas` (por defecto,
+  `guiones_bajos`: sin espacios, tildes, `ñ` ni signos). Ver [specs/008](../specs/008_estilo_de_carpetas/spec.md).
 
 ## Organización
 
@@ -48,7 +48,7 @@ docs/              cómo funciona hoy
 
 - PEP 8, líneas de hasta 120 caracteres, comillas dobles.
 - Importaciones: biblioteca estándar, librerías, Pandex (relativas dentro del paquete).
-- **Lo pesado se importa dentro de la función que lo usa** (Playwright, Selenium, requests,
+- **Lo pesado se importa dentro de la función que lo usa** (Selenium, requests,
   MarkItDown, Pillow, APScheduler), con un comentario de por qué. El arranque no los carga.
 - Constantes en `MAYUSCULAS`; clases en `MayusculaInicial`; lo privado con `_`.
 - Docstring en cada módulo (qué hace y, si no es obvio, por qué así) y en cada función

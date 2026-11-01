@@ -197,6 +197,7 @@ class TeoriaYLaboratorio(ConCarpetaTemporal):
                 {"codigo": "PI6001", "tipo": "laboratorio", "carpeta": "Proyectos",
                  "subcarpeta_fija": "Lab", "alias_subcarpeta": ["Laboratorio"], "alias": "Proyectos (lab)"},
             ],
+            "estilo_carpetas": "propio",
         }
 
     def test_cada_mitad_recibe_lo_suyo(self):
@@ -208,7 +209,7 @@ class TeoriaYLaboratorio(ConCarpetaTemporal):
         self.assertTrue((self.pi / "Sem 6" / "Teoría" / "Guia comun.pdf").exists())
         self.assertFalse((lab6 / "Guia comun.pdf").exists(), "el MISMO archivo en los dos se baja una vez")
         self.assertFalse((lab6 / "Glosario.pdf").exists(), "lo suelto en la raíz cuenta para los dos")
-        self.assertEqual((self.pi / "Sem 7" / "Teoria" / "semana 7.pptx").stat().st_size, 4000)
+        self.assertEqual((self.pi / "Sem 7" / "Teoría" / "semana 7.pptx").stat().st_size, 4000)
         self.assertEqual((self.pi / "Sem 7" / "Lab" / "semana 7.pptx").stat().st_size, 4100)
         lab_com = self.com / "Material de Laboratorio" / "Sem 6" / "Clase.pptx"
         self.assertEqual(lab_com.stat().st_size, 8000, "modo lista: va a la semana del calendario")
@@ -240,30 +241,41 @@ class ConfiguracionDelAsistente(ConCarpetaTemporal):
         self.params = {
             "canvas_url": "https://canvas.ejemplo.edu", "destino": str(self.raiz),
             "formato_semana": "Semana {n:02d}", "secciones": {"Material de clase": "Material de clase"},
+            "estilo_carpetas": "guiones_bajos",
             "cursos": [{"canvas_id": 10, "carpeta": "Física I", "alias": "Física I",
                         "crear_secciones": True, "otros_modulos": True}],
         }
 
     def test_copia_la_organizacion_de_canvas(self):
         r, _ = self.sincronizar(self.params)
-        fisica = self.raiz / "Fisica I"
-        self.assertTrue((fisica / "Silabo y anexo" / "Sílabo.pdf").exists(), "módulos sin semana: su carpeta")
-        self.assertTrue((fisica / "Semana 01" / "Bienvenida.pdf").exists(), "sin subencabezado: en la semana")
-        self.assertTrue((fisica / "Semana 01" / "Material de clase" / "Clase 1.pdf").exists())
-        self.assertTrue((fisica / "Semana 01" / "Lecturas" / "Lectura 1.pdf").exists(),
+        fisica = self.raiz / "Fisica_I"
+        self.assertTrue((fisica / "Silabo_y_anexo" / "Sílabo.pdf").exists(), "módulos sin semana: su carpeta")
+        self.assertTrue((fisica / "Semana_01" / "Bienvenida.pdf").exists(), "sin subencabezado: en la semana")
+        self.assertTrue((fisica / "Semana_01" / "Material_de_clase" / "Clase 1.pdf").exists())
+        self.assertTrue((fisica / "Semana_01" / "Lecturas" / "Lectura 1.pdf").exists(),
                         "un subencabezado nuevo crea su carpeta")
-        self.assertTrue((fisica / "Semana 02" / "Material de clase" / "Clase 2.pdf").exists())
+        self.assertTrue((fisica / "Semana_02" / "Material_de_clase" / "Clase 2.pdf").exists())
+        self.assertTrue(r["resumen"].startswith("✓ 5 nuevo(s)"), r["resumen"])
+
+    def test_con_estilo_propio_respeta_tus_nombres(self):
+        """Spec 008 (EST-02/03): el curso va en «_»; lo de dentro, como lo tienes."""
+        self.params["estilo_carpetas"] = "propio"
+        r, _ = self.sincronizar(self.params)
+        fisica = self.raiz / "Fisica_I"
+        self.assertTrue((fisica / "Sílabo y anexo" / "Sílabo.pdf").exists())
+        self.assertTrue((fisica / "Semana 01" / "Material de clase" / "Clase 1.pdf").exists())
+        self.assertFalse((self.raiz / "Física I").exists(), "la carpeta del curso nunca lleva tildes")
         self.assertTrue(r["resumen"].startswith("✓ 5 nuevo(s)"), r["resumen"])
 
     def test_descarga_inicial_desde_una_semana(self):
         r, _ = self.sincronizar(self.params, {"inicial": "desde", "desde_semana": 2})
-        fisica = self.raiz / "Fisica I"
-        self.assertFalse((fisica / "Semana 01").exists(), "lo anterior a la semana elegida no baja")
-        self.assertTrue((fisica / "Semana 02" / "Material de clase" / "Clase 2.pdf").exists())
-        self.assertTrue((fisica / "Silabo y anexo" / "Sílabo.pdf").exists(), "lo general sí baja")
+        fisica = self.raiz / "Fisica_I"
+        self.assertFalse((fisica / "Semana_01").exists(), "lo anterior a la semana elegida no baja")
+        self.assertTrue((fisica / "Semana_02" / "Material_de_clase" / "Clase 2.pdf").exists())
+        self.assertTrue((fisica / "Silabo_y_anexo" / "Sílabo.pdf").exists(), "lo general sí baja")
 
         r, _ = self.sincronizar(self.params)
-        self.assertFalse((fisica / "Semana 01").exists(), "y no baja después: quedó como omitido")
+        self.assertFalse((fisica / "Semana_01").exists(), "y no baja después: quedó como omitido")
         self.assertTrue(r["resumen"].startswith("✓ Todo al día"), r["resumen"])
 
     def test_descarga_inicial_nada(self):

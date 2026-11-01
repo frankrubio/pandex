@@ -124,6 +124,81 @@ class Interfaz(unittest.TestCase):
                     VisorRegistro()):
             self.assertFalse(dlg.grab().isNull())
 
+    def test_liberar_espacio_suma_lo_marcado(self):
+        from pandex import limpieza
+        from pandex.ui.limpieza import DialogoLiberar
+
+        elementos = [limpieza.Elemento("pip", "Caché de pip", [self.carpeta], 300 * 1024 ** 2, True, "nota"),
+                     limpieza.Elemento("copia:x", "Otra copia de Pandex", [self.carpeta], 200 * 1024 ** 2, False)]
+        dlg = DialogoLiberar(elementos, liberado=50 * 1024 ** 2)
+        self.assertEqual(dlg.titulo.text(), "Puedo liberar 300 MB")
+        dlg.casillas[1][0].setChecked(True)
+        self.assertEqual(dlg.titulo.text(), "Puedo liberar 500 MB")
+        dlg.casillas[0][0].setChecked(False)
+        dlg.casillas[1][0].setChecked(False)
+        self.assertFalse(dlg.principal.isEnabled())
+        self.assertFalse(dlg.grab().isNull())
+        vacio = DialogoLiberar([])
+        self.assertEqual(vacio.titulo.text(), "No hay nada más que liberar")
+        self.assertFalse(vacio.principal.isVisibleTo(vacio))
+
+    def test_al_estrenar_version_limpia_una_sola_vez(self):
+        from unittest import mock
+
+        from pandex import __version__
+        from pandex.app import PandexApp
+        from pandex.ui import limpieza as ui_limpieza
+
+        falso = type("App", (), {"config": self.config, "mascota": mock.Mock()})()
+        self.config.datos["version_vista"] = __version__
+        with mock.patch.object(ui_limpieza, "revisar") as revisar:
+            PandexApp._estrenar_version(falso)
+        revisar.assert_not_called()
+
+        self.config.datos["version_vista"] = "2.4.0"
+        with mock.patch.object(ui_limpieza, "revisar", side_effect=lambda _p, listo, **_k: listo(5 * 1024 ** 2)):
+            PandexApp._estrenar_version(falso)
+        self.assertEqual(self.config.datos["version_vista"], __version__)
+        self.assertIn("Liberé 5 MB", falso.mascota.decir.call_args.args[0])
+
+    def test_desinstalar_muestra_la_lista_y_no_borra_sin_confirmar(self):
+        from pathlib import Path
+        from unittest import mock
+
+        from pandex import desinstalar
+        from pandex.ui.desinstalar import DialogoDesinstalar
+
+        pasos = [desinstalar.Paso("Datos de Pandex", [Path("/datos/Pandex")])]
+        with mock.patch.object(desinstalar, "plan", return_value=pasos) as plan, \
+                mock.patch.object(desinstalar, "ejecutar") as ejecutar:
+            dlg = DialogoDesinstalar()
+            self.assertIn("Datos de Pandex", dlg.lista.toPlainText())
+            dlg.conservar.setChecked(False)
+            self.assertFalse(plan.call_args.args[1], "sin conservar config.json")
+            self.assertFalse(dlg.grab().isNull())
+            dlg.reject()
+        ejecutar.assert_not_called()
+
+    def test_elegir_navegador_de_canvas(self):
+        from unittest import mock
+
+        from pandex.canvas import navegador
+        from pandex.ui.configuracion import DialogoConfiguracion
+
+        canvas = type("T", (), {"id": "sync_canvas", "nombre": "Sincronizar Canvas", "descripcion": "",
+                                "schedule": None, "programable": True})()
+        self.config.tarea("sync_canvas")["navegador"] = "edge"
+        with mock.patch.object(navegador, "instalados", return_value=["firefox", "edge"]), \
+                mock.patch.object(navegador, "predeterminado", return_value="firefox"):
+            dlg = DialogoConfiguracion(self.config, [canvas])
+        combo = dlg.navegador_canvas
+        self.assertEqual([combo.itemData(i) for i in range(combo.count())], ["auto", "firefox", "edge"])
+        self.assertEqual(combo.itemText(0), "El que uso siempre (Firefox)")
+        self.assertEqual(combo.currentData(), "edge")
+        combo.setCurrentIndex(0)
+        dlg._guardar()
+        self.assertEqual(self.config.tarea("sync_canvas")["navegador"], "auto")
+
     def test_actualizar_con_un_clic_aplica_y_reinicia_solo(self):
         from PyQt6.QtCore import QEventLoop, QTimer
 

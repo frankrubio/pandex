@@ -17,7 +17,7 @@ from pandex.rutas import RAIZ, TASKS_DIR
 
 # Archivos que guardan datos de quien usa Pandex. Nunca se versionan.
 PERSONALES = (
-    re.compile(r"(^|/)config\.json(\.tmp)?$"),
+    re.compile(r"(^|/)config\.json(\.tmp|\.antes-.*)?$"),
     re.compile(r"(^|/)logs/"),
     re.compile(r"\.log$"),
     re.compile(r"(^|/)historial_canvas\.json$"),
@@ -77,14 +77,15 @@ class Privacidad(unittest.TestCase):
 
     def test_gitignore_cubre_datos_personales(self):
         """PRI-01: config.json, logs/ y el entorno virtual quedan fuera de git."""
-        rutas = ("config.json", "config.json.tmp", "logs/pandex.log", ".venv/pyvenv.cfg")
+        rutas = ("config.json", "config.json.tmp", "config.json.antes-20261031-120000", "logs/pandex.log",
+                 ".venv/pyvenv.cfg")
         if _hay_git():
             for ruta in rutas:
                 codigo, _ = _git("check-ignore", "-q", "--no-index", ruta)
                 self.assertEqual(codigo, 0, f"{ruta} no está en .gitignore")
         else:
             texto = (RAIZ / ".gitignore").read_text(encoding="utf-8").splitlines()
-            for patron in ("config.json", "config.json.tmp", "logs/", ".venv/"):
+            for patron in ("config.json", "config.json.tmp", "config.json.antes-*", "logs/", ".venv/"):
                 self.assertIn(patron, texto, f"falta «{patron}» en .gitignore")
 
     def test_repositorio_sin_archivos_personales(self):
@@ -103,9 +104,7 @@ class Dependencias(unittest.TestCase):
 
     # paquete → marcador que debe llevar
     SOLO_EN = {
-        "playwright": 'sys_platform == "win32"',
         "winrt-": 'sys_platform == "win32"',
-        "selenium": 'sys_platform != "win32"',
     }
 
     def test_versiones_fijas(self):

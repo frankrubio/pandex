@@ -70,8 +70,6 @@ Bien resuelto:
 
 - Desinstalar Python, Firefox, rclone, Tesseract o Ghostscript (los instalaste tú).
 - Borrar archivos de la carpeta de cursos (son tuyos).
-- Limpiar cachés de versiones anteriores a esta spec (se documenta cómo hacerlo a mano en
-  `docs/ayuda.md`).
 
 ## Preguntas abiertas
 
@@ -85,3 +83,4 @@ Bien resuelto:
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión, con los residuos R1–R8 encontrados en el código. | Requisito de Frank: no dejar archivos fuera ni acumular. |
+| 2026-10-31 | Entra en alcance limpiar lo que dejaron versiones anteriores (caché de pip, `~/.cache/selenium`, `ms-playwright`, otras copias de Pandex): se lista con su tamaño y se pregunta (ADR-0001, D4). | Frank: «al actualizar, liberar, eliminar duplicados y aligerar». |

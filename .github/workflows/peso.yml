@@ -1,0 +1,50 @@
+name: Peso
+
+# Instala Pandex como lo haría una persona (base y con todo) y mide cuánto pesa (spec 002).
+on:
+  pull_request:
+    paths: ["requirements*.txt", "instalar.*", "pandex/paquetes.py", "herramientas/medir_peso.py",
+            ".github/workflows/peso.yml"]
+  push:
+    branches: [main]
+    paths: ["requirements*.txt", "instalar.*", "pandex/paquetes.py", "herramientas/medir_peso.py",
+            ".github/workflows/peso.yml"]
+  workflow_dispatch:
+
+jobs:
+  peso:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Base (como el instalador, sin caché ni .pyc)
+        shell: bash
+        env:
+          PIP_NO_CACHE_DIR: "1"
+        run: |
+          python -m venv .venv
+          if [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
+          echo "PY=$PY" >> "$GITHUB_ENV"
+          $PY -m pip install --upgrade pip --quiet --no-compile
+          $PY -m pip install -r requirements.txt --quiet --no-compile
+      - name: Medir la base (≤ 350 MB y sin paquetes de extras)
+        shell: bash
+        run: |
+          echo "### ${{ runner.os }} · base" >> "$GITHUB_STEP_SUMMARY"
+          python herramientas/medir_peso.py --base --limite 350 | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Con todas las funciones opcionales
+        shell: bash
+        env:
+          PIP_NO_CACHE_DIR: "1"
+        run: $PY -m pip install -r requirements-markdown.txt --quiet --no-compile
+      - name: Medir todo (≤ 600 MB)
+        shell: bash
+        run: |
+          echo "### ${{ runner.os }} · completo" >> "$GITHUB_STEP_SUMMARY"
+          python herramientas/medir_peso.py --limite 600 | tee -a "$GITHUB_STEP_SUMMARY"

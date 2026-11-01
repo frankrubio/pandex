@@ -3,6 +3,41 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.5.1
+
+- **Carpetas nuevas con «_» y sin tildes.** Si no tienes un estilo propio, Pandex crea las carpetas
+  sin espacios, sin tildes, sin «ñ» ni signos: `Material_de_clase`, `Sem_3`, `Diseno_Teoria`.
+  Si ya tenías tus carpetas ordenadas a tu manera (`Sem 7`, `Teoría`…), Pandex lo lee al
+  configurar Canvas y las nuevas siguen ese estilo. La carpeta de cada curso nueva siempre va
+  con «_». Nunca se renombra una carpeta que ya existe.
+- Quien ya tenía Canvas configurado sigue con sus nombres, para no mezclar estilos dentro de un curso.
+- Nueva herramienta `herramientas/aplicar_config_canvas.py`: pasa tu configuración de Canvas de un
+  archivo a `config.json` sin editarlo a mano.
+
+## 2.5.0
+
+- **Instalar y actualizar ya no dejan copias fuera de Pandex.** pip ya no guarda una copia de
+  cada paquete en tu carpeta personal (eran cientos de MB) ni prepara archivos que Pandex no
+  usa. Instalación base: 326 MB en vez de 341 MB (medido en Linux; en Windows, 268 MB).
+- **Actualizar también libera espacio.** La primera vez que abres una versión nueva, Pandex quita
+  solo los paquetes que ya no usa (p. ej. Playwright o pandas) y los respaldos de más (quedan los
+  2 últimos). Si encuentra cachés que dejaban las versiones anteriores u otra copia de Pandex en
+  otra carpeta, te muestra cuánto pesan y te pregunta antes de borrarlas. Una copia de Pandex
+  solo va a la papelera, y nunca se ofrece si guarda tus cursos. También está en
+  Configuración → Comportamiento → **Liberar espacio…**
+- **Desinstalar Pandex.** En Configuración → Comportamiento → **Desinstalar Pandex…**, o con
+  `desinstalar.bat` (Windows) y `./desinstalar.sh` (Linux). Muestra la lista exacta de lo que va
+  a quitar (accesos directos, arranque automático, despertador, sesión del navegador, datos y el
+  entorno de Python) y pregunta antes. Tu carpeta de cursos y tus archivos de OneDrive no se
+  tocan. Puedes conservar tu configuración para reinstalar.
+- **«Convertir a Markdown» pesa 128 MB menos.** Lee Excel (.xlsx y .xls) sin pandas. Todo
+  instalado: 532 MB en vez de 660 MB (medido en Linux; en Windows, 439 MB).
+- **Canvas con el navegador que elijas.** Por defecto, tu navegador predeterminado (Edge, Chrome o
+  Firefox), en Windows y en Linux. Se cambia en Configuración → Tareas → Sincronizar Canvas.
+  Pandex ya no descarga navegadores (en Windows sin Chrome bajaba Chromium) y quita Playwright:
+  unos 75 MB menos en Windows. La primera vez con un navegador baja un componente pequeño
+  (3 a 15 MB) a la carpeta de datos de Pandex.
+
 ## 2.4.0
 
 - **Pandex funciona en Linux.** Hay un instalador (`./instalar.sh`) y una guía corta:

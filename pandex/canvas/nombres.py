@@ -33,10 +33,17 @@ def limpiar_nombre(nombre):
     return limpio or "archivo"
 
 
-# Carpetas nuevas sin tildes ni ñ («Teoría» → «Teoria»): algunas apps y la sincronización
-# con OneDrive en Linux se llevan mal con ellas. Las carpetas que ya tienes no se renombran.
-# Se desactiva con ``"carpetas_sin_tildes": false`` en los parámetros de la tarea.
-CARPETAS_SIN_TILDES = True
+# Carpetas nuevas (spec 008). Las que ya tienes nunca se renombran.
+#
+# - ``"guiones_bajos"`` (lo predeterminado, si no tienes un estilo): sin espacios, tildes,
+#   ñ ni signos; solo letras, números y «_». ``Diseño: Teoría`` -> ``Diseno_Teoria``.
+# - ``"propio"``: tal como lo tienes (``Sem 8``, ``Teoría``); solo se cambian los signos
+#   que Windows no acepta. El asistente lo elige si leyó tu estilo en carpetas que ya tenías.
+#
+# La carpeta de cada curso siempre va en «guiones_bajos» (``nombre_de_curso``): es la ruta de
+# la que cuelga todo, y las tildes ahí suelen dar problemas de permisos y de sincronización.
+ESTILOS = ("guiones_bajos", "propio")
+ESTILO_CARPETAS = "guiones_bajos"  # lo fija ``Sincronizacion`` o el asistente al empezar
 
 
 def sin_tildes(texto):
@@ -45,10 +52,38 @@ def sin_tildes(texto):
     return unicodedata.normalize("NFC", "".join(c for c in texto if not unicodedata.combining(c)))
 
 
-def nombre_de_carpeta(nombre):
-    """El nombre con que se crea una carpeta nueva."""
-    limpio = limpiar_nombre(nombre)
-    return (limpiar_nombre(sin_tildes(limpio)) if CARPETAS_SIN_TILDES else limpio)
+def en_guiones_bajos(nombre):
+    """``"Física I (Lab.)"`` -> ``"Fisica_I_Lab"``: solo letras, números y «_»."""
+    texto = re.sub(r"[^A-Za-z0-9]+", "_", sin_tildes(nombre)).strip("_")
+    return texto or "carpeta"
+
+
+def nombre_de_carpeta(nombre, estilo=None):
+    """El nombre con que se crea una carpeta nueva dentro de un curso."""
+    if (estilo or ESTILO_CARPETAS) == "propio":
+        return limpiar_nombre(nombre)
+    return en_guiones_bajos(nombre)
+
+
+def nombre_de_curso(nombre):
+    """La carpeta de un curso nuevo: siempre en guiones bajos, tengas el estilo que tengas."""
+    return en_guiones_bajos(nombre)
+
+
+def estilo_de(params):
+    """El estilo de carpetas de una configuración de Canvas.
+
+    Lo que dice ``estilo_carpetas`` manda. Sin él, quien ya tenía cursos configurados antes
+    de esta opción sigue con los nombres que tiene (``propio``) para no mezclar estilos
+    dentro de un curso; ``carpetas_sin_tildes: false`` (la opción anterior) también.
+    Quien empieza de cero usa ``guiones_bajos``.
+    """
+    estilo = params.get("estilo_carpetas")
+    if estilo in ESTILOS:
+        return estilo
+    if params.get("carpetas_sin_tildes") is False or (params.get("cursos") and params.get("destino")):
+        return "propio"
+    return "guiones_bajos"
 
 
 def separar_extension(nombre_real):

@@ -47,7 +47,7 @@ Programas que Pandex abre y que hablan por su cuenta:
 
 | Programa | Con quién | Cuándo |
 |---|---|---|
-| Tu navegador (Chrome en Windows, o el Chromium de Playwright si no tienes Chrome; Firefox en Linux) con el perfil de Pandex | Canvas y el inicio de sesión de tu universidad | al iniciar sesión |
+| Tu navegador (Firefox, Chrome o Edge: el que elijas) con el perfil de Pandex | Canvas y el inicio de sesión de tu universidad | al iniciar sesión |
 | Selenium Manager (Linux) | GitHub, para bajar `geckodriver` (~3 MB) | la primera vez que inicias sesión |
 | rclone (Linux) | Microsoft | si conectas OneDrive |
 

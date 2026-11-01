@@ -74,3 +74,15 @@
 - **Cambio:** README («unos N MB»), `docs/linux.md`, mensajes del instalador y
   `EXTRAS[...]["peso_mb"]` con lo que mide la CI.
 - **Terminado cuando:** las cifras coinciden con el último artefacto del job `peso`.
+
+## T002.7 · Memoria en reposo ≤ 80 MB de RSS
+
+- **Requisitos:** presupuesto de `specs/principios.md` (memoria en reposo ≤ 80 MB).
+- **Depende de:** —
+- **Contexto:** medido en Linux (31/10/2026): 74–88 MB de RSS a los 60 s, sin pantalla; lo
+  propio de Pandex es 17–31 MB y el resto es Qt y librerías del sistema (ADR-0001, D6).
+- **Prueba primero:** una prueba o job que abre Pandex, espera 60 s y falla si el RSS pasa de
+  80 MB (en Linux con `/proc/<pid>/status`; en Windows con `psutil` solo en la CI).
+- **Cambio:** buscar qué se carga al arrancar sin hacer falta (módulos de Qt, imágenes,
+  hilos) y retrasarlo hasta que se use. No cambiar de framework.
+- **Terminado cuando:** 10 mediciones seguidas ≤ 80 MB en Linux y en Windows.

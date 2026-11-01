@@ -5,8 +5,9 @@ import tempfile
 import unittest
 from collections import Counter
 from pathlib import Path
+from unittest import mock
 
-from pandex.canvas import destinos, estructura, nombres, sesion
+from pandex.canvas import destinos, estructura, navegador, nombres, sesion
 from pandex.canvas.estructura import Item
 
 
@@ -20,14 +21,16 @@ class Nombres(unittest.TestCase):
         self.assertLessEqual(len(nombres.nombre_destino("x" * 400, "a.pdf")), 200)
 
     def test_carpetas_nuevas_sin_tildes_ni_enie(self):
-        self.assertEqual(nombres.nombre_de_carpeta("Diseño: Teoría"), "Diseno- Teoria")
+        """Sin estilo propio: «_», sin tildes ni ñ (más en test_estilo_carpetas.py)."""
+        self.addCleanup(setattr, nombres, "ESTILO_CARPETAS", nombres.ESTILO_CARPETAS)
+        nombres.ESTILO_CARPETAS = "guiones_bajos"
+        self.assertEqual(nombres.nombre_de_carpeta("Diseño: Teoría"), "Diseno_Teoria")
         tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, tmp)
         self.assertEqual(destinos.resolver_subcarpeta(tmp, "Teoría").name, "Teoria")
         (tmp / "Programación").mkdir()  # la que ya tienes se respeta
         self.assertEqual(destinos.resolver_subcarpeta(tmp, "Programación").name, "Programación")
-        nombres.CARPETAS_SIN_TILDES = False
-        self.addCleanup(setattr, nombres, "CARPETAS_SIN_TILDES", True)
+        nombres.ESTILO_CARPETAS = "propio"
         self.assertEqual(nombres.nombre_de_carpeta("Teoría"), "Teoría")
 
     def test_semanas(self):
@@ -47,6 +50,8 @@ class Destinos(unittest.TestCase):
     def setUp(self):
         self.curso = Path(tempfile.mkdtemp()) / "Curso"
         self.curso.mkdir()
+        self.addCleanup(setattr, nombres, "ESTILO_CARPETAS", nombres.ESTILO_CARPETAS)
+        nombres.ESTILO_CARPETAS = "propio"  # estas pruebas son de rutas, no de estilo (ver test_estilo_carpetas)
 
     def tearDown(self):
         shutil.rmtree(self.curso.parent, ignore_errors=True)
@@ -85,13 +90,13 @@ class Destinos(unittest.TestCase):
         regla = {"crear_secciones": True, "subcarpeta_fija": "Teoría"}
         d = destinos.carpeta_destino(self.curso, regla, self.item("Lecturas"), 2, {}, "Semana {n:02d}",
                                      crear=False)
-        self.assertEqual(d, self.curso / "Semana 02" / "Teoria" / "Lecturas")
+        self.assertEqual(d, self.curso / "Semana 02" / "Teoría" / "Lecturas")
         self.assertEqual(list(self.curso.iterdir()), [])
 
     def test_modulo_sin_semana(self):
         d = destinos.carpeta_destino(self.curso, {"crear_secciones": True},
                                      self.item(None, "Sílabo: y anexo"), None, {})
-        self.assertEqual(d, self.curso / "Silabo- y anexo")
+        self.assertEqual(d, self.curso / "Sílabo- y anexo")
 
     def test_modo_lista(self):
         regla = {"modo": "lab_comunicacion", "subcarpeta_raiz": "Material de Laboratorio"}
@@ -175,24 +180,12 @@ class Sesion(unittest.TestCase):
     """El login no debe reventar si Canvas sigue redirigiendo cuando la sesión ya vale."""
 
     def setUp(self):
-        self.perfil_original = sesion.PERFIL
-        self.sync_original = sesion.sync_playwright
-        self.error_original = sesion.PlaywrightError
-        sesion.PlaywrightError = type("ErrorDePlaywright", (Exception,), {})  # sin Playwright instalado
         self.espera_original = sesion.ESPERA_SSO
         sesion.ESPERA_SSO = 0.3  # no esperar 20 s de verdad
-        sesion.PERFIL = Path(tempfile.mkdtemp()) / "perfil"
-        (sesion.PERFIL / "Default").mkdir(parents=True)
+        self.addCleanup(setattr, sesion, "ESPERA_SSO", self.espera_original)
 
-    def tearDown(self):
-        shutil.rmtree(sesion.PERFIL.parent, ignore_errors=True)
-        sesion.PERFIL = self.perfil_original
-        sesion.sync_playwright = self.sync_original
-        sesion.PlaywrightError = self.error_original
-        sesion.ESPERA_SSO = self.espera_original
-
-    def navegador(self, *valida_tras):
-        """Un Playwright falso: cada contexto da sesión válida tras N esperas."""
+    def navegador(self, *valida_tras, hay_sesion=True):
+        """Un navegador falso: cada contexto da sesión válida tras N esperas."""
         abiertos, plan = [], list(valida_tras)
 
         class Pagina:
@@ -200,7 +193,7 @@ class Sesion(unittest.TestCase):
 
             def evaluate(self, _js):
                 if self.navegando:
-                    raise sesion.PlaywrightError("Execution context was destroyed")
+                    raise navegador.ErrorNavegador("Execution context was destroyed")
                 return "Mozilla/5.0"
 
             def goto(self, *_a, **_k):
@@ -223,17 +216,15 @@ class Sesion(unittest.TestCase):
             def close(self):
                 self.cerrado = True
 
-        class Playwright:
-            chromium = type("C", (), {"launch_persistent_context": lambda _s, **k: (
-                abiertos.append(Contexto(k["headless"])) or abiertos[-1])})()
+        def abrir(_nombre, headless):
+            abiertos.append(Contexto(headless))
+            return abiertos[-1]
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_a):
-                return False
-
-        sesion.sync_playwright = Playwright
+        for nombre, valor in (("abrir", abrir), ("hay_sesion", lambda _n: hay_sesion),
+                              ("elegir", lambda preferido="auto": "chrome")):
+            parche = mock.patch.object(navegador, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
         return abiertos
 
     def ctx(self):
@@ -254,6 +245,11 @@ class Sesion(unittest.TestCase):
         self.assertEqual(len(ctx.globos), 2)
         self.assertTrue(all(c.cerrado for c in abiertos))
         self.assertFalse(abiertos[1].headless)
+
+    def test_sin_sesion_guardada_abre_con_ventana_de_una(self):
+        abiertos = self.navegador(0, hay_sesion=False)
+        sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="chrome")
+        self.assertEqual([c.headless for c in abiertos], [False])
 
 
 if __name__ == "__main__":

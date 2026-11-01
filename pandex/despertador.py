@@ -136,8 +136,11 @@ def _instalar_linux(horarios):
     carpeta = _carpeta_systemd()
     carpeta.mkdir(parents=True, exist_ok=True)
     servicio, temporizador = unidades(horarios)
-    (carpeta / f"{NOMBRE}.service").write_text(servicio, encoding="utf-8")
-    (carpeta / f"{NOMBRE}.timer").write_text(temporizador, encoding="utf-8")
+    from . import inventario
+
+    for extension, texto in (("service", servicio), ("timer", temporizador)):
+        (carpeta / f"{NOMBRE}.{extension}").write_text(texto, encoding="utf-8")
+        inventario.anotar(carpeta / f"{NOMBRE}.{extension}", "despertador")
     # que lo que abra el temporizador sepa dónde está tu pantalla (las sesiones de escritorio
     # lo hacen solas al iniciar; esto cubre la sesión actual)
     variables = [v for v in ("DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY") if os.environ.get(v)]

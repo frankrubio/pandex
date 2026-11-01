@@ -149,11 +149,12 @@ def _titulo(texto, subtitulo=None):
 
 
 class DialogoConfiguracion(QDialog):
-    def __init__(self, config, tareas, parent=None, al_buscar_actualizaciones=None):
+    def __init__(self, config, tareas, parent=None, al_buscar_actualizaciones=None, al_desinstalar=None):
         super().__init__(parent)
         self.config = config
         self.tareas = tareas
         self._al_buscar = al_buscar_actualizaciones
+        self._al_desinstalar = al_desinstalar
         self.setWindowTitle("Configuración de Pandex")
         self.resize(720, 560)
 
@@ -476,8 +477,41 @@ class DialogoConfiguracion(QDialog):
         crear.clicked.connect(self._crear_acceso)
         fila.addWidget(crear)
         caja.addWidget(acceso)
+
+        caja.addSpacing(10)
+        espacio = _tarjeta()
+        fila = QHBoxLayout(espacio)
+        fila.setContentsMargins(16, 12, 16, 12)
+        texto = QLabel("<b>Espacio en disco</b><br>Quita lo que Pandex ya no usa: paquetes viejos, "
+                       "respaldos de más, cachés y otras copias de Pandex. O desinstálalo por completo.")
+        texto.setWordWrap(True)
+        fila.addWidget(texto, 1)
+        columna = QVBoxLayout()
+        liberar = QPushButton("Liberar espacio…")
+        liberar.clicked.connect(self._liberar_espacio)
+        columna.addWidget(liberar)
+        quitar = QPushButton("Desinstalar Pandex…")
+        quitar.clicked.connect(self._desinstalar)
+        columna.addWidget(quitar)
+        fila.addLayout(columna)
+        caja.addWidget(espacio)
         caja.addStretch()
         return pagina
+
+    def _desinstalar(self):
+        from .desinstalar import DialogoDesinstalar
+
+        def cerrar_pandex():
+            self.reject()  # sin guardar: ya no hay nada que guardar
+            if self._al_desinstalar:
+                self._al_desinstalar()
+
+        DialogoDesinstalar(cerrar_pandex, self).exec()
+
+    def _liberar_espacio(self):
+        from . import limpieza as ui_limpieza
+
+        self._hilo_limpieza = ui_limpieza.revisar(self)
 
     def _pagina_tareas(self):
         pagina = QWidget()
@@ -530,6 +564,8 @@ class DialogoConfiguracion(QDialog):
             else:
                 cron = Horario(opciones.get("schedule") or tarea.schedule)
                 interno.addWidget(cron)
+            if tarea.id == "sync_canvas":
+                interno.addLayout(self._fila_navegador(opciones.get("navegador", "auto")))
             filas.addWidget(tarjeta)
             self.filas[tarea.id] = (activa, cron)
         filas.addStretch()
@@ -541,6 +577,26 @@ class DialogoConfiguracion(QDialog):
         scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
         caja.addWidget(scroll, 1)
         return pagina
+
+    def _fila_navegador(self, actual):
+        """Con qué navegador inicias sesión en Canvas (ADR-0001): el tuyo, o el que elijas."""
+        from ..canvas import navegador
+
+        fila = QHBoxLayout()
+        fila.addWidget(QLabel("Iniciar sesión con"))
+        self.navegador_canvas = QComboBox()
+        tuyo = navegador.predeterminado()
+        self.navegador_canvas.addItem(
+            "El que uso siempre" + (f" ({navegador.NOMBRES[tuyo]})" if tuyo else ""), "auto")
+        for nombre in navegador.instalados():
+            self.navegador_canvas.addItem(navegador.NOMBRES[nombre], nombre)
+        indice = self.navegador_canvas.findData(actual)
+        self.navegador_canvas.setCurrentIndex(max(indice, 0))
+        self.navegador_canvas.setToolTip("Pandex no descarga navegadores: usa el tuyo con un perfil aparte,\n"
+                                         "sin tocar tus pestañas, tu historial ni tus contraseñas.")
+        fila.addWidget(self.navegador_canvas)
+        fila.addStretch()
+        return fila
 
     def _fila_instalar(self, extra):
         datos = extras.EXTRAS[extra]
@@ -644,6 +700,8 @@ class DialogoConfiguracion(QDialog):
             opciones["activa"] = activa.isChecked()
             if cron is not None:
                 opciones["schedule"] = cron.valor()
+        if getattr(self, "navegador_canvas", None) is not None:
+            self.config.tarea("sync_canvas")["navegador"] = self.navegador_canvas.currentData()
 
         if self.inicio.isChecked() != accesos.arranca_con_el_sistema():
             try:

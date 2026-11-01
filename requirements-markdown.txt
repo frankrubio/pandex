@@ -2,7 +2,10 @@
 # Pandex lo instala si lo pides en el instalador o en Configuración → Tareas.
 #   .venv/bin/python -m pip install -r requirements-markdown.txt          (Linux)
 #   .venv\Scripts\python.exe -m pip install -r requirements-markdown.txt   (Windows)
-markitdown[pdf,docx,pptx,xlsx,xls]==0.1.8
+markitdown[pdf,docx,pptx]==0.1.8
+# Excel (.xlsx y .xls) con un conversor propio (pandex/markdown/excel.py): sin pandas, que pesa 81 MB
+openpyxl==3.1.5
+xlrd==2.0.2
 pypdfium2==5.13.0
 charset-normalizer==3.5.1
 

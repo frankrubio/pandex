@@ -26,7 +26,7 @@ QT_QPA_PLATFORM=offscreen .venv/bin/python -m unittest discover -s tests -t . -v
 QT_QPA_PLATFORM=offscreen .venv/bin/python main.py --test
 grep -rn "REN-04" tests/   # la prueba de un requisito
 ```
-«Convertir a Markdown» es opcional (`requirements-markdown.txt`, ver `pandex/extras.py`). Las `winrt-*` solo en Windows; Playwright solo en Windows (en Linux, Selenium con el Firefox del sistema). La CI corre en Windows y Ubuntu (3.12 y 3.13).
+«Convertir a Markdown» es opcional (`requirements-markdown.txt`, ver `pandex/extras.py`). Las `winrt-*` solo en Windows. Canvas: Selenium con el navegador del usuario (Firefox, Chrome o Edge) en los dos sistemas; no hay Playwright (ver `docs/adr/`). La CI corre en Windows y Ubuntu (3.12 y 3.13).
 
 ## Presupuestos (no se pasan)
 - Peso con todas las funciones opcionales ≤ 600 MB; base ≤ 350 MB.

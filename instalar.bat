@@ -2,6 +2,8 @@
 chcp 65001 >nul
 setlocal
 cd /d "%~dp0"
+rem pip no guarda copias de los paquetes fuera de Pandex (%LOCALAPPDATA%\pip\Cache)
+set "PIP_NO_CACHE_DIR=1"
 echo.
 echo  ===  Instalando Pandex  ===
 echo.
@@ -24,8 +26,8 @@ if not exist ".venv\Scripts\python.exe" (
 
 rem 3. Dependencias
 echo Instalando dependencias: la primera vez tarda unos minutos...
-".venv\Scripts\python.exe" -m pip install --upgrade pip --quiet
-".venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet || goto :fallo
+".venv\Scripts\python.exe" -m pip install --upgrade pip --quiet --no-compile
+".venv\Scripts\python.exe" -m pip install -r requirements.txt --quiet --no-compile || goto :fallo
 
 rem 3b. "Convertir a Markdown" es opcional (unos 280 MB); se puede anadir despues en Configuracion - Tareas
 ".venv\Scripts\python.exe" -c "import markitdown" >nul 2>nul && goto :con_markdown
@@ -37,18 +39,10 @@ echo Sin Convertir a Markdown: Pandex queda mas liviano.
 goto :sin_markdown
 :con_markdown
 echo Instalando Convertir a Markdown...
-".venv\Scripts\python.exe" -m pip install -r requirements-markdown.txt --quiet || goto :fallo
+".venv\Scripts\python.exe" -m pip install -r requirements-markdown.txt --quiet --no-compile || goto :fallo
 :sin_markdown
 
-rem 4. Navegador para iniciar sesión en Canvas: Google Chrome si lo tienes; si no, Chromium
-set "CHROME="
-if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=1"
-if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=1"
-if exist "%LocalAppData%\Google\Chrome\Application\chrome.exe" set "CHROME=1"
-if not defined CHROME (
-    echo No tienes Google Chrome: descargo Chromium para iniciar sesión en Canvas...
-    ".venv\Scripts\python.exe" -m playwright install chromium || goto :fallo
-)
+rem 4. Navegador para Canvas: el tuyo (Edge, Chrome o Firefox). No se descarga ninguno.
 
 rem 5. Acceso directo en el Escritorio
 ".venv\Scripts\python.exe" -m pandex.accesos || goto :fallo
