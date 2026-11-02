@@ -36,6 +36,8 @@ class Canvas:
         self._cookies = cookies
         self._ua = user_agent
         self._local = threading.local()
+        self.pedidos = 0  # cuántas veces se le preguntó a Canvas (para el registro de fases)
+        self._cuenta = threading.Lock()
 
     def _sesion(self):
         s = getattr(self._local, "s", None)
@@ -53,6 +55,8 @@ class Canvas:
         """GET con reintentos si Canvas pide calma (límite de peticiones)."""
         import requests  # se carga al sincronizar, no al abrir Pandex
         for intento in range(4):
+            with self._cuenta:
+                self.pedidos += 1
             try:
                 resp = self._sesion().get(url, params=params, stream=stream, timeout=timeout)
             except requests.RequestException as exc:

@@ -20,6 +20,7 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 | Preferencias de la mascota y horarios | `config.json` | apariencia y tareas programadas |
 | Fecha de la última búsqueda de actualizaciones | `config.json` (`ultima_busqueda`) | buscar una vez al día como máximo |
 | Qué archivo de Canvas está en qué ruta de tu PC | `historial_canvas.json` (carpeta de datos) | no volver a bajar lo que ya tienes |
+| Sesión guardada (`sesion_canvas.json`: solo las cookies de tu Canvas, permisos solo para tu usuario) | carpeta de datos | no abrir el navegador cada vez; se borra sola si Canvas la rechaza y al desinstalar |
 | Sesión del navegador (cookies) | `browser-profile/` o `browser-profile-firefox/` (carpeta de datos) | entrar a Canvas sin escribir la contraseña |
 | Cuentas de OneDrive (el nombre que les pusiste) y su acceso | `onedrive.json`, `rclone.conf` (carpeta de datos) | montar tu OneDrive en Linux |
 | Cuándo corrió cada tarea | `ultimas_ejecuciones.json` (carpeta de datos) | ponerse al día si la PC estuvo apagada |

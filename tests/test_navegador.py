@@ -73,6 +73,7 @@ class Abrir(unittest.TestCase):
                 mock.patch.dict(os.environ):
             contexto = navegador.abrir(nombre, headless)
             cache = os.environ.get("SE_CACHE_PATH")
+            self.estadisticas = os.environ.get("SE_AVOID_STATS")
         return webdriver, contexto, tmp, cache
 
     def test_firefox_con_el_perfil_de_pandex(self):
@@ -91,6 +92,10 @@ class Abrir(unittest.TestCase):
             self.assertIn(f"--user-data-dir={tmp / nombre}", argumentos)
             self.assertNotIn("--headless=new", argumentos)
             self.assertIs(contexto.driver, getattr(webdriver, clase).return_value)
+
+    def test_selenium_no_manda_estadisticas(self):
+        self.abrir("chrome")
+        self.assertEqual(self.estadisticas, "true")
 
     def test_el_driver_va_a_la_carpeta_de_datos(self):
         _, _, tmp, cache = self.abrir("edge")

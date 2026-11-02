@@ -176,6 +176,9 @@ class Estructura(unittest.TestCase):
         self.assertEqual([c["id"] for _, c in parejas], [3, 2])
 
 
+guardar_original = sesion.guardar_atajo
+
+
 class Sesion(unittest.TestCase):
     """El login no debe reventar si Canvas sigue redirigiendo cuando la sesión ya vale."""
 
@@ -183,6 +186,12 @@ class Sesion(unittest.TestCase):
         self.espera_original = sesion.ESPERA_SSO
         sesion.ESPERA_SSO = 0.3  # no esperar 20 s de verdad
         self.addCleanup(setattr, sesion, "ESPERA_SSO", self.espera_original)
+        # sin sesión guardada de verdad ni preguntas a la red (eso se prueba en test_rendimiento.py)
+        self.addCleanup(setattr, sesion, "ATAJO", sesion.ATAJO)
+        sesion.ATAJO = Path(tempfile.mkdtemp()) / "sesion_canvas.json"
+        self.addCleanup(shutil.rmtree, sesion.ATAJO.parent, True)
+        sesion.guardar_atajo = lambda *_a, **_k: None
+        self.addCleanup(setattr, sesion, "guardar_atajo", guardar_original)
 
     def navegador(self, *valida_tras, hay_sesion=True):
         """Un navegador falso: cada contexto da sesión válida tras N esperas."""

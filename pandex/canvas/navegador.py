@@ -298,6 +298,7 @@ def abrir(nombre, headless):
     # el driver que descarga Selenium va a la carpeta de Pandex (no a ~/.cache/selenium)
     NAVEGADORES.mkdir(parents=True, exist_ok=True)
     os.environ["SE_CACHE_PATH"] = str(NAVEGADORES)
+    os.environ.setdefault("SE_AVOID_STATS", "true")  # Selenium Manager no manda estadísticas (P1)
 
     carpeta = perfil(nombre, binario)
     if not carpeta.exists() and not carpeta.is_relative_to(DATOS):

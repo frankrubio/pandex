@@ -40,8 +40,14 @@ from .historial import Historial
 from .nombres import nombre_destino, normalizar, numero_de_semana
 
 TEMPORAL = DATOS / "descargas"
-HILOS_API = 6        # peticiones de lectura simultáneas a Canvas
+HILOS_API = 6        # peticiones de lectura simultáneas a Canvas (como mínimo)
+HILOS_API_MAX = 10
 HILOS_DESCARGA = 4   # descargas simultáneas
+
+
+def hilos_api(cursos):
+    """Un hilo por curso (entre 6 y 10): todos los módulos se leen en una sola tanda."""
+    return min(HILOS_API_MAX, max(HILOS_API, cursos))
 
 
 def esta_configurado(params):
@@ -155,6 +161,8 @@ class Sincronizacion:
         self._indices = {}
         self._carpetas = {}
         self._fases = {}
+        self._pedidos = {}
+        self._pedidos_antes = 0
         self._res = {"nuevos": [], "fallidos": [], "bloqueados": [], "sin_seccion": [], "ya": 0, "omitidos": 0,
                      "coincidencias": [], "cursos_error": [], "sin_conexion": False}
 
@@ -207,7 +215,11 @@ class Sincronizacion:
         except sesion.error_navegador() as exc:
             primera = str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__
             return {"ok": False, "resumen": sesion.mensaje_de_error(exc), "detalle": [primera]}
-        self._fases["sesión"] = time.monotonic() - t
+        manual = sesion.ULTIMO.get("espera_manual") or 0.0
+        self._fases["sesión"] = max(time.monotonic() - t - manual, 0.0)  # esperarte a ti no cuenta
+        if manual:
+            self._fases["inicio de sesión manual"] = manual
+        self._modo_sesion = sesion.ULTIMO.get("modo")
         canvas = Canvas(base_url, cookies, ua)
 
         try:
@@ -219,14 +231,14 @@ class Sincronizacion:
                         "detalle": ["¿cambió el ciclo? Vuelve a correr Configurar Canvas"]}
             candidatos = self._candidatos(canvas, parejas)
             candidatos = self._aplicar_descarga_inicial(candidatos, historial)
-            self._fases["módulos"] = time.monotonic() - t
+            self._fase("módulos", t, canvas)
 
             # ---- 3. qué no conocemos todavía, y sus datos (en paralelo)
             t = time.monotonic()
             desconocidos = [c for c in candidatos if historial.conocido(c.file_id) is None]
             self._res["ya"] += len(candidatos) - len(desconocidos)
             metas = metadatos(canvas, desconocidos, historial)
-            self._fases["consultas"] = time.monotonic() - t
+            self._fase("consultas", t, canvas)
 
             # ---- 4. decidir: ¿ya lo tienes? ¿dónde va? (en orden, contra tu disco)
             t = time.monotonic()
@@ -236,7 +248,7 @@ class Sincronizacion:
             # ---- 5. bajar lo nuevo (en paralelo) y moverlo uno por uno
             t = time.monotonic()
             self._descargar(canvas, descargas, historial)
-            self._fases["descargas"] = time.monotonic() - t
+            self._fase("descargas", t, canvas)
         except SinConexion:
             self._res["sin_conexion"] = True
         except CanvasError as exc:
@@ -246,11 +258,18 @@ class Sincronizacion:
 
         return self._resultado(len(parejas), time.monotonic() - inicio)
 
+    def _fase(self, nombre, desde, canvas):
+        """Anota cuánto tardó la fase y cuántos pedidos hizo a Canvas (REN-08)."""
+        self._fases[nombre] = time.monotonic() - desde
+        total = getattr(canvas, "pedidos", 0)
+        self._pedidos[nombre] = total - self._pedidos_antes
+        self._pedidos_antes = total
+
     # ------------------------------------------------------------------ fase 2
 
     def _candidatos(self, canvas, parejas):
         """Los archivos de los módulos que corresponden a cada curso configurado."""
-        with ThreadPoolExecutor(HILOS_API) as ex:
+        with ThreadPoolExecutor(hilos_api(len(parejas))) as ex:
             futuros = [ex.submit(canvas.modulos, curso["id"]) for _, curso in parejas]
             modulos = []
             for (regla, curso), futuro in zip(parejas, futuros):
@@ -502,7 +521,11 @@ class Sincronizacion:
     def _detalle(self, nuevos):
         """Para el registro: solo lo que cambió, no los cientos de archivos conocidos."""
         r = self._res
-        l = ["fases: " + " · ".join(f"{k} {v:.1f}s" for k, v in self._fases.items()),
+        modo = getattr(self, "_modo_sesion", None)
+        l = ["fases: " + " · ".join(f"{k} {v:.1f}s" for k, v in self._fases.items())
+             + (f" · sesión: {modo}" if modo else ""),
+             "pedidos: " + " · ".join(f"{k} {v}" for k, v in self._pedidos.items())
+             + f" · total {sum(self._pedidos.values())}",
              f"ya estaban: {r['ya']} · nuevos: {len(nuevos)} · fallidos: {len(r['fallidos'])}"
              f" · omitidos: {r['omitidos']}"]
         l += [f"nuevo · {d.candidato.alias} · {f}" for d, f in nuevos]
