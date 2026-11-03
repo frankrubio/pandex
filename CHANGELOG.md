@@ -18,6 +18,10 @@ cuando buscas actualizaciones desde el menú.
   iniciar sesión · un software de pruebas automatizadas está controlando Edge». Ahora, cuando hace
   falta iniciar sesión, Pandex abre una ventana normal de tu navegador (sin control remoto); inicias
   sesión, la cierras y Pandex comprueba por su cuenta. Firefox sigue como antes.
+- **Pandex sigue con el navegador que ya usabas.** Si entrabas a Canvas con Chrome, sigue con Chrome
+  aunque Edge sea el predeterminado de Windows. Si no hay uno anterior, usa tu navegador
+  predeterminado (en Windows siempre hay Edge). Se puede fijar uno en Configuración → Tareas →
+  Sincronizar Canvas.
 
 ## 2.5.2
 

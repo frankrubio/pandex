@@ -110,16 +110,48 @@ def predeterminado():
     return None
 
 
-def elegir(preferido="auto"):
-    """El navegador a usar. ``preferido``: ``auto`` (el tuyo) o uno de ``TODOS``.
+USADO = DATOS / "navegador_usado"  # el último navegador con el que se consiguió entrar a Canvas
 
-    Lanza ``ErrorNavegador`` si el elegido (o ninguno) está instalado.
+
+def recordar(nombre):
+    """Anota con qué navegador se consiguió entrar, para seguir con él la próxima vez."""
+    if nombre not in TODOS:
+        return
+    try:
+        USADO.parent.mkdir(parents=True, exist_ok=True)
+        USADO.write_text(nombre, encoding="utf-8")
+    except OSError as exc:  # sin esto Pandex funciona igual
+        log.warning("no pude anotar el navegador: %s", exc)
+
+
+def recordado():
+    """El navegador con el que ya entraste: el anotado, o el Chrome que usaban las versiones 2.x."""
+    try:
+        nombre = USADO.read_text(encoding="utf-8").strip()
+    except OSError:
+        nombre = ""
+    if nombre in TODOS:
+        return nombre
+    # las versiones anteriores a la 2.5 entraban con Chrome en este mismo perfil
+    if (PERFILES["chrome"] / "Default").exists():
+        return "chrome"
+    return None
+
+
+def elegir(preferido="auto"):
+    """El navegador a usar. ``preferido``: ``auto`` o uno de ``TODOS``.
+
+    ``auto``: el que ya usabas con Pandex (si sigue instalado); si no, tu predeterminado; si no,
+    el primero que haya. Lanza ``ErrorNavegador`` si el elegido (o ninguno) está instalado.
     """
     if preferido in TODOS:
         if ruta(preferido):
             return preferido
         raise ErrorNavegador(f"No encontré {NOMBRES[preferido]}. Instálalo o elige otro navegador en "
                              "Configuración → Tareas → Sincronizar Canvas.")
+    usado = recordado()
+    if usado and ruta(usado):
+        return usado
     tuyo = predeterminado()
     if tuyo and ruta(tuyo):
         return tuyo

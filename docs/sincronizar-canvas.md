@@ -139,7 +139,7 @@ El asistente escribe todo esto en `config.json → tareas → sync_canvas`. Se p
 | `schedule` | `null` | Horario cron (p. ej. `"0 19 * * *"`). |
 | `dedupe_por_tamano` | `true` | Saltar archivos con el mismo tamaño aunque cambie el nombre. |
 | `headless` | `true` | Probar primero sin ventana con la sesión guardada. |
-| `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
+| `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (el que ya usabas con Pandex; si es la primera vez, tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
 | `espera_login_segundos` | `300` | Cuánto esperar a que inicies sesión en la ventana. |
 | `calendario` | — | Opcional: `[{"semana": 1, "inicio": "2026-08-10", "fin": "2026-08-16"}, …]`. Solo lo necesitan los cursos en modo `"lista"`. Si existe y hoy no cae en ninguna semana, no se sincroniza. |
 

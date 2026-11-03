@@ -167,6 +167,7 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
                 if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
                     ctx.log("sesión renovada sin abrir ventanas")
                     ULTIMO["modo"] = "navegador"
+                    _navegador.recordar(navegador)
                     cookies = contexto.cookies()
                     guardar_atajo(base, cookies, ua)
                     return cookies, ua
@@ -192,6 +193,7 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
             ctx.log("sesión iniciada a mano, queda guardada en el perfil")
             ctx.decir("¡Listo, ya entré! Cierro el navegador y sigo yo.")
             ULTIMO.update(modo="manual", espera_manual=time.monotonic() - espera)
+            _navegador.recordar(navegador)
             cookies = contexto.cookies()
             guardar_atajo(base, cookies, ua)
             return cookies, ua
@@ -228,6 +230,7 @@ def _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login
         ctx.log("sesión iniciada en ventana normal, queda guardada en el perfil")
         ctx.decir("¡Listo, ya entré! Sigo yo.")
         ULTIMO.update(modo="manual", espera_manual=time.monotonic() - espera)
+        _navegador.recordar(navegador)
         cookies = contexto.cookies()
         guardar_atajo(base, cookies, ua)
         return cookies, ua

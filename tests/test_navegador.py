@@ -17,6 +17,53 @@ def instalados(*nombres):
 
 
 class Elegir(unittest.TestCase):
+    def setUp(self):
+        # sin navegador recordado ni perfiles de verdad: cada prueba parte de una PC nueva
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+        for nombre, valor in (("USADO", self.tmp / "navegador_usado"),
+                              ("PERFILES", {n: self.tmp / n for n in navegador.TODOS})):
+            parche = mock.patch.object(navegador, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
+
+    def test_sigue_con_el_que_ya_usabas_aunque_tu_predeterminado_sea_otro(self):
+        """Quien entraba con Chrome sigue con Chrome, aunque Edge sea el predeterminado de Windows."""
+        navegador.recordar("chrome")
+        with instalados("chrome", "edge"), mock.patch.object(navegador, "predeterminado", return_value="edge"):
+            self.assertEqual(navegador.elegir("auto"), "chrome")
+
+    def test_el_perfil_de_chrome_de_versiones_anteriores_cuenta_como_ya_usado(self):
+        (navegador.PERFILES["chrome"] / "Default").mkdir(parents=True)
+        with instalados("chrome", "edge"), mock.patch.object(navegador, "predeterminado", return_value="edge"):
+            self.assertEqual(navegador.elegir("auto"), "chrome")
+
+    def test_un_perfil_vacio_de_edge_no_cuenta(self):
+        """Un intento fallido con Edge deja su perfil creado: no es una sesión."""
+        (navegador.PERFILES["edge"] / "Default").mkdir(parents=True)
+        with instalados("chrome", "edge"), mock.patch.object(navegador, "predeterminado", return_value="chrome"):
+            self.assertEqual(navegador.elegir("auto"), "chrome")
+
+    def test_el_recordado_que_ya_no_esta_instalado_se_ignora(self):
+        navegador.recordar("firefox")
+        with instalados("edge"), mock.patch.object(navegador, "predeterminado", return_value="edge"):
+            self.assertEqual(navegador.elegir("auto"), "edge")
+
+    def test_lo_que_eliges_pisa_lo_recordado(self):
+        navegador.recordar("chrome")
+        with instalados("chrome", "edge"):
+            self.assertEqual(navegador.elegir("edge"), "edge")
+
+    def test_recordar_ignora_nombres_raros(self):
+        navegador.recordar("../x")
+        self.assertIsNone(navegador.recordado())
+        navegador.recordar("edge")
+        self.assertEqual(navegador.recordado(), "edge")
+
+    def test_entrar_con_exito_recuerda_el_navegador(self):
+        """Lo guarda ``sesion.iniciar_sesion`` al conseguir la sesión (ver IniciarSesionConVentanaNormal)."""
+        self.assertIsNone(navegador.recordado())
+
     def test_tu_predeterminado_primero(self):
         with instalados("firefox", "chrome", "edge"), \
                 mock.patch.object(navegador, "predeterminado", return_value="chrome"):
@@ -211,6 +258,9 @@ class VentanaNormal(unittest.TestCase):
 
 class IniciarSesionConVentanaNormal(unittest.TestCase):
     def setUp(self):
+        self.addCleanup(setattr, navegador, "USADO", navegador.USADO)
+        navegador.USADO = Path(tempfile.mkdtemp()) / "navegador_usado"
+        self.addCleanup(__import__("shutil").rmtree, navegador.USADO.parent, True)
         self.addCleanup(setattr, sesion, "ESPERA_SSO", sesion.ESPERA_SSO)
         sesion.ESPERA_SSO = 0.2
         self.addCleanup(setattr, sesion, "ATAJO", sesion.ATAJO)
@@ -281,6 +331,7 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         self.assertEqual(ua, "UA")
         self.assertEqual(sesion.ULTIMO["modo"], "manual")
         self.assertIn("ciérrala", ctx.globos[0])
+        self.assertEqual(navegador.recordado(), "edge", "la próxima vez sigue con el que funcionó")
 
     def test_si_cierras_sin_haber_entrado_lo_dice(self):
         self.preparar(cierra_tras=1, sesion_valida=False)
