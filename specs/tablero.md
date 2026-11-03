@@ -39,7 +39,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | Tarea | Qué | Spec | Depende de | Estado |
 |---|---|---|---|---|
 | T001.2 | Spike: ¿cuánto dura la sesión de Canvas? | 001 | — | libre |
-| T001.3 | Atajo de sesión con cookies guardadas | 001 | T001.1, T001.2 | bloqueada (pregunta 2 de 001) |
+| T001.3 | Atajo de sesión con cookies guardadas | 001 | T001.1, T001.2 | en curso (claude/vibrant-volta-t1vhh9) |
 | T001.4 | Leer todos los cursos en una sola tanda | 001 | T001.1 | libre |
 | T001.5 | Concurrencia adaptativa para la primera vez | 001 | T001.1 | libre |
 | T001.6 | Descargas sin esperas en serie | 001 | — | libre |

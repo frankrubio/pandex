@@ -53,6 +53,11 @@ class CanvasFalso:
     def contar_cero(cls):
         cls.llamadas = {"archivo": 0, "listado": 0, "modulos": 0, "descargar": 0}
 
+    @property
+    def pedidos(self):
+        """Lo mismo que ``cliente.Canvas.pedidos``: cuántas veces se le preguntó algo."""
+        return sum(self.llamadas.values())
+
     def _contar(self, clave):
         with self._candado:
             self.llamadas[clave] += 1

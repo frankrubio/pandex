@@ -774,6 +774,7 @@ class AsistenteCanvas(QWizard):
 
             limitar(DATOS, "config-canvas-anterior-*.json", COPIAS_DE_CONFIG_QUE_QUEDAN)  # RES-05
 
+        sesion.olvidar_atajo()  # configuración nueva: que la próxima entrada se compruebe de cero
         reglas = e.reglas()
         estilos.ESTILO_CARPETAS = e.estilo_carpetas()
         e.raiz.mkdir(parents=True, exist_ok=True)

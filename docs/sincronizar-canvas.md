@@ -139,7 +139,7 @@ El asistente escribe todo esto en `config.json → tareas → sync_canvas`. Se p
 | `schedule` | `null` | Horario cron (p. ej. `"0 19 * * *"`). |
 | `dedupe_por_tamano` | `true` | Saltar archivos con el mismo tamaño aunque cambie el nombre. |
 | `headless` | `true` | Probar primero sin ventana con la sesión guardada. |
-| `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
+| `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (el que ya usabas con Pandex; si es la primera vez, tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
 | `espera_login_segundos` | `300` | Cuánto esperar a que inicies sesión en la ventana. |
 | `calendario` | — | Opcional: `[{"semana": 1, "inicio": "2026-08-10", "fin": "2026-08-16"}, …]`. Solo lo necesitan los cursos en modo `"lista"`. Si existe y hoy no cae en ninguna semana, no se sincroniza. |
 
@@ -182,6 +182,7 @@ Ejemplo escrito a mano:
 | *"No reconocí ninguno de tus cursos"* | Empezó otro ciclo: **Configurar Canvas…** |
 | Una semana o `Lab` queda vacía | Pandex solo ve los módulos **publicados** para alumnos. |
 | *"🔒 aún sin abrir en Canvas"* | El ítem tiene fecha de apertura futura; se baja solo cuando se abra. |
+| Google dice *«No se ha podido iniciar sesión»* o *«software de pruebas automatizadas»* | Pasaba en Chrome y Edge cuando Pandex controlaba la ventana de inicio de sesión. Desde la 2.6.0 esa ventana es normal: inicia sesión y **ciérrala** cuando veas tu Canvas. Si lo ves en una versión anterior, actualiza. |
 | *"No encuentro tu carpeta de cursos"* | La renombraste o la moviste: Configuración → Sincronizar Canvas → **Reconectar carpeta de cursos…** y elige la carpeta. No mueve ni borra nada. |
 | No me gustó cómo ordenó mi carpeta | **Configurar Canvas… → Deshacer el último reordenamiento.** |
 | Quiero empezar de cero | Borra `config.json` (y, si quieres, `%LOCALAPPDATA%\Pandex`) y abre Pandex. |

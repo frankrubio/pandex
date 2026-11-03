@@ -8,13 +8,27 @@ ventanas. De ahí se sacan las cookies para hablar con la API; el navegador se
 cierra apenas la sesión es válida.
 """
 
+import json
+import os
 import time
 from contextlib import contextmanager
+from pathlib import Path
 
+from ..log import get_logger
+from ..rutas import DATOS
 from . import navegador as _navegador
 from .cliente import CanvasError
 
+log = get_logger("pandex.sesion")
+
 ESPERA_SSO = 20  # segundos para que un login institucional (SSO) termine solo
+
+# Atajo de sesión (spec 001, T001.3): las cookies de Canvas de la última vez que entraste.
+# Mientras Canvas las acepte, no hace falta abrir el navegador (~4 s menos). Son las mismas
+# que ya guarda el perfil del navegador, en la misma carpeta de datos y solo para tu usuario.
+# Nunca van al registro; se borran si Canvas las rechaza y al desinstalar.
+ATAJO = DATOS / "sesion_canvas.json"
+ULTIMO = {"modo": None, "espera_manual": 0.0}  # cómo entró la última vez, para el registro de fases
 
 
 def error_navegador():
@@ -71,14 +85,78 @@ def _pagina(contexto):
     return page, page.evaluate("navigator.userAgent")
 
 
+def guardar_atajo(base, cookies, user_agent):
+    """Guarda solo las cookies del sitio de Canvas (no las del login de tu institución)."""
+    from urllib.parse import urlsplit
+
+    host = urlsplit(base).hostname
+    propias = [{"name": c["name"], "value": c["value"], "domain": c.get("domain"), "path": c.get("path", "/")}
+               for c in cookies if _navegador._del_sitio(c.get("domain"), host)]
+    try:
+        ATAJO.parent.mkdir(parents=True, exist_ok=True)
+        temporal = ATAJO.with_name(ATAJO.name + ".tmp")
+        fd = os.open(temporal, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            json.dump({"base": base.rstrip("/"), "ua": user_agent, "cookies": propias}, fh)
+        os.replace(temporal, ATAJO)
+        log.info("sesión guardada para la próxima vez (%d cookies)", len(propias))
+    except OSError as exc:  # sin atajo Pandex funciona igual, solo un poco más lento
+        log.warning("no pude guardar la sesión: %s", exc)
+
+
+def olvidar_atajo():
+    try:
+        ATAJO.unlink(missing_ok=True)
+    except OSError as exc:
+        log.warning("no pude borrar la sesión guardada: %s", exc)
+
+
+def intentar_atajo(base):
+    """``(cookies, user_agent)`` si la sesión guardada sigue valiendo; si no, None.
+
+    Una sola pregunta a ``/api/v1/users/self`` (~0,3 s). Si Canvas la rechaza, se borra. Si no
+    hay red, se conserva (el problema no es la sesión).
+    """
+    try:
+        datos = json.loads(Path(ATAJO).read_text(encoding="utf-8"))
+        guardado, cookies, ua = datos["base"], datos["cookies"], datos["ua"]
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError, KeyError, TypeError):
+        olvidar_atajo()
+        return None
+    if guardado != base.rstrip("/") or not cookies:
+        olvidar_atajo()
+        return None
+    import requests
+
+    try:
+        r = requests.get(f"{guardado}/api/v1/users/self", cookies={c["name"]: c["value"] for c in cookies},
+                         headers={"User-Agent": ua}, timeout=8, allow_redirects=False)
+    except requests.RequestException as exc:
+        log.info("no pude probar la sesión guardada: %s", exc.__class__.__name__)
+        return None
+    if r.status_code != 200:
+        log.info("la sesión guardada ya no vale (Canvas respondió %s)", r.status_code)
+        olvidar_atajo()
+        return None
+    return cookies, ua
+
+
 def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_primero=True,
                    navegador="auto"):
     """Entra a Canvas y devuelve ``(cookies, user_agent)``.
 
     ``ctx`` es cualquier objeto con ``log(msg, nivel)`` y ``decir(texto)``.
-    Primero prueba sin ventana (si ya hay una sesión guardada); si no alcanza,
-    abre el navegador para que entres tú.
+    Primero prueba la sesión guardada (sin navegador); luego el navegador sin ventana con tu
+    perfil; si no alcanza, abre la ventana para que entres tú. ``ULTIMO`` dice cuál de las tres.
     """
+    ULTIMO.update(modo=None, espera_manual=0.0)
+    entrada = intentar_atajo(base)
+    if entrada:
+        ULTIMO["modo"] = "atajo"
+        ctx.log("sesión guardada válida: no abrí el navegador")
+        return entrada
     navegador = elegir_navegador(navegador, usar_chrome)
     with _abridor(navegador, usar_chrome) as (abrir, errores):
         if invisible_primero and _hay_perfil(navegador):
@@ -88,12 +166,20 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
                 page.goto(base, wait_until="domcontentloaded", timeout=60000)
                 if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
                     ctx.log("sesión renovada sin abrir ventanas")
-                    return contexto.cookies(), ua
+                    ULTIMO["modo"] = "navegador"
+                    _navegador.recordar(navegador)
+                    cookies = contexto.cookies()
+                    guardar_atajo(base, cookies, ua)
+                    return cookies, ua
             finally:
                 contexto.close()
             ctx.log("hace falta iniciar sesión a mano", "warning")
 
+        if navegador in _navegador.VENTANA_NORMAL:
+            return _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login)
+
         ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador.")
+        espera = time.monotonic()
         contexto = abrir(False)
         try:
             page, ua = _pagina(contexto)
@@ -106,12 +192,56 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
                 raise CanvasError("Se acabó el tiempo para iniciar sesión en Canvas.")
             ctx.log("sesión iniciada a mano, queda guardada en el perfil")
             ctx.decir("¡Listo, ya entré! Cierro el navegador y sigo yo.")
-            return contexto.cookies(), ua
+            ULTIMO.update(modo="manual", espera_manual=time.monotonic() - espera)
+            _navegador.recordar(navegador)
+            cookies = contexto.cookies()
+            guardar_atajo(base, cookies, ua)
+            return cookies, ua
         finally:
             try:
                 contexto.close()
             except Exception:
                 pass
+
+
+def _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login):
+    """Chrome y Edge: la persona inicia sesión en una ventana normal y la cierra; luego se comprueba.
+
+    Con Selenium controlando la ventana, Google no deja iniciar sesión. La sesión queda en el
+    perfil de Pandex y el navegador sin ventana la usa (como siempre) para renovar la de Canvas.
+    """
+    ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador. "
+              "Cuando veas tu Canvas, ciérrala y sigo yo.")
+    espera = time.monotonic()
+    ventana = _navegador.abrir_ventana_normal(navegador, base)
+    limite = espera + espera_login
+    while ventana.poll() is None:
+        if time.monotonic() > limite:
+            ventana.terminate()
+            raise CanvasError("Se acabó el tiempo para iniciar sesión en Canvas.")
+        time.sleep(0.5)
+    contexto = abrir(True)
+    try:
+        page, ua = _pagina(contexto)
+        page.goto(base, wait_until="domcontentloaded", timeout=60000)
+        if not _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
+            raise CanvasError("No pude confirmar tu sesión. Inicia sesión y cierra la ventana solo "
+                              "cuando veas tu Canvas.")
+        ctx.log("sesión iniciada en ventana normal, queda guardada en el perfil")
+        ctx.decir("¡Listo, ya entré! Sigo yo.")
+        ULTIMO.update(modo="manual", espera_manual=time.monotonic() - espera)
+        _navegador.recordar(navegador)
+        cookies = contexto.cookies()
+        guardar_atajo(base, cookies, ua)
+        return cookies, ua
+    except errores as exc:
+        raise CanvasError("No pude confirmar tu sesión. Inicia sesión y cierra la ventana solo "
+                          "cuando veas tu Canvas.") from exc
+    finally:
+        try:
+            contexto.close()
+        except Exception:
+            pass
 
 
 def mensaje_de_error(exc):

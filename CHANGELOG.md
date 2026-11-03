@@ -3,6 +3,26 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.0
+
+- **Sincronizar sin abrir el navegador.** Pandex guarda la sesión de tu Canvas (solo las cookies de
+  Canvas, solo para tu usuario, en su carpeta de datos). La próxima vez la prueba con una sola
+  consulta de menos de un segundo: si Canvas la acepta, no abre el navegador (unos 4 s menos). Si
+  ya venció, entra como antes. Se borra sola si Canvas la rechaza y al desinstalar.
+- **Todos tus cursos a la vez.** Los módulos se leen con un hilo por curso (hasta 10), en una sola tanda.
+- **El registro dice dónde se va el tiempo:** cuántos pedidos hizo cada fase y si la sesión entró por
+  «atajo», «navegador» o «manual». El tiempo que tardas en iniciar sesión tú ya no cuenta como
+  tiempo de Pandex.
+- Selenium ya no manda estadísticas de uso.
+- **Arreglo: Google ya no rechaza el inicio de sesión en Chrome y Edge.** Salía «No se ha podido
+  iniciar sesión · un software de pruebas automatizadas está controlando Edge». Ahora, cuando hace
+  falta iniciar sesión, Pandex abre una ventana normal de tu navegador (sin control remoto); inicias
+  sesión, la cierras y Pandex comprueba por su cuenta. Firefox sigue como antes.
+- **Pandex sigue con el navegador que ya usabas.** Si entrabas a Canvas con Chrome, sigue con Chrome
+  aunque Edge sea el predeterminado de Windows. Si no hay uno anterior, usa tu navegador
+  predeterminado (en Windows siempre hay Edge). Se puede fijar uno en Configuración → Tareas →
+  Sincronizar Canvas.
+
 ## 2.5.2
 
 - **Reconectar la carpeta de cursos.** Si renombras o mueves la carpeta donde Pandex guarda tus

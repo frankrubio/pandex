@@ -27,6 +27,10 @@ from ..rutas import DATOS, NAVEGADORES, WINDOWS
 log = get_logger("pandex.navegador")
 
 TODOS = ("firefox", "chrome", "edge")
+# Google rechaza el inicio de sesión («software de pruebas automatizadas está controlando…»)
+# si Selenium controla Chrome o Edge. Ahí la persona entra en una ventana normal, sin control
+# remoto, y Pandex solo comprueba después con el navegador sin ventana.
+VENTANA_NORMAL = ("chrome", "edge")
 NOMBRES = {"firefox": "Firefox", "chrome": "Google Chrome", "edge": "Microsoft Edge"}
 ORDEN = ("edge", "chrome", "firefox") if WINDOWS else ("firefox", "chrome", "edge")
 
@@ -106,16 +110,48 @@ def predeterminado():
     return None
 
 
-def elegir(preferido="auto"):
-    """El navegador a usar. ``preferido``: ``auto`` (el tuyo) o uno de ``TODOS``.
+USADO = DATOS / "navegador_usado"  # el último navegador con el que se consiguió entrar a Canvas
 
-    Lanza ``ErrorNavegador`` si el elegido (o ninguno) está instalado.
+
+def recordar(nombre):
+    """Anota con qué navegador se consiguió entrar, para seguir con él la próxima vez."""
+    if nombre not in TODOS:
+        return
+    try:
+        USADO.parent.mkdir(parents=True, exist_ok=True)
+        USADO.write_text(nombre, encoding="utf-8")
+    except OSError as exc:  # sin esto Pandex funciona igual
+        log.warning("no pude anotar el navegador: %s", exc)
+
+
+def recordado():
+    """El navegador con el que ya entraste: el anotado, o el Chrome que usaban las versiones 2.x."""
+    try:
+        nombre = USADO.read_text(encoding="utf-8").strip()
+    except OSError:
+        nombre = ""
+    if nombre in TODOS:
+        return nombre
+    # las versiones anteriores a la 2.5 entraban con Chrome en este mismo perfil
+    if (PERFILES["chrome"] / "Default").exists():
+        return "chrome"
+    return None
+
+
+def elegir(preferido="auto"):
+    """El navegador a usar. ``preferido``: ``auto`` o uno de ``TODOS``.
+
+    ``auto``: el que ya usabas con Pandex (si sigue instalado); si no, tu predeterminado; si no,
+    el primero que haya. Lanza ``ErrorNavegador`` si el elegido (o ninguno) está instalado.
     """
     if preferido in TODOS:
         if ruta(preferido):
             return preferido
         raise ErrorNavegador(f"No encontré {NOMBRES[preferido]}. Instálalo o elige otro navegador en "
                              "Configuración → Tareas → Sincronizar Canvas.")
+    usado = recordado()
+    if usado and ruta(usado):
+        return usado
     tuyo = predeterminado()
     if tuyo and ruta(tuyo):
         return tuyo
@@ -273,13 +309,35 @@ def _opciones(webdriver, nombre, binario, carpeta, headless):
     else:
         opciones = webdriver.EdgeOptions() if nombre == "edge" else webdriver.ChromeOptions()
         for argumento in (f"--user-data-dir={carpeta}", "--no-first-run", "--no-default-browser-check",
-                          "--window-size=1366,900"):
+                          "--window-size=1366,900", "--disable-blink-features=AutomationControlled"):
             opciones.add_argument(argumento)
+        opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
         if headless:
             opciones.add_argument("--headless=new")
     opciones.binary_location = binario
     opciones.page_load_strategy = "eager"  # como «domcontentloaded»: no esperar imágenes
     return opciones
+
+
+def abrir_ventana_normal(nombre, url):
+    """Abre ``url`` en una ventana normal de ``nombre`` con el perfil de Pandex (sin control remoto).
+
+    Devuelve el proceso: cuando la persona cierra la ventana, termina. Lanza ``ErrorNavegador``.
+    """
+    binario = ruta(nombre)
+    if binario is None:
+        raise ErrorNavegador(f"No encontré {NOMBRES[nombre]}. Instálalo o elige otro navegador en "
+                             "Configuración → Tareas → Sincronizar Canvas.")
+    carpeta = perfil(nombre, binario)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    comando = [binario, f"--user-data-dir={carpeta}", "--no-first-run", "--no-default-browser-check",
+               "--disable-background-mode", "--disable-features=msStartupBoost,StartupBoost", url]
+    try:
+        return subprocess.Popen(comando)
+    except OSError as exc:
+        log.error("%s no abrió: %s", NOMBRES[nombre], exc)
+        raise ErrorNavegador(f"No pude abrir {NOMBRES[nombre]}. Ciérralo si estaba abierto con Pandex y "
+                             "vuelve a intentar.") from exc
 
 
 def abrir(nombre, headless):
@@ -298,6 +356,7 @@ def abrir(nombre, headless):
     # el driver que descarga Selenium va a la carpeta de Pandex (no a ~/.cache/selenium)
     NAVEGADORES.mkdir(parents=True, exist_ok=True)
     os.environ["SE_CACHE_PATH"] = str(NAVEGADORES)
+    os.environ.setdefault("SE_AVOID_STATS", "true")  # Selenium Manager no manda estadísticas (P1)
 
     carpeta = perfil(nombre, binario)
     if not carpeta.exists() and not carpeta.is_relative_to(DATOS):

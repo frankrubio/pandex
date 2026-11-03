@@ -104,3 +104,4 @@ novedades: **8–11 s**. El cuello de botella es abrir el navegador para renovar
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión. | Requisitos de Frank: 10 s con descargas, 6 s sin. |
+| 2026-11-02 | Frank pide recortar el tiempo de abrir el navegador y de sincronizar. Se toma la respuesta por defecto de la pregunta 2 (guardar la sesión de Canvas en la carpeta de datos) y se hacen T001.1, T001.3 y T001.4. Falta T001.2 (cuánto dura la sesión de UTEC): se mide con el registro nuevo. | Pedido de Frank. |
