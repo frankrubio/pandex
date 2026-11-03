@@ -315,7 +315,8 @@ class PaginaConectar(QWizardPage):
         self._trabajo = None
         self.setTitle("Iniciar sesión")
         self.setSubTitle("Si es la primera vez, se abre tu navegador: entra con tu cuenta de "
-                         "la universidad y la ventana se cerrará sola.")
+                         "la universidad. En Firefox la ventana se cierra sola; en Chrome y Edge, ciérrala tú "
+                         "cuando veas tu Canvas.")
         self.mensaje = _texto("")
         self.barra = QProgressBar()
         self.barra.setRange(0, 0)

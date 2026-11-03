@@ -160,19 +160,23 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
     navegador = elegir_navegador(navegador, usar_chrome)
     with _abridor(navegador, usar_chrome) as (abrir, errores):
         if invisible_primero and _hay_perfil(navegador):
-            contexto = abrir(True)
             try:
-                page, ua = _pagina(contexto)
-                page.goto(base, wait_until="domcontentloaded", timeout=60000)
-                if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
-                    ctx.log("sesión renovada sin abrir ventanas")
-                    ULTIMO["modo"] = "navegador"
-                    _navegador.recordar(navegador)
-                    cookies = contexto.cookies()
-                    guardar_atajo(base, cookies, ua)
-                    return cookies, ua
-            finally:
-                contexto.close()
+                contexto = abrir(True)
+                try:
+                    page, ua = _pagina(contexto)
+                    page.goto(base, wait_until="domcontentloaded", timeout=60000)
+                    if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
+                        ctx.log("sesión renovada sin abrir ventanas")
+                        ULTIMO["modo"] = "navegador"
+                        _navegador.recordar(navegador)
+                        cookies = contexto.cookies()
+                        guardar_atajo(base, cookies, ua)
+                        return cookies, ua
+                finally:
+                    contexto.close()
+            except errores as exc:
+                # un perfil viejo o en uso no debe impedir iniciar sesión a mano
+                log.warning("el intento sin ventana falló (%s): %s", navegador, str(exc).splitlines()[0][:300])
             ctx.log("hace falta iniciar sesión a mano", "warning")
 
         if navegador in _navegador.VENTANA_NORMAL:
@@ -251,4 +255,5 @@ def mensaje_de_error(exc):
         return "No hay conexión: no pude llegar a Canvas."
     if isinstance(exc, _navegador.ErrorNavegador) and texto.startswith(("No encontré", "Falta", "No pude")):
         return texto
-    return "No pude abrir el navegador para entrar a Canvas."
+    return ("No pude abrir el navegador para entrar a Canvas. Cierra las ventanas de tu navegador y "
+            "reintenta; si sigue, el motivo está en «Ver registro».")

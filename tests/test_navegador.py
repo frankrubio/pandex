@@ -267,7 +267,7 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         sesion.ATAJO = Path(tempfile.mkdtemp()) / "sesion_canvas.json"
         self.addCleanup(__import__("shutil").rmtree, sesion.ATAJO.parent, True)
 
-    def preparar(self, *, cierra_tras, sesion_valida):
+    def preparar(self, *, cierra_tras, sesion_valida, hay_perfil=False, falla_primero=False):
         """Chrome sin sesión guardada: ventana normal (se cierra tras N sondeos) y comprobación sin ventana."""
         abiertos, ventanas = [], []
 
@@ -303,7 +303,11 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
             def close(self):
                 pass
 
+        pendientes = [falla_primero]
+
         def abrir(_nombre, headless):
+            if pendientes.pop(0) if pendientes else False:
+                raise navegador.ErrorNavegador("session not created: el perfil está en uso")
             abiertos.append(Contexto(headless))
             return abiertos[-1]
 
@@ -311,7 +315,7 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
             ventanas.append((nombre, url, Proceso()))
             return ventanas[-1][2]
 
-        for nombre, valor in (("abrir", abrir), ("abrir_ventana_normal", ventana), ("hay_sesion", lambda _n: False),
+        for nombre, valor in (("abrir", abrir), ("abrir_ventana_normal", ventana), ("hay_sesion", lambda _n: hay_perfil),
                               ("elegir", lambda preferido="auto": "edge")):
             parche = mock.patch.object(navegador, nombre, valor)
             parche.start()
@@ -332,6 +336,18 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         self.assertEqual(sesion.ULTIMO["modo"], "manual")
         self.assertIn("ciérrala", ctx.globos[0])
         self.assertEqual(navegador.recordado(), "edge", "la próxima vez sigue con el que funcionó")
+
+    def test_si_el_intento_sin_ventana_falla_se_sigue_con_la_ventana_normal(self):
+        """Un perfil viejo o en uso no debe impedir iniciar sesión: antes salía «No pude abrir el navegador»."""
+        _, ventanas = self.preparar(cierra_tras=1, sesion_valida=True, hay_perfil=True, falla_primero=True)
+        with mock.patch.object(sesion.time, "sleep"):
+            ctx, (cookies, ua) = self.entrar()
+        self.assertEqual(len(ventanas), 1)
+        self.assertEqual(ua, "UA")
+
+    def test_el_mensaje_generico_manda_al_registro(self):
+        texto = sesion.mensaje_de_error(navegador.ErrorNavegador("algo raro de selenium"))
+        self.assertIn("Ver registro", texto)
 
     def test_si_cierras_sin_haber_entrado_lo_dice(self):
         self.preparar(cierra_tras=1, sesion_valida=False)

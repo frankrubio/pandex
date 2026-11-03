@@ -3,6 +3,13 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.1
+
+- **Iniciar sesión ya no se queda trabado por un perfil viejo.** Si el intento sin ventana falla (por
+  ejemplo, el perfil de Chrome de una versión anterior), Pandex sigue con la ventana normal en vez de
+  decir «No pude abrir el navegador». Ese mensaje ahora manda a «Ver registro» para ver el motivo.
+- El asistente de Canvas explica que en Chrome y Edge la ventana se cierra a mano al ver tu Canvas.
+
 ## 2.6.0
 
 - **Sincronizar sin abrir el navegador.** Pandex guarda la sesión de tu Canvas (solo las cookies de
