@@ -174,6 +174,9 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
                 contexto.close()
             ctx.log("hace falta iniciar sesión a mano", "warning")
 
+        if navegador in _navegador.VENTANA_NORMAL:
+            return _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login)
+
         ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador.")
         espera = time.monotonic()
         contexto = abrir(False)
@@ -197,6 +200,45 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
                 contexto.close()
             except Exception:
                 pass
+
+
+def _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login):
+    """Chrome y Edge: la persona inicia sesión en una ventana normal y la cierra; luego se comprueba.
+
+    Con Selenium controlando la ventana, Google no deja iniciar sesión. La sesión queda en el
+    perfil de Pandex y el navegador sin ventana la usa (como siempre) para renovar la de Canvas.
+    """
+    ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador. "
+              "Cuando veas tu Canvas, ciérrala y sigo yo.")
+    espera = time.monotonic()
+    ventana = _navegador.abrir_ventana_normal(navegador, base)
+    limite = espera + espera_login
+    while ventana.poll() is None:
+        if time.monotonic() > limite:
+            ventana.terminate()
+            raise CanvasError("Se acabó el tiempo para iniciar sesión en Canvas.")
+        time.sleep(0.5)
+    contexto = abrir(True)
+    try:
+        page, ua = _pagina(contexto)
+        page.goto(base, wait_until="domcontentloaded", timeout=60000)
+        if not _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
+            raise CanvasError("No pude confirmar tu sesión. Inicia sesión y cierra la ventana solo "
+                              "cuando veas tu Canvas.")
+        ctx.log("sesión iniciada en ventana normal, queda guardada en el perfil")
+        ctx.decir("¡Listo, ya entré! Sigo yo.")
+        ULTIMO.update(modo="manual", espera_manual=time.monotonic() - espera)
+        cookies = contexto.cookies()
+        guardar_atajo(base, cookies, ua)
+        return cookies, ua
+    except errores as exc:
+        raise CanvasError("No pude confirmar tu sesión. Inicia sesión y cierra la ventana solo "
+                          "cuando veas tu Canvas.") from exc
+    finally:
+        try:
+            contexto.close()
+        except Exception:
+            pass
 
 
 def mensaje_de_error(exc):

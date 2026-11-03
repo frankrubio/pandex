@@ -230,7 +230,7 @@ class Sesion(unittest.TestCase):
             return abiertos[-1]
 
         for nombre, valor in (("abrir", abrir), ("hay_sesion", lambda _n: hay_sesion),
-                              ("elegir", lambda preferido="auto": "chrome")):
+                              ("elegir", lambda preferido="auto": "firefox")):
             parche = mock.patch.object(navegador, nombre, valor)
             parche.start()
             self.addCleanup(parche.stop)
@@ -242,7 +242,7 @@ class Sesion(unittest.TestCase):
 
     def test_sin_ventana_aunque_la_pagina_siga_navegando(self):
         abiertos = self.navegador(2)
-        cookies, ua = sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="chrome")
+        cookies, ua = sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="firefox")
         self.assertEqual(ua, "Mozilla/5.0")
         self.assertTrue(abiertos[0].headless and abiertos[0].cerrado)
 
@@ -250,14 +250,14 @@ class Sesion(unittest.TestCase):
         abiertos = self.navegador(10 ** 9, 3)
         ctx = self.ctx()
         cookies, ua = sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", espera_login=60,
-                                                navegador="chrome")
+                                                navegador="firefox")
         self.assertEqual(len(ctx.globos), 2)
         self.assertTrue(all(c.cerrado for c in abiertos))
         self.assertFalse(abiertos[1].headless)
 
     def test_sin_sesion_guardada_abre_con_ventana_de_una(self):
         abiertos = self.navegador(0, hay_sesion=False)
-        sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="chrome")
+        sesion.iniciar_sesion(self.ctx(), "https://canvas.ejemplo.edu", navegador="firefox")
         self.assertEqual([c.headless for c in abiertos], [False])
 
 

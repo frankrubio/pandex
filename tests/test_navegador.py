@@ -172,3 +172,126 @@ class SinPlaywright(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class VentanaNormal(unittest.TestCase):
+    """Google rechaza el inicio de sesión si Selenium controla Chrome o Edge («software de pruebas
+    automatizadas»): ahí la persona entra en una ventana normal y Pandex solo comprueba después."""
+
+    def test_solo_chrome_y_edge(self):
+        self.assertEqual(set(navegador.VENTANA_NORMAL), {"chrome", "edge"})
+
+    def test_la_ventana_normal_no_lleva_ningun_control_remoto(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        with instalados("edge"), mock.patch.object(navegador, "PERFILES", {n: tmp / n for n in navegador.TODOS}), \
+                mock.patch.object(navegador, "_snap", return_value=None), \
+                mock.patch.object(navegador.subprocess, "Popen") as popen:
+            navegador.abrir_ventana_normal("edge", "https://canvas.ejemplo.edu")
+        comando = popen.call_args.args[0]
+        self.assertEqual(comando[0], "/usr/bin/edge")
+        self.assertIn(f"--user-data-dir={tmp / 'edge'}", comando)
+        self.assertEqual(comando[-1], "https://canvas.ejemplo.edu")
+        self.assertFalse([a for a in comando if "remote-debugging" in a or "automation" in a.lower()])
+        self.assertTrue((tmp / "edge").is_dir())
+
+    def test_sin_el_navegador_dice_que_hacer(self):
+        with instalados(), self.assertRaises(navegador.ErrorNavegador):
+            navegador.abrir_ventana_normal("edge", "https://x")
+
+    def test_chromium_oculta_la_marca_de_automatizacion(self):
+        webdriver = mock.MagicMock()
+        opciones = navegador._opciones(webdriver, "edge", "/usr/bin/edge", Path("/tmp/p"), True)
+        webdriver.EdgeOptions.return_value.add_experimental_option.assert_any_call(
+            "excludeSwitches", ["enable-automation"])
+        self.assertIs(opciones, webdriver.EdgeOptions.return_value)
+        argumentos = [c.args[0] for c in opciones.add_argument.call_args_list]
+        self.assertIn("--disable-blink-features=AutomationControlled", argumentos)
+
+
+class IniciarSesionConVentanaNormal(unittest.TestCase):
+    def setUp(self):
+        self.addCleanup(setattr, sesion, "ESPERA_SSO", sesion.ESPERA_SSO)
+        sesion.ESPERA_SSO = 0.2
+        self.addCleanup(setattr, sesion, "ATAJO", sesion.ATAJO)
+        sesion.ATAJO = Path(tempfile.mkdtemp()) / "sesion_canvas.json"
+        self.addCleanup(__import__("shutil").rmtree, sesion.ATAJO.parent, True)
+
+    def preparar(self, *, cierra_tras, sesion_valida):
+        """Chrome sin sesión guardada: ventana normal (se cierra tras N sondeos) y comprobación sin ventana."""
+        abiertos, ventanas = [], []
+
+        class Proceso:
+            sondeos, terminado = 0, False
+
+            def poll(self):
+                self.sondeos += 1
+                return 0 if cierra_tras is not None and self.sondeos > cierra_tras else None
+
+            def terminate(self):
+                self.terminado = True
+
+        class Pagina:
+            def evaluate(self, _js):
+                return "UA"
+
+            def goto(self, *_a, **_k):
+                pass
+
+            def wait_for_timeout(self, _ms):
+                pass
+
+        class Contexto:
+            def __init__(self, headless):
+                self.headless, self.pages = headless, [Pagina()]
+                self.request = type("R", (), {"get": lambda *_a, **_k: type(
+                    "Resp", (), {"status": 200 if sesion_valida else 401})()})()
+
+            def cookies(self):
+                return [{"name": "sesion", "value": "x", "domain": "canvas.ejemplo.edu"}]
+
+            def close(self):
+                pass
+
+        def abrir(_nombre, headless):
+            abiertos.append(Contexto(headless))
+            return abiertos[-1]
+
+        def ventana(nombre, url):
+            ventanas.append((nombre, url, Proceso()))
+            return ventanas[-1][2]
+
+        for nombre, valor in (("abrir", abrir), ("abrir_ventana_normal", ventana), ("hay_sesion", lambda _n: False),
+                              ("elegir", lambda preferido="auto": "edge")):
+            parche = mock.patch.object(navegador, nombre, valor)
+            parche.start()
+            self.addCleanup(parche.stop)
+        return abiertos, ventanas
+
+    def entrar(self, **k):
+        ctx = type("Ctx", (), {"globos": [], "log": lambda s, *a: None, "decir": lambda s, t: s.globos.append(t)})()
+        return ctx, sesion.iniciar_sesion(ctx, "https://canvas.ejemplo.edu", navegador="edge", **k)
+
+    def test_entra_en_ventana_normal_y_comprueba_sin_ventana(self):
+        abiertos, ventanas = self.preparar(cierra_tras=2, sesion_valida=True)
+        with mock.patch.object(sesion.time, "sleep"), mock.patch("requests.get", side_effect=AssertionError):
+            ctx, (cookies, ua) = self.entrar()
+        self.assertEqual(ventanas[0][:2], ("edge", "https://canvas.ejemplo.edu"))
+        self.assertEqual([a.headless for a in abiertos], [True], "Selenium nunca abre la ventana del login")
+        self.assertEqual(ua, "UA")
+        self.assertEqual(sesion.ULTIMO["modo"], "manual")
+        self.assertIn("ciérrala", ctx.globos[0])
+
+    def test_si_cierras_sin_haber_entrado_lo_dice(self):
+        self.preparar(cierra_tras=1, sesion_valida=False)
+        with mock.patch.object(sesion.time, "sleep"), self.assertRaises(sesion.CanvasError) as e:
+            self.entrar()
+        self.assertIn("No pude confirmar tu sesión", str(e.exception))
+
+    def test_si_no_entras_a_tiempo_cierra_la_ventana(self):
+        _, ventanas = self.preparar(cierra_tras=None, sesion_valida=False)
+        with mock.patch.object(sesion.time, "sleep"), self.assertRaises(sesion.CanvasError) as e:
+            self.entrar(espera_login=0)
+        self.assertIn("Se acabó el tiempo", str(e.exception))
+        self.assertTrue(ventanas[0][2].terminado)
+

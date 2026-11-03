@@ -14,6 +14,10 @@ cuando buscas actualizaciones desde el menú.
   «atajo», «navegador» o «manual». El tiempo que tardas en iniciar sesión tú ya no cuenta como
   tiempo de Pandex.
 - Selenium ya no manda estadísticas de uso.
+- **Arreglo: Google ya no rechaza el inicio de sesión en Chrome y Edge.** Salía «No se ha podido
+  iniciar sesión · un software de pruebas automatizadas está controlando Edge». Ahora, cuando hace
+  falta iniciar sesión, Pandex abre una ventana normal de tu navegador (sin control remoto); inicias
+  sesión, la cierras y Pandex comprueba por su cuenta. Firefox sigue como antes.
 
 ## 2.5.2
 

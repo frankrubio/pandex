@@ -27,6 +27,10 @@ from ..rutas import DATOS, NAVEGADORES, WINDOWS
 log = get_logger("pandex.navegador")
 
 TODOS = ("firefox", "chrome", "edge")
+# Google rechaza el inicio de sesión («software de pruebas automatizadas está controlando…»)
+# si Selenium controla Chrome o Edge. Ahí la persona entra en una ventana normal, sin control
+# remoto, y Pandex solo comprueba después con el navegador sin ventana.
+VENTANA_NORMAL = ("chrome", "edge")
 NOMBRES = {"firefox": "Firefox", "chrome": "Google Chrome", "edge": "Microsoft Edge"}
 ORDEN = ("edge", "chrome", "firefox") if WINDOWS else ("firefox", "chrome", "edge")
 
@@ -273,13 +277,35 @@ def _opciones(webdriver, nombre, binario, carpeta, headless):
     else:
         opciones = webdriver.EdgeOptions() if nombre == "edge" else webdriver.ChromeOptions()
         for argumento in (f"--user-data-dir={carpeta}", "--no-first-run", "--no-default-browser-check",
-                          "--window-size=1366,900"):
+                          "--window-size=1366,900", "--disable-blink-features=AutomationControlled"):
             opciones.add_argument(argumento)
+        opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
         if headless:
             opciones.add_argument("--headless=new")
     opciones.binary_location = binario
     opciones.page_load_strategy = "eager"  # como «domcontentloaded»: no esperar imágenes
     return opciones
+
+
+def abrir_ventana_normal(nombre, url):
+    """Abre ``url`` en una ventana normal de ``nombre`` con el perfil de Pandex (sin control remoto).
+
+    Devuelve el proceso: cuando la persona cierra la ventana, termina. Lanza ``ErrorNavegador``.
+    """
+    binario = ruta(nombre)
+    if binario is None:
+        raise ErrorNavegador(f"No encontré {NOMBRES[nombre]}. Instálalo o elige otro navegador en "
+                             "Configuración → Tareas → Sincronizar Canvas.")
+    carpeta = perfil(nombre, binario)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    comando = [binario, f"--user-data-dir={carpeta}", "--no-first-run", "--no-default-browser-check",
+               "--disable-background-mode", "--disable-features=msStartupBoost,StartupBoost", url]
+    try:
+        return subprocess.Popen(comando)
+    except OSError as exc:
+        log.error("%s no abrió: %s", NOMBRES[nombre], exc)
+        raise ErrorNavegador(f"No pude abrir {NOMBRES[nombre]}. Ciérralo si estaba abierto con Pandex y "
+                             "vuelve a intentar.") from exc
 
 
 def abrir(nombre, headless):
