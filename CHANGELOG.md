@@ -3,6 +3,19 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.2
+
+- **Iniciar sesión con Chrome o Edge, sin trabas.** Un error de un momento del navegador mientras
+  Canvas te lleva al login de tu universidad ya no corta el inicio de sesión con «No pude abrir el
+  navegador».
+- **Menos espera antes de la ventana.** Si la página se queda pidiendo iniciar sesión, la ventana se
+  abre a los 6 s y no a los 20 s. Con un navegador con el que nunca entraste (por ejemplo, Edge
+  después de que Google lo rechazara), se abre enseguida.
+- **Si la ventana de Pandex ya estaba abierta**, Canvas se abre en ella y Pandex espera a que la
+  cierres. Antes comprobaba con la ventana todavía abierta y fallaba.
+- El mensaje de error trae el detalle técnico en una línea, y el registro dice en qué página se
+  quedó el inicio de sesión (solo el sitio, sin datos).
+
 ## 2.6.1
 
 - **Iniciar sesión ya no se queda trabado por un perfil viejo.** Si el intento sin ventana falla (por

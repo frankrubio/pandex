@@ -82,6 +82,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T008.1 | Estilo de carpetas (`_` por defecto, o el tuyo) | 008 | — | hecha |
 | T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | hecha |
 | T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T010.1 | Iniciar sesión sin trabas en Chrome y Edge | 010 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Preguntas abiertas para Frank
 

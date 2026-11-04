@@ -22,6 +22,7 @@ from .cliente import CanvasError
 log = get_logger("pandex.sesion")
 
 ESPERA_SSO = 20  # segundos para que un login institucional (SSO) termine solo
+QUIETO = 6  # sin navegador a la vista: si la página no se mueve en 6 s, espera que inicies sesión tú
 
 # Atajo de sesión (spec 001, T001.3): las cookies de Canvas de la última vez que entraste.
 # Mientras Canvas las acepte, no hace falta abrir el navegador (~4 s menos). Son las mismas
@@ -61,17 +62,37 @@ def _sesion_valida(contexto, base):
         return False
 
 
-def _esperar_sesion(contexto, page, base, segundos, paso_ms):
+def _donde(url):
+    """Sitio y ruta de una dirección, sin parámetros (pueden traer códigos del login, P1)."""
+    from urllib.parse import urlsplit
+
+    try:
+        partes = urlsplit(url or "")
+    except ValueError:
+        return "?"
+    return f"{partes.hostname or '?'}{partes.path[:80]}"
+
+
+def _esperar_sesion(contexto, page, base, segundos, paso_ms, quieto=None):
     """Pregunta a la API si ya estás dentro mientras la página hace sus redirecciones.
 
     Mirar la URL una sola vez no sirve: si el SSO va a medio camino, parece que
-    la sesión caducó cuando en realidad está entrando.
+    la sesión caducó cuando en realidad está entrando. Con ``quieto``, si la página no cambia de
+    dirección en esos segundos, está esperando que inicies sesión: no tiene sentido seguir.
     """
-    limite = time.monotonic() + segundos
+    ahora = time.monotonic()
+    limite, url, desde = ahora + segundos, None, ahora
     while time.monotonic() < limite:
         if _sesion_valida(contexto, base):
             return True
         page.wait_for_timeout(paso_ms)  # si cerraste la ventana, esto lanza error
+        vista = getattr(page, "url", None)
+        if vista != url:
+            url, desde = vista, time.monotonic()
+        elif quieto is not None and url and time.monotonic() - desde >= quieto:
+            log.info("la página se quedó en %s: hace falta iniciar sesión", _donde(url))
+            return False
+    log.info("la sesión no se confirmó a tiempo; la página quedó en %s", _donde(url))
     return False
 
 
@@ -158,14 +179,20 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
         ctx.log("sesión guardada válida: no abrí el navegador")
         return entrada
     navegador = elegir_navegador(navegador, usar_chrome)
+    ocupado = _navegador.en_uso(navegador)
+    if ocupado:
+        log.info("el perfil de %s ya está abierto", navegador)
+        if navegador not in _navegador.VENTANA_NORMAL:
+            raise CanvasError(f"Ya hay una ventana de {_navegador.NOMBRES[navegador]} abierta por Pandex. "
+                              "Ciérrala y vuelve a intentar.")
     with _abridor(navegador, usar_chrome) as (abrir, errores):
-        if invisible_primero and _hay_perfil(navegador):
+        if invisible_primero and not ocupado and _hay_perfil(navegador):
             try:
                 contexto = abrir(True)
                 try:
                     page, ua = _pagina(contexto)
                     page.goto(base, wait_until="domcontentloaded", timeout=60000)
-                    if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
+                    if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500, quieto=QUIETO):
                         ctx.log("sesión renovada sin abrir ventanas")
                         ULTIMO["modo"] = "navegador"
                         _navegador.recordar(navegador)
@@ -180,7 +207,9 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
             ctx.log("hace falta iniciar sesión a mano", "warning")
 
         if navegador in _navegador.VENTANA_NORMAL:
-            return _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login)
+            # el navegador sin ventana puede tardar un poco en soltar el perfil al cerrarse
+            ocupado = ocupado or _sigue_ocupado(navegador, 5)
+            return _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login, ocupado)
 
         ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador.")
         espera = time.monotonic()
@@ -208,27 +237,47 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
                 pass
 
 
-def _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login):
+def _sigue_ocupado(navegador, segundos):
+    """¿El perfil sigue abierto después de esperar hasta ``segundos``?"""
+    for _ in range(int(segundos / 0.2)):
+        if not _navegador.en_uso(navegador):
+            return False
+        time.sleep(0.2)
+    return _navegador.en_uso(navegador)
+
+
+def _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login, ocupado=False):
     """Chrome y Edge: la persona inicia sesión en una ventana normal y la cierra; luego se comprueba.
 
-    Con Selenium controlando la ventana, Google no deja iniciar sesión. La sesión queda en el
-    perfil de Pandex y el navegador sin ventana la usa (como siempre) para renovar la de Canvas.
+    Con Selenium controlando la ventana (o con el puerto de depuración), Google no deja iniciar
+    sesión. La sesión queda en el perfil de Pandex y el navegador sin ventana la usa (como siempre)
+    para renovar la de Canvas.
+
+    Se comprueba cuando el navegador suelta el perfil, no cuando termina el proceso que se abrió:
+    si ya había una ventana con ese perfil, el proceso le pasa la dirección y termina enseguida
+    (también al reiniciarse el navegador para actualizarse).
     """
-    ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador. "
-              "Cuando veas tu Canvas, ciérrala y sigo yo.")
+    if ocupado:
+        ctx.decir(f"Tu ventana de {_navegador.NOMBRES[navegador]} de Pandex ya estaba abierta: te abrí Canvas "
+                  "ahí. Inicia sesión y, cuando veas tu Canvas, ciérrala y sigo yo. Si no la ves, cierra "
+                  f"{_navegador.NOMBRES[navegador]} y reintenta.")
+    else:
+        ctx.decir("Necesito que inicies sesión en Canvas: te abrí el navegador. "
+                  "Cuando veas tu Canvas, ciérrala y sigo yo.")
     espera = time.monotonic()
     ventana = _navegador.abrir_ventana_normal(navegador, base)
     limite = espera + espera_login
-    while ventana.poll() is None:
+    while ventana.poll() is None or _navegador.en_uso(navegador):
         if time.monotonic() > limite:
-            ventana.terminate()
+            if ventana.poll() is None:
+                ventana.terminate()
             raise CanvasError("Se acabó el tiempo para iniciar sesión en Canvas.")
         time.sleep(0.5)
     contexto = abrir(True)
     try:
         page, ua = _pagina(contexto)
         page.goto(base, wait_until="domcontentloaded", timeout=60000)
-        if not _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
+        if not _esperar_sesion(contexto, page, base, ESPERA_SSO, 500, quieto=QUIETO):
             raise CanvasError("No pude confirmar tu sesión. Inicia sesión y cierra la ventana solo "
                               "cuando veas tu Canvas.")
         ctx.log("sesión iniciada en ventana normal, queda guardada en el perfil")
@@ -255,5 +304,6 @@ def mensaje_de_error(exc):
         return "No hay conexión: no pude llegar a Canvas."
     if isinstance(exc, _navegador.ErrorNavegador) and texto.startswith(("No encontré", "Falta", "No pude")):
         return texto
+    motivo = _navegador.primera_linea(exc)[:150]
     return ("No pude abrir el navegador para entrar a Canvas. Cierra las ventanas de tu navegador y "
-            "reintenta; si sigue, el motivo está en «Ver registro».")
+            "reintenta; si sigue, el motivo está en «Ver registro»." + (f" Detalle: {motivo}" if motivo else ""))
