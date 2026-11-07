@@ -3,6 +3,13 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.3
+
+- **Convertir a Markdown ya no intenta mandar datos a Microsoft.** MarkItDown cargaba Magika y,
+  con él, `onnxruntime`, que intenta conectarse a un servidor de telemetría de Microsoft. Pandex
+  nunca usó Magika (decide el tipo por la extensión), y ahora ni lo carga. De paso, la conversión
+  usa unos 40 MB menos de memoria.
+
 ## 2.6.2
 
 - **Iniciar sesión con Chrome o Edge, sin trabas.** Un error de un momento del navegador mientras

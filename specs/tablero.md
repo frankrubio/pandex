@@ -33,6 +33,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T004.6 | Olvidar mi sesión | 004 | — | libre |
 | T004.7 | Claves de config documentadas | 004 | — | libre |
 | T004.8 | Escáner de secretos en la CI | 004 | — | libre |
+| T004.9 | MarkItDown sin Magika ni onnxruntime: sin telemetría | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Prioridad 3 · Rendimiento y peso (los requisitos de números)
 
