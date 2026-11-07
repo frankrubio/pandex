@@ -29,7 +29,8 @@ número de semana van a una carpeta con su nombre.
 Muchas universidades separan **teoría y laboratorio en dos cursos** de Canvas
 (`Programación I - Teoría 1` y `Programación I - Laboratorio 14`). El asistente los reconoce
 porque sus nombres solo difieren en esa parte, y les da una sola carpeta con `Teoría` y `Lab`
-dentro de cada semana. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 11`) es uno solo.
+dentro de cada semana. Si ya tenías carpetas con otro nombre (`teo`, `Laboratorio`…), las reutiliza:
+`teo`/`teor`/`Teoría` cuentan como la misma, y `lab`/`labo`/`Laboratorio` también. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 11`) es uno solo.
 
 ## Las fases de una sincronización
 

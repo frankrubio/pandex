@@ -3,6 +3,12 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.1
+
+- **Arreglo: ya no duplica `teo` / `Teoría` ni `lab` / `Laboratorio`.** Si tu carpeta de la mitad del
+  curso se llama `teo` (o `teor`, `labo`…), Pandex la reconoce como Teoría o Lab y la reutiliza en vez
+  de crear otra al lado. Lo mismo vale para las secciones que quedan dentro.
+
 ## 2.6.0
 
 - **Sincronizar sin abrir el navegador.** Pandex guarda la sesión de tu Canvas (solo las cookies de
