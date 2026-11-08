@@ -51,6 +51,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | hecha |
 | T002.6 | Pesos reales en la documentación | 002 | T002.4 | libre |
 | T002.7 | Memoria en reposo ≤ 80 MB de RSS siempre (hoy 74–88 MB) | 002 | — | libre |
+| T002.8 | MarkItDown sin Magika, onnxruntime ni numpy | 002 | T004.9 | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Prioridad 4 · Desinstalar, paridad e interfaz
 
@@ -85,6 +86,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | hecha |
 | T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T010.1 | Iniciar sesión sin trabas en Chrome y Edge | 010 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T010.2 | Correcciones de la revisión de código del inicio de sesión | 010 | T010.1 | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Preguntas abiertas para Frank
 

@@ -29,7 +29,10 @@ jobs:
           sudo locale-gen es_PE.UTF-8
           echo "LANG=es_PE.UTF-8" >> "$GITHUB_ENV"
       - name: Dependencias
-        run: python -m pip install -r requirements.txt -r requirements-markdown.txt
+        # como lo instala Pandex: MarkItDown sin Magika (PES-10)
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pandex.paquetes requirements-markdown.txt
       - name: Pruebas (sin internet, ventanas invisibles)
         env:
           QT_QPA_PLATFORM: offscreen

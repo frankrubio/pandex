@@ -52,9 +52,9 @@ Programas que Pandex abre y que hablan por su cuenta:
 | Selenium Manager (Linux) | GitHub, para bajar `geckodriver` (~3 MB) | la primera vez que inicias sesión |
 | rclone (Linux) | Microsoft | si conectas OneDrive |
 
-Ninguna biblioteca que Pandex carga manda telemetría. MarkItDown («Convertir a Markdown») trae
-Magika y `onnxruntime`, que intenta conectarse a `mobile.events.data.microsoft.com`. Pandex no
-los carga: decide el tipo de archivo por la extensión (spec 004, PRI-10).
+Ninguna biblioteca que Pandex carga manda telemetría. MarkItDown («Convertir a Markdown») pide
+Magika y `onnxruntime`, que intenta conectarse a `mobile.events.data.microsoft.com`. Pandex no los
+instala ni los carga: decide el tipo de archivo por la extensión (spec 004, PRI-10; spec 002, PES-10).
 
 ## Borrar tus datos
 

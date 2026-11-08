@@ -10,9 +10,16 @@ Todo ``pip`` pasa por aquí, para que nada se olvide de estas dos opciones:
 ``huerfanos`` dice qué paquetes ya no pide ningún ``requirements*.txt`` (ni como
 dependencia): al actualizar se quitan, así una versión nueva que deja de usar algo
 (p. ej. Playwright o pandas) también libera ese espacio.
+
+Un requisito con el comentario ``# pandex: sin-dependencias`` se instala con ``--no-deps`` y sus
+dependencias no cuentan como pedidas: así MarkItDown no trae Magika, onnxruntime ni numpy (unos
+150 MB que Pandex no usa). Lo que sí usa va en el mismo archivo, en su propia línea (spec 002, PES-10).
+
+Los instaladores lo llaman así: ``python -m pandex.paquetes requirements-markdown.txt``.
 """
 
 import json
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -22,6 +29,7 @@ from .log import get_logger
 log = get_logger("pandex.paquetes")
 
 OPCIONES = ("--no-cache-dir", "--no-compile", "--disable-pip-version-check", "--quiet")
+SIN_DEPENDENCIAS = "pandex: sin-dependencias"  # comentario que marca un requisito a instalar con --no-deps
 # nunca se quitan: sin ellos no se puede volver a instalar nada
 INTOCABLES = frozenset({"pip", "setuptools", "wheel"})
 
@@ -43,13 +51,49 @@ def _pip(python, *args):
     )
 
 
+def _sin_comentario(linea):
+    """``(requisito, comentario)``: como pip, el comentario empieza en un «#» al inicio o tras un espacio."""
+    import re
+
+    partes = re.split(r"(?:^|\s)#", linea, maxsplit=1)
+    return partes[0].strip(), (partes[1] if len(partes) > 1 else "")
+
+
+def _separar(archivo):
+    """``(requisitos, sin_dependencias)`` de un requirements; los primeros listos para pip."""
+    normales, sueltos = [], []
+    for linea in Path(archivo).read_text(encoding="utf-8").splitlines():
+        requisito, comentario = _sin_comentario(linea)
+        if not requisito:
+            continue
+        if SIN_DEPENDENCIAS in comentario:
+            sueltos.append(requisito)
+        else:
+            normales += shlex.split(requisito) if requisito.startswith("-") else [requisito]
+    return normales, sueltos
+
+
 def instalar(archivos, python=None):
-    """``pip install -r a -r b …`` sin caché ni ``.pyc``. Lanza ``ErrorPaquetes`` si falla."""
-    requisitos = [arg for archivo in archivos for arg in ("-r", str(archivo))]
-    r = _pip(python, "install", *requisitos, *OPCIONES)
-    if r.returncode != 0:
-        log.error("pip install falló:\n%s", r.stderr[-3000:])
-        raise ErrorPaquetes("pip no pudo instalar los paquetes.", r.stderr)
+    """``pip install -r a -r b …`` sin caché ni ``.pyc``. Lanza ``ErrorPaquetes`` si falla.
+
+    Lo marcado con ``# pandex: sin-dependencias`` va en un segundo ``pip install --no-deps``.
+    """
+    requisitos, sin_dependencias = [], []
+    for archivo in archivos:
+        normales, sueltos = _separar(archivo)
+        if sueltos:
+            requisitos += normales
+            sin_dependencias += sueltos
+        else:
+            requisitos += ["-r", str(archivo)]
+    r = None
+    for argumentos in (requisitos, ["--no-deps", *sin_dependencias] if sin_dependencias else []):
+        if not argumentos:
+            continue
+        r = _pip(python, "install", *argumentos, *OPCIONES)
+        if r.returncode != 0:
+            log.error("pip install falló:\n%s", r.stderr[-3000:])
+            raise ErrorPaquetes("pip no pudo instalar los paquetes.", r.stderr)
     return r
 
 
@@ -88,22 +132,25 @@ def norm(n):
 
 def pedidos(archivo):
     for linea in open(archivo, encoding="utf-8"):
-        linea = linea.split("#", 1)[0].strip()
-        if linea and not linea.startswith("-"):
-            yield Requirement(linea)
+        partes = re.split(r"(?:^|\s)#", linea, maxsplit=1)
+        requisito, comentario = partes[0].strip(), (partes[1] if len(partes) > 1 else "")
+        if requisito and not requisito.startswith("-"):
+            yield Requirement(requisito), "pandex: sin-dependencias" not in comentario
 
 def aplica(req, extra=""):
     return req.marker is None or req.marker.evaluate({"extra": extra})
 
-pendientes = [r for archivo in sys.argv[1:] for r in pedidos(archivo) if aplica(r)]
+pendientes = [(r, seguir) for archivo in sys.argv[1:] for r, seguir in pedidos(archivo) if aplica(r)]
 necesarios = set()
 while pendientes:
-    req = pendientes.pop()
+    req, seguir = pendientes.pop()
     nombre = norm(req.name)
     clave = (nombre, tuple(sorted(req.extras)))
     if clave in necesarios:
         continue
     necesarios.add(clave)
+    if not seguir:
+        continue  # instalado con --no-deps: lo que pide no cuenta
     try:
         dist = metadata.distribution(req.name)
     except metadata.PackageNotFoundError:
@@ -111,7 +158,7 @@ while pendientes:
     for texto in dist.requires or []:
         dep = Requirement(texto)
         if aplica(dep) or any(aplica(dep, e) for e in req.extras):
-            pendientes.append(dep)
+            pendientes.append((dep, True))
 
 usados = {n for n, _ in necesarios}
 instalados = {norm(d.metadata["Name"]) for d in metadata.distributions() if d.metadata["Name"]}
@@ -148,3 +195,18 @@ def huerfanos(archivos, python=None):
         log.warning("no pude calcular los paquetes que sobran:\n%s", r.stderr[-2000:])
         return []
     return [p for p in sobran if p not in INTOCABLES]
+
+
+def main(argumentos=None):
+    """``python -m pandex.paquetes requirements-x.txt …``: instala como Pandex (lo usan los instaladores)."""
+    archivos = list(sys.argv[1:] if argumentos is None else argumentos)
+    try:
+        instalar(archivos)
+    except ErrorPaquetes as exc:
+        print(exc.detalle[-3000:] or exc, file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

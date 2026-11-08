@@ -19,6 +19,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
 # paquetes que solo trae una función opcional: con --base no puede haber ninguno
+# Paquetes que Pandex no usa: nunca deben estar (PES-10). Los traía MarkItDown con Magika.
+NUNCA = ("magika", "onnxruntime", "numpy")
 DE_EXTRAS = ("markitdown", "magika", "onnxruntime", "pypdfium2", "pdfminer", "mammoth", "pptx", "openpyxl",
              "xlrd", "pandas")
 
@@ -81,6 +83,10 @@ def main(argumentos=None):
         for nombre, peso in sorted(r["paquetes"].items(), key=lambda x: -x[1])[:15]:
             print(f"  {mb(peso):>4} MB  {nombre}")
     fallo = False
+    sobran = sorted(n for n in r["paquetes"] if n.lower().split(".")[0] in NUNCA)
+    if sobran:
+        print(f"PES-10: Pandex no usa {', '.join(sobran)} y no debería estar instalado", file=sys.stderr)
+        fallo = True
     if a.base and extras:
         print(f"PES-03: sin funciones opcionales no debería estar: {', '.join(extras)}", file=sys.stderr)
         fallo = True

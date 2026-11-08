@@ -86,3 +86,20 @@
 - **Cambio:** buscar qué se carga al arrancar sin hacer falta (módulos de Qt, imágenes,
   hilos) y retrasarlo hasta que se use. No cambiar de framework.
 - **Terminado cuando:** 10 mediciones seguidas ≤ 80 MB en Linux y en Windows.
+
+## T002.8 · MarkItDown sin Magika, onnxruntime ni numpy
+
+- **Requisitos:** PES-10
+- **Depende de:** T004.9 (Pandex ya no carga Magika)
+- **Prueba primero:** `tests/test_residuos.py` (`PipSinCache`, `Huerfanos`) y
+  `tests/test_markdown.py::SinMagikaInstalado`.
+- **Cambio:** marca `# pandex: sin-dependencias` en `requirements-markdown.txt`, que `paquetes.instalar`
+  y `paquetes.huerfanos` respetan; los instaladores y la CI instalan con `python -m pandex.paquetes`;
+  `medir_peso.py` falla si encuentra Magika, onnxruntime o numpy.
+- **Terminado cuando:**
+  - [x] las pruebas nuevas pasan y antes fallaban;
+  - [x] medido en Linux: 211 → 86 MB, y una actualización quita los 8 paquetes que sobran;
+  - [x] PDF, Word, PowerPoint, Excel, CSV y HTML se convierten sin Magika instalado;
+  - [ ] el job `peso` de la CI pasa en Windows y Linux;
+  - [ ] `instalar.bat` probado en Windows real.
+

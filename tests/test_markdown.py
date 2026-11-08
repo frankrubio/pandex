@@ -8,6 +8,7 @@ from pathlib import Path
 from pandex import extras
 from pandex.markdown import archivos, conversion, lote
 from pandex.markdown.clasificador import Clasificador
+from pandex.rutas import RAIZ
 from tests.apoyo import CtxFalso
 
 
@@ -154,6 +155,34 @@ class SinTelemetria(unittest.TestCase):
     def test_el_conversor_de_excel_tampoco(self):
         cargado = self.cargado_tras("from pandex.markdown import excel\nexcel.convertidor()")
         self.assertEqual(cargado, {"onnxruntime": False, "magika_real": False})
+
+
+class SinMagikaInstalado(unittest.TestCase):
+    """PES-10 (spec 002): MarkItDown se instala sin sus dependencias y Pandex pone las que usa."""
+
+    def test_markitdown_va_sin_dependencias(self):
+        texto = (RAIZ / "requirements-markdown.txt").read_text(encoding="utf-8")
+        lineas = [linea for linea in texto.splitlines() if linea.startswith("markitdown")]
+        self.assertEqual(len(lineas), 1)
+        self.assertIn("# pandex: sin-dependencias", lineas[0])
+        self.assertNotRegex(texto, r"(?m)^(magika|onnxruntime|numpy)\b")
+
+    @unittest.skipUnless(extras.instalado("markdown"), "«Convertir a Markdown» no está instalado")
+    def test_estan_las_que_markitdown_usa(self):
+        """Las de MarkItDown y las de sus partes pdf, docx y pptx, salvo Magika."""
+        import re
+        from importlib import metadata
+
+        pedidas = (RAIZ / "requirements.txt").read_text(encoding="utf-8") + \
+            (RAIZ / "requirements-markdown.txt").read_text(encoding="utf-8")
+        pedidas = {re.sub(r"[-_.]+", "-", m).lower() for m in re.findall(r"(?m)^([A-Za-z0-9_.-]+)", pedidas)}
+        for texto in metadata.requires("markitdown") or []:
+            nombre, _, condicion = texto.partition(";")
+            nombre = re.sub(r"[-_.]+", "-", re.split(r"[ <>=!~\[(]", nombre.strip())[0]).lower()
+            if nombre == "magika" or (condicion and not re.search(r"extra == .(pdf|docx|pptx).", condicion)):
+                continue
+            with self.subTest(dependencia=nombre):
+                self.assertIn(nombre, pedidas)
 
 
 if __name__ == "__main__":

@@ -57,7 +57,7 @@ fi
 case "$QUIERE" in
     s|S|si|sí|Si|Sí|SI|y|Y|yes)
         echo " Instalando «Convertir a Markdown»..."
-        .venv/bin/python -m pip install -r requirements-markdown.txt --quiet --no-compile || fallo ;;
+        .venv/bin/python -m pandex.paquetes requirements-markdown.txt || fallo ;;  # sin Magika (PES-10)
     *) echo " Sin «Convertir a Markdown»: Pandex queda más liviano." ;;
 esac
 

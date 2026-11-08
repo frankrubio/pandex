@@ -39,7 +39,7 @@ echo Sin Convertir a Markdown: Pandex queda mas liviano.
 goto :sin_markdown
 :con_markdown
 echo Instalando Convertir a Markdown...
-".venv\Scripts\python.exe" -m pip install -r requirements-markdown.txt --quiet --no-compile || goto :fallo
+".venv\Scripts\python.exe" -m pandex.paquetes requirements-markdown.txt || goto :fallo
 :sin_markdown
 
 rem 4. Navegador para Canvas: el tuyo (Edge, Chrome o Firefox). No se descarga ninguno.

@@ -49,6 +49,7 @@ Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin**
 | PES-06 | Los instaladores preguntan por cada función opcional con su **peso medido**; la respuesta por defecto es «no». Sin preguntar: `PANDEX_EXTRAS=markdown` o `PANDEX_EXTRAS=ninguno`. | `test_instaladores_leen_pandex_extras` + prueba manual |
 | PES-07 | Nunca se descarga un navegador: se usa el tuyo (Firefox, Chrome o Edge; por defecto el predeterminado, y en Windows siempre hay Edge). Solo el driver de Selenium (3–15 MB) va a `DATOS/navegadores`. | `tests/test_navegador.py` |
 | PES-08 | El README y el instalador muestran pesos **medidos** por la CI, no estimados. | revisión |
+| PES-10 | Ninguna función opcional instala paquetes que Pandex no usa. MarkItDown va sin sus dependencias (`# pandex: sin-dependencias` en su `requirements`, ver `pandex/paquetes.py`): no trae Magika, onnxruntime ni numpy. Pandex instala aparte lo que MarkItDown sí usa. Al actualizar, los que ya estaban se quitan. | `tests/test_residuos.py` (`test_lo_marcado_sin_dependencias_se_instala_aparte`, `test_lo_que_va_sin_dependencias_no_las_retiene`), `tests/test_markdown.py::SinMagikaInstalado`, y `medir_peso.py` falla si los encuentra |
 | PES-09 | La compatibilidad hacia atrás con `PANDEX_MARKDOWN=si/no` se mantiene un ciclo (aviso de obsoleto). | `test_instaladores_leen_pandex_extras` |
 
 ## Escenarios
@@ -89,4 +90,5 @@ Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin**
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión con mediciones en Linux. | Requisito de Frank: máximo 600 MB. |
+| 2026-11-08 | PES-10. | Revisión de código: Pandex ya no cargaba Magika (spec 004, PRI-10), pero se seguía instalando con onnxruntime y numpy. Medido en Linux, solo «Convertir a Markdown»: 211 MB antes y 86 MB después de actualizar (se quitaron 8 paquetes). Los seis formatos (PDF, Word, PowerPoint, Excel, CSV y HTML) se convierten igual. |
 | 2026-10-31 | Nueva medición en Linux: base 341 MB y completo 660 MB, antes de los cambios. Con ADR-0001 (pip `--no-compile`, Excel sin pandas, Selenium en los dos sistemas): base 326 MB y completo 532 MB. PES-07 pasa a «el navegador que elijas». | ADR-0001 |
