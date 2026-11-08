@@ -4,7 +4,10 @@ Requisito PES-07: nunca se descarga un navegador; el driver va a DATOS/navegador
 """
 
 import os
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -158,6 +161,28 @@ class Abrir(unittest.TestCase):
             navegador.abrir("firefox", True)
         self.assertIn("No encontré Firefox", str(error.exception))
 
+    def test_sin_driver_lo_dice_y_no_se_toma_como_perfil_viejo(self):
+        """Hallazgo 1: si no se pudo descargar el driver, abrir la ventana para iniciar sesión no lo arregla."""
+        webdriver = mock.MagicMock()
+        webdriver.Edge.side_effect = type("NoSuchDriverException", (Exception,), {})("Unable to obtain driver")
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, tmp, True)
+        with instalados("edge"), \
+                mock.patch.object(navegador, "PERFILES", {n: tmp / n for n in navegador.TODOS}), \
+                mock.patch.object(navegador, "NAVEGADORES", tmp / "navegadores"), \
+                mock.patch.object(navegador, "_snap", return_value=None), \
+                mock.patch.object(navegador, "_driver_del_sistema", return_value=None), \
+                mock.patch.dict("sys.modules", {"selenium": mock.MagicMock(webdriver=webdriver),
+                                                "selenium.webdriver": webdriver}), \
+                mock.patch.dict(os.environ), self.assertRaises(navegador.SinInstalar) as error:
+            navegador.abrir("edge", True)
+        self.assertIn("internet", str(error.exception))
+        self.assertEqual(sesion.mensaje_de_error(error.exception), str(error.exception))
+
+    def test_sin_el_navegador_es_algo_por_instalar(self):
+        with instalados(), self.assertRaises(navegador.SinInstalar):
+            navegador.abrir("firefox", True)
+
     def test_el_snap_guarda_el_perfil_donde_puede_entrar(self):
         with mock.patch.object(navegador, "WINDOWS", False), \
                 mock.patch.object(navegador, "_snap", return_value="firefox"):
@@ -268,13 +293,18 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         self.addCleanup(__import__("shutil").rmtree, sesion.ATAJO.parent, True)
 
     def preparar(self, *, cierra_tras, sesion_valida, hay_perfil=False, falla_primero=False,
-                 ocupado_al_empezar=False, suelta_tras=0, nombre="edge", queda_ocupado=False):
+                 ocupado_al_empezar=False, suelta_tras=0, nombre="edge", queda_ocupado=False,
+                 valida_sin_ventana=None, goto_falla=None, procesos=None, suelta_tras_intento=None):
         """Chrome sin sesión guardada: ventana normal (se cierra tras N sondeos) y comprobación sin ventana.
 
         ``ocupado_al_empezar``: ya había una ventana con el perfil de Pandex. ``suelta_tras``: cuántas
-        veces más sigue ocupado el perfil después de abrir la ventana."""
+        veces más sigue ocupado el perfil después de abrir la ventana. ``falla_primero``: True o el
+        error con que falla el primer ``abrir``. ``procesos``: lo que dice ``procesos_del_perfil``.
+        ``suelta_tras_intento``: cuántas consultas sigue ocupado el perfil tras el intento sin ventana."""
         abiertos, ventanas = [], []
-        self.perfil = {"consultas": 0, "al_comprobar": None, "intento": False}
+        self.perfil = {"consultas": 0, "al_comprobar": None, "intento": False, "carpetas": [],
+                       "cerrados": [], "libre_al_abrir": None, "tras_intento": 0}
+        valida_sin_ventana = sesion_valida if valida_sin_ventana is None else valida_sin_ventana
 
         class Proceso:
             sondeos, terminado = 0, False
@@ -291,7 +321,8 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
                 return "UA"
 
             def goto(self, *_a, **_k):
-                pass
+                if goto_falla is not None:
+                    raise goto_falla
 
             def wait_for_timeout(self, _ms):
                 pass
@@ -299,8 +330,9 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         class Contexto:
             def __init__(self, headless):
                 self.headless, self.pages = headless, [Pagina()]
+                valida = valida_sin_ventana if headless and not ventanas else sesion_valida
                 self.request = type("R", (), {"get": lambda *_a, **_k: type(
-                    "Resp", (), {"status": 200 if sesion_valida else 401})()})()
+                    "Resp", (), {"status": 200 if valida else 401})()})()
 
             def cookies(self):
                 return [{"name": "sesion", "value": "x", "domain": "canvas.ejemplo.edu"}]
@@ -312,16 +344,31 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
 
         def abrir(_nombre, headless):
             self.perfil["intento"] = True
-            if pendientes.pop(0) if pendientes else False:
+            falla = pendientes.pop(0) if pendientes else False
+            if isinstance(falla, Exception):
+                raise falla
+            if falla:
                 raise navegador.ErrorNavegador("session not created: el perfil está en uso")
+            if not headless:
+                self.perfil["libre_al_abrir"] = not en_uso(_nombre, "sin contar")
             if ventanas:
                 self.perfil["al_comprobar"] = self.perfil["consultas"]
             abiertos.append(Contexto(headless))
             return abiertos[-1]
 
         def en_uso(_nombre, _carpeta=None):
+            if _carpeta != "sin contar":
+                self.perfil["carpetas"].append(_carpeta)
+            if self.perfil["cerrados"]:
+                return False
             if not ventanas:
-                return queda_ocupado if self.perfil["intento"] else ocupado_al_empezar
+                if not self.perfil["intento"]:
+                    return ocupado_al_empezar
+                if suelta_tras_intento is not None:
+                    if _carpeta != "sin contar":
+                        self.perfil["tras_intento"] += 1
+                    return self.perfil["tras_intento"] <= suelta_tras_intento
+                return queda_ocupado
             self.perfil["consultas"] += 1
             return self.perfil["consultas"] <= suelta_tras
 
@@ -331,7 +378,9 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
 
         for atributo, valor in (("abrir", abrir), ("abrir_ventana_normal", ventana),
                                 ("hay_sesion", lambda _n: hay_perfil), ("en_uso", en_uso),
-                                ("elegir", lambda preferido="auto": nombre)):
+                                ("elegir", lambda preferido="auto": nombre),
+                                ("procesos_del_perfil", lambda _n, _c: procesos),
+                                ("cerrar_procesos", lambda pids, forzar=False: self.perfil["cerrados"].append(pids))):
             parche = mock.patch.object(navegador, atributo, valor)
             parche.start()
             self.addCleanup(parche.stop)
@@ -364,15 +413,15 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         texto = sesion.mensaje_de_error(navegador.ErrorNavegador("algo raro de selenium"))
         self.assertIn("Ver registro", texto)
 
-    def test_el_mensaje_generico_trae_el_motivo_en_una_linea(self):
-        """SES-06: con una captura del globo ya se sabe qué pasó."""
+    def test_el_mensaje_generico_es_corto_y_sin_jerga(self):
+        """SES-06 e IU-06/IU-07: el globo dice qué pasó y qué hacer; el detalle técnico va al registro."""
         texto = sesion.mensaje_de_error(navegador.ErrorNavegador(
             "Message: unknown error: cannot determine loading status\nStacktrace:\n#0 0x55d4 <unknown>"))
-        self.assertIn("cannot determine loading status", texto)
-        self.assertNotIn("Stacktrace", texto)
-        self.assertNotIn("Message:", texto)
-        largo = sesion.mensaje_de_error(navegador.ErrorNavegador("x" * 1000))
-        self.assertLess(len(largo), 400)
+        for jerga in ("cannot", "Stacktrace", "Message:", "Detalle"):
+            self.assertNotIn(jerga, texto)
+        self.assertNotIn("Cierra las ventanas de tu navegador", texto, "tu navegador no tiene que ver")
+        self.assertLessEqual(len(texto), 110)
+        self.assertIn("Ver registro", texto)
 
     def test_espera_a_que_el_navegador_suelte_el_perfil(self):
         """SES-05: el proceso que abrió Pandex puede terminar antes que el navegador (le pasó la
@@ -418,6 +467,84 @@ class IniciarSesionConVentanaNormal(unittest.TestCase):
         self.assertTrue(esperar.call_args_list)
         for llamada in esperar.call_args_list:
             self.assertEqual(llamada.kwargs.get("quieto"), sesion.QUIETO)
+
+    def test_tras_la_ventana_no_corta_a_los_6_s(self):
+        """Hallazgo 4: ya iniciaste sesión; un salto lento del SSO no debe obligarte a entrar otra vez."""
+        self.preparar(cierra_tras=0, sesion_valida=True)
+        with mock.patch.object(sesion.time, "sleep"), \
+                mock.patch.object(sesion, "_esperar_sesion", wraps=sesion._esperar_sesion) as esperar:
+            self.entrar()
+        self.assertEqual(len(esperar.call_args_list), 1)
+        self.assertIsNone(esperar.call_args.kwargs.get("quieto"))
+
+    def test_sin_red_no_abre_la_ventana(self):
+        """Hallazgo 1: sin internet, la ventana para iniciar sesión no ayuda: se dice enseguida."""
+        _, ventanas = self.preparar(cierra_tras=0, sesion_valida=False, hay_perfil=True,
+                                    goto_falla=navegador.SinRed("unknown error: net::ERR_INTERNET_DISCONNECTED"))
+        with mock.patch.object(sesion.time, "sleep"), self.assertRaises(navegador.SinRed) as e:
+            self.entrar()
+        self.assertEqual(ventanas, [])
+        self.assertIn("No hay conexión", sesion.mensaje_de_error(e.exception))
+
+    def test_si_falta_algo_por_instalar_no_abre_la_ventana(self):
+        _, ventanas = self.preparar(cierra_tras=0, sesion_valida=True, hay_perfil=True,
+                                    falla_primero=navegador.SinInstalar("Falta Selenium: ejecuta ./instalar.sh de nuevo."))
+        with mock.patch.object(sesion.time, "sleep"), self.assertRaises(navegador.SinInstalar):
+            self.entrar()
+        self.assertEqual(ventanas, [])
+
+    def test_un_error_sin_texto_no_rompe_nada(self):
+        """Hallazgo 8: ``''.splitlines()[0]`` lanzaba IndexError."""
+        _, ventanas = self.preparar(cierra_tras=0, sesion_valida=True, hay_perfil=True,
+                                    falla_primero=navegador.ErrorNavegador(""))
+        with mock.patch.object(sesion.time, "sleep"):
+            _, (_, ua) = self.entrar()
+        self.assertEqual(len(ventanas), 1)
+        self.assertEqual(ua, "UA")
+
+    def test_un_navegador_sin_ventana_que_quedo_abierto_se_cierra(self):
+        """Hallazgo 6: Canvas no se le pasa a un navegador que no se ve; Pandex cierra el suyo y sigue."""
+        _, ventanas = self.preparar(cierra_tras=0, sesion_valida=True, ocupado_al_empezar=True,
+                                    procesos=[(4321, True)])
+        with mock.patch.object(sesion.time, "sleep"):
+            ctx, _ = self.entrar()
+        self.assertEqual(self.perfil["cerrados"], [[4321]])
+        self.assertEqual(len(ventanas), 1)
+        self.assertNotIn("ya estaba abierta", " ".join(ctx.globos))
+
+    def test_una_ventana_que_se_ve_no_se_cierra(self):
+        self.preparar(cierra_tras=0, sesion_valida=True, ocupado_al_empezar=True, suelta_tras=1,
+                      procesos=[(4321, False)])
+        with mock.patch.object(sesion.time, "sleep"):
+            ctx, _ = self.entrar()
+        self.assertEqual(self.perfil["cerrados"], [])
+        self.assertIn("ya estaba abierta", " ".join(ctx.globos))
+
+    def test_firefox_espera_a_que_el_navegador_sin_ventana_suelte_el_perfil(self):
+        """Hallazgo 12: si no espera, la ventana de Firefox falla con «perfil en uso»."""
+        self.preparar(cierra_tras=0, sesion_valida=True, valida_sin_ventana=False, hay_perfil=True,
+                      nombre="firefox", suelta_tras_intento=3)
+        with mock.patch.object(sesion.time, "sleep"):
+            self.entrar()
+        self.assertTrue(self.perfil["libre_al_abrir"])
+
+    def test_el_perfil_se_busca_una_sola_vez(self):
+        """Hallazgo 11: cada consulta del candado recalculaba la carpeta del perfil (PATH y disco)."""
+        self.preparar(cierra_tras=2, sesion_valida=True, suelta_tras=2)
+        with mock.patch.object(sesion.time, "sleep"):
+            self.entrar()
+        self.assertTrue(self.perfil["carpetas"])
+        self.assertNotIn(None, self.perfil["carpetas"])
+
+    def test_si_otra_tarea_esta_entrando_lo_dice(self):
+        """Pandex no cierra el navegador sin ventana de otra tarea suya que está entrando a Canvas."""
+        self.preparar(cierra_tras=0, sesion_valida=True, ocupado_al_empezar=True,
+                      procesos=[(4321, True)])
+        with mock.patch.object(navegador, "abierto_aqui", return_value=True), \
+                self.assertRaises(sesion.CanvasError) as e:
+            self.entrar()
+        self.assertIn("otra tarea", str(e.exception))
+        self.assertEqual(self.perfil["cerrados"], [])
 
     def test_si_cierras_sin_haber_entrado_lo_dice(self):
         self.preparar(cierra_tras=1, sesion_valida=False)
@@ -495,12 +622,51 @@ class EnUso(unittest.TestCase):
                 for nombre in navegador.TODOS:
                     self.assertFalse(navegador.en_uso(nombre, self.tmp), (windows, nombre))
 
+    def proceso(self, *argumentos):
+        """Un proceso vivo con esos argumentos (como un navegador abierto con un perfil)."""
+        hijo = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", *argumentos])
+        self.addCleanup(hijo.wait)
+        self.addCleanup(hijo.kill)
+        for _ in range(200):  # hasta que /proc muestre sus argumentos
+            try:
+                if argumentos[-1].encode() in Path(f"/proc/{hijo.pid}/cmdline").read_bytes():
+                    break
+            except OSError:
+                pass
+            time.sleep(0.01)
+        return hijo.pid
+
     @unittest.skipIf(os.name == "nt", "los candados con enlace son de Linux")
     def test_linux_chromium_con_el_proceso_vivo(self):
-        os.symlink(f"mi-pc-con-guiones-{os.getpid()}", self.tmp / "SingletonLock")
+        pid = self.proceso(f"--user-data-dir={self.tmp}")
+        os.symlink(f"mi-pc-con-guiones-{pid}", self.tmp / "SingletonLock")
         with mock.patch.object(navegador, "WINDOWS", False):
             self.assertTrue(navegador.en_uso("chrome", self.tmp))
             self.assertTrue(navegador.en_uso("edge", self.tmp))
+
+    @unittest.skipIf(os.name == "nt", "los candados con enlace son de Linux")
+    def test_linux_un_numero_de_proceso_reusado_no_cuenta(self):
+        """Hallazgo 5: tras reiniciar, ese número puede ser otro programa (aquí, esta prueba)."""
+        os.symlink(f"mi-pc-{os.getpid()}", self.tmp / "SingletonLock")
+        os.symlink(f"127.0.1.1:+{os.getpid()}", self.tmp / "lock")
+        with mock.patch.object(navegador, "WINDOWS", False):
+            self.assertFalse(navegador.en_uso("chrome", self.tmp))
+            self.assertFalse(navegador.en_uso("firefox", self.tmp))
+
+    @unittest.skipIf(os.name == "nt", "los candados con enlace son de Linux")
+    def test_linux_otro_perfil_que_empieza_igual_no_cuenta(self):
+        pid = self.proceso(f"--user-data-dir={self.tmp}-edge")
+        os.symlink(f"mi-pc-{pid}", self.tmp / "SingletonLock")
+        with mock.patch.object(navegador, "WINDOWS", False):
+            self.assertFalse(navegador.en_uso("chrome", self.tmp))
+
+    @unittest.skipIf(os.name == "nt", "los candados con enlace son de Linux")
+    def test_linux_firefox_sin_mas(self):
+        """Firefox escribe ``ip:pid`` (sin «+») cuando no puede usar fcntl (p. ej. carpetas en red)."""
+        pid = self.proceso("-profile", str(self.tmp))
+        os.symlink(f"127.0.1.1:{pid}", self.tmp / "lock")
+        with mock.patch.object(navegador, "WINDOWS", False):
+            self.assertTrue(navegador.en_uso("firefox", self.tmp))
 
     @unittest.skipIf(os.name == "nt", "los candados con enlace son de Linux")
     def test_linux_candado_de_un_navegador_que_ya_no_esta(self):
@@ -510,7 +676,8 @@ class EnUso(unittest.TestCase):
 
     @unittest.skipIf(os.name == "nt", "los candados con enlace son de Linux")
     def test_linux_firefox(self):
-        os.symlink(f"127.0.1.1:+{os.getpid()}", self.tmp / "lock")
+        pid = self.proceso("-profile", str(self.tmp))
+        os.symlink(f"127.0.1.1:+{pid}", self.tmp / "lock")
         with mock.patch.object(navegador, "WINDOWS", False):
             self.assertTrue(navegador.en_uso("firefox", self.tmp))
 
@@ -546,6 +713,28 @@ class ErroresPasajeros(unittest.TestCase):
             pestana.wait_for_timeout(500)
         self.assertEqual(pestana.url, "https://canvas.ejemplo.edu/")
 
+    def test_una_lectura_fallida_olvida_la_direccion(self):
+        """Hallazgo 2: si guarda la anterior, los segundos sin poder leer parecen «página quieta»."""
+        pestana = self.pestana("https://sso.ejemplo.edu/saml", Exception("unknown error: cannot determine loading status"))
+        with mock.patch.object(navegador.time, "sleep"):
+            pestana.wait_for_timeout(500)
+            pestana.wait_for_timeout(500)
+        self.assertIsNone(pestana.url)
+
+    def test_el_user_agent_de_la_pagina_se_reusa(self):
+        """Hallazgo 9: se lee antes de navegar y no otra vez en plena redirección."""
+        driver = mock.Mock()
+        driver.execute_script.return_value = "UA"
+        driver.get_cookies.return_value = []
+        requests = mock.Mock()
+        requests.get.return_value = mock.Mock(status_code=401)
+        contexto = navegador.Contexto(driver)
+        _, ua = sesion._pagina(contexto)
+        with mock.patch.dict("sys.modules", {"requests": requests}):
+            contexto.request.get("https://canvas.ejemplo.edu/api/v1/users/self")
+        self.assertEqual(ua, "UA")
+        self.assertEqual(driver.execute_script.call_count, 1)
+
     def test_la_ventana_cerrada_si_cuenta(self):
         sin_ventana = type("NoSuchWindowException", (Exception,), {})
         pestana = self.pestana(sin_ventana("no such window: target window already closed"))
@@ -576,7 +765,7 @@ class ErroresPasajeros(unittest.TestCase):
         driver.get.side_effect = Exception("unknown error: net::ERR_ABORTED")
         pestana.goto("https://canvas.ejemplo.edu")  # la redirección siguió: se sigue preguntando
         driver.get.side_effect = Exception("unknown error: net::ERR_NAME_NOT_RESOLVED")
-        with self.assertRaises(navegador.ErrorNavegador) as e:
+        with self.assertRaises(navegador.SinRed) as e:
             pestana.goto("https://canvas.ejemplo.edu")
         self.assertIn("No hay conexión", sesion.mensaje_de_error(e.exception))
 
@@ -648,6 +837,18 @@ class EsperarSesion(unittest.TestCase):
                                             60, 500, quieto=6)
         self.assertTrue(dentro)
 
+    def test_lecturas_fallidas_no_cuentan_como_quieta(self):
+        pagina = self.Pagina(["https://sso.ejemplo.edu/saml"] + [None] * 8 + ["https://sso.ejemplo.edu/saml"] * 50)
+        with self.reloj():
+            dentro = sesion._esperar_sesion(self.contexto(valida_tras=7), pagina, "https://canvas.ejemplo.edu",
+                                            60, 500, quieto=6)
+        self.assertTrue(dentro)
+
+    def test_donde_quita_los_parametros_de_la_ruta(self):
+        """Hallazgo 3: los IdP de Java ponen la sesión en la ruta (``;jsessionid=``)."""
+        donde = sesion._donde("https://idp.uni.edu.pe/idp/profile/SAML2/Redirect/SSO;jsessionid=1A2B3C?execution=e1s1")
+        self.assertEqual(donde, "idp.uni.edu.pe/idp/profile/SAML2/Redirect/SSO")
+
     def test_sin_corte_rapido_espera_todo_y_dice_donde_quedo(self):
         pagina = self.Pagina(["https://canvas.ejemplo.edu/login/canvas?token=SECRETO"])
         with self.reloj(), self.assertLogs("pandex.sesion", "INFO") as registro:
@@ -657,3 +858,105 @@ class EsperarSesion(unittest.TestCase):
         texto = "\n".join(registro.output)
         self.assertIn("canvas.ejemplo.edu/login/canvas", texto)
         self.assertNotIn("SECRETO", texto)
+
+
+class RegistroSinDatos(unittest.TestCase):
+    """Hallazgo 10 y P1: lo que va al registro no lleva parámetros de direcciones (códigos del login)."""
+
+    def test_quita_los_parametros_de_toda_direccion(self):
+        texto = navegador.limpiar("Reached error page: about:certerror?e=nssFailure2&u=https%3A//canvas.x.edu/"
+                                  "login/oauth2/callback%3Fcode%3DSECRETO and https://idp.x.edu/SSO;jsessionid=OTRO")
+        self.assertIn("about:certerror", texto)
+        self.assertIn("https://idp.x.edu/SSO", texto)
+        self.assertNotIn("SECRETO", texto)
+        self.assertNotIn("OTRO", texto)
+
+    def test_un_parametro_codificado_tambien(self):
+        self.assertNotIn("SECRETO", navegador.limpiar("https://canvas.x.edu/callback%3Fcode%3DSECRETO"))
+
+    def test_los_errores_comunes_quedan_igual(self):
+        for texto in ("unknown error: net::ERR_ABORTED", "Message: no such window: target window already closed"):
+            self.assertEqual(navegador.limpiar(texto), texto)
+
+    def test_primera_linea_y_registro_van_limpios(self):
+        error = Exception("Message: unknown error: net::ERR_ABORTED at https://canvas.x.edu/cb?code=SECRETO\n"
+                          "  (Session info: chrome=120)\nStacktrace:\n#0 0x55d4 <unknown>")
+        self.assertNotIn("SECRETO", navegador.primera_linea(error))
+        registro = navegador.para_registro(error)
+        self.assertNotIn("SECRETO", registro)
+        self.assertIn("Session info", registro)
+        self.assertNotIn("Stacktrace", registro)
+        self.assertNotIn("\n", registro)
+
+    def test_goto_no_registra_los_parametros(self):
+        driver = mock.Mock()
+        driver.get.side_effect = Exception("unknown error: net::ERR_ABORTED at https://canvas.x.edu/cb?code=SECRETO")
+        with self.assertLogs("pandex.navegador", "INFO") as registro:
+            navegador.Contexto(driver).pages[0].goto("https://canvas.x.edu")
+        self.assertNotIn("SECRETO", "\n".join(registro.output))
+
+
+class ProcesosDelPerfil(unittest.TestCase):
+    """Hallazgo 6: ¿qué navegador tiene tomado el perfil de Pandex, y se ve o no?"""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(__import__("shutil").rmtree, self.tmp, True)
+
+    @unittest.skipIf(os.name == "nt", "lee /proc")
+    def test_linux_solo_el_principal_de_ese_perfil(self):
+        crear = EnUso.proceso.__get__(self)
+        invisible = crear(f"--user-data-dir={self.tmp}", "--headless=new")
+        crear("--type=renderer", f"--user-data-dir={self.tmp}")
+        crear(f"--user-data-dir={self.tmp}-edge")
+        with mock.patch.object(navegador, "WINDOWS", False):
+            self.assertEqual(navegador.procesos_del_perfil("chrome", self.tmp), [(invisible, True)])
+
+    @unittest.skipIf(os.name == "nt", "lee /proc")
+    def test_linux_firefox_con_ventana(self):
+        visible = EnUso.proceso.__get__(self)("-profile", str(self.tmp))
+        with mock.patch.object(navegador, "WINDOWS", False):
+            self.assertEqual(navegador.procesos_del_perfil("firefox", self.tmp), [(visible, False)])
+
+    def test_windows_lee_la_lista_de_procesos(self):
+        carpeta = r"C:\Users\Ana Pérez\pandex\datos\browser-profile-edge"
+        salida = "\n".join([
+            f'4321 "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" '
+            f'"--user-data-dir={carpeta}" --headless=new --remote-debugging-port=0',
+            f'4322 "msedge.exe" --type=renderer "--user-data-dir={carpeta}"',
+            f'4400 "msedge.exe" --user-data-dir="{carpeta.upper()}" --no-first-run https://canvas.x.edu',
+            f'4500 "msedge.exe" "--user-data-dir={carpeta}-viejo"',
+            "4600 ",
+        ])
+        self.assertEqual(navegador._leer_procesos(salida, "edge", carpeta), [(4321, True), (4400, False)])
+
+    def test_windows_con_la_marca_bom_de_powershell(self):
+        carpeta = r"C:\Users\ana\pandex\datos\browser-profile"
+        salida = f'\ufeff4321 chrome.exe --user-data-dir={carpeta} --headless=new'.encode("utf-8")
+        with mock.patch.object(navegador, "WINDOWS", True), \
+                mock.patch.object(navegador.subprocess, "run", return_value=mock.Mock(returncode=0, stdout=salida)):
+            self.assertEqual(navegador.procesos_del_perfil("chrome", carpeta), [(4321, True)])
+
+    def test_windows_si_powershell_falla_no_se_sabe(self):
+        with mock.patch.object(navegador, "WINDOWS", True), \
+                mock.patch.object(navegador.subprocess, "run", side_effect=OSError("no hay powershell")):
+            self.assertIsNone(navegador.procesos_del_perfil("edge", self.tmp))
+
+    def test_windows_cierra_con_taskkill_sin_abrir_consola(self):
+        with mock.patch.object(navegador, "WINDOWS", True), \
+                mock.patch.object(navegador.subprocess, "run") as run:
+            navegador.cerrar_procesos([4321])
+        comando = run.call_args.args[0]
+        self.assertEqual(comando[:3], ["taskkill", "/PID", "4321"])
+        self.assertIn("/T", comando)
+        self.assertEqual(run.call_args.kwargs.get("creationflags"), getattr(subprocess, "CREATE_NO_WINDOW", 0))
+
+    def test_cuenta_los_navegadores_que_abrio_aqui(self):
+        carpeta = self.tmp / "perfil"
+        self.assertFalse(navegador.abierto_aqui(carpeta))
+        driver = mock.Mock()
+        contexto = navegador.Contexto(driver, carpeta)
+        self.assertTrue(navegador.abierto_aqui(carpeta))
+        contexto.close()
+        contexto.close()
+        self.assertFalse(navegador.abierto_aqui(carpeta))

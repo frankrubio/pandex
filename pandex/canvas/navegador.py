@@ -15,10 +15,12 @@ cookies), así el inicio de sesión es el mismo con cualquier navegador.
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 from ..log import get_logger
@@ -58,8 +60,19 @@ _WINDOWS = {
 }
 
 
+_SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)  # Windows: sin consola que parpadee
+
+
 class ErrorNavegador(Exception):
     """El navegador no abrió, o lo cerraste."""
+
+
+class SinRed(ErrorNavegador):
+    """No hay internet. La ventana para iniciar sesión no lo arregla: se dice enseguida."""
+
+
+class SinInstalar(ErrorNavegador):
+    """Falta el navegador, Selenium o su driver. Tampoco lo arregla la ventana."""
 
 
 # ---------- cuál ----------
@@ -147,7 +160,7 @@ def elegir(preferido="auto"):
     if preferido in TODOS:
         if ruta(preferido):
             return preferido
-        raise ErrorNavegador(f"No encontré {NOMBRES[preferido]}. Instálalo o elige otro navegador en "
+        raise SinInstalar(f"No encontré {NOMBRES[preferido]}. Instálalo o elige otro navegador en "
                              "Configuración → Tareas → Sincronizar Canvas.")
     usado = recordado()
     if usado and ruta(usado):
@@ -158,7 +171,7 @@ def elegir(preferido="auto"):
     for nombre in ORDEN:
         if ruta(nombre):
             return nombre
-    raise ErrorNavegador("No encontré Firefox, Chrome ni Edge. Instala uno (en Linux: "
+    raise SinInstalar("No encontré Firefox, Chrome ni Edge. Instala uno (en Linux: "
                          f"{INSTALAR_LINUX['firefox']}) y vuelve a intentar.")
 
 
@@ -205,16 +218,49 @@ def _se_puede_abrir(archivo):
     return True
 
 
-def _proceso_vivo(enlace):
-    """Linux: el candado es un enlace a ``equipo-pid`` (Chrome y Edge) o ``ip:+pid`` (Firefox)."""
+def _linea_de_comandos(pid):
+    """Linux: los argumentos de un proceso en un solo texto, o None si ya no existe o no es tuyo."""
     try:
-        pid = int(os.readlink(enlace).rsplit("-", 1)[-1].rsplit("+", 1)[-1])
-        os.kill(pid, 0)
-    except PermissionError:
-        return True  # existe, pero es de otro usuario
-    except (OSError, ValueError):
+        return Path(f"/proc/{pid}/cmdline").read_bytes().replace(b"\0", b" ").decode("utf-8", "replace")
+    except OSError:
+        return None
+
+
+def _usa_perfil(texto, nombre, carpeta):
+    """¿Esa línea de comandos abre el perfil ``carpeta``? No cuenta otro que empieza igual
+    (``browser-profile`` y ``browser-profile-edge``)."""
+    rutas = {str(carpeta)}
+    try:
+        rutas.add(str(Path(carpeta).resolve()))
+    except OSError:
+        pass
+    opcion = r"-profile\s+" if nombre == "firefox" else r"--user-data-dir="
+    for ruta_perfil in rutas:
+        patron = rf'(?:^|[\s"]){opcion}"?{re.escape(ruta_perfil)}[\\/]?(?=["\s]|$)'
+        if re.search(patron, texto, re.IGNORECASE):
+            return True
+    return False
+
+
+def _es_principal(texto):
+    """El proceso principal del navegador; no sus pestañas, la GPU ni el «zygote» (``--type=``)."""
+    return "--type=" not in texto and "-contentproc" not in texto
+
+
+def _es_invisible(texto):
+    return re.search(r"(?:^|[\s\"])--?headless\b", texto) is not None
+
+
+def _candado_tomado(enlace, nombre, carpeta):
+    """Linux: el candado es un enlace a ``equipo-pid`` (Chrome y Edge) o ``ip:+pid`` / ``ip:pid``
+    (Firefox). Cuenta solo si ese proceso existe y abre este perfil: tras reiniciar, el número puede
+    ser de otro programa."""
+    try:
+        numero = re.search(r"(\d+)$", os.readlink(enlace))
+    except OSError:
         return False
-    return True
+    texto = _linea_de_comandos(numero.group(1)) if numero else None
+    return bool(texto) and _usa_perfil(texto, nombre, carpeta)
 
 
 def en_uso(nombre, carpeta=None):
@@ -226,7 +272,72 @@ def en_uso(nombre, carpeta=None):
     if WINDOWS:
         candado = carpeta / ("parent.lock" if nombre == "firefox" else "lockfile")
         return candado.exists() and not _se_puede_abrir(candado)
-    return _proceso_vivo(carpeta / ("lock" if nombre == "firefox" else "SingletonLock"))
+    return _candado_tomado(carpeta / ("lock" if nombre == "firefox" else "SingletonLock"), nombre, carpeta)
+
+
+_EXE = {"firefox": "firefox.exe", "chrome": "chrome.exe", "edge": "msedge.exe"}
+
+
+def _leer_procesos(salida, nombre, carpeta):
+    """``pid línea-de-comandos`` por renglón → ``[(pid, sin_ventana)]`` de los que abren ``carpeta``."""
+    hallados = []
+    for renglon in salida.splitlines():
+        pid, _, texto = renglon.strip().lstrip("\ufeff").partition(" ")
+        if pid.isdigit() and texto and _es_principal(texto) and _usa_perfil(texto, nombre, carpeta):
+            hallados.append((int(pid), _es_invisible(texto)))
+    return hallados
+
+
+def _procesos_windows(nombre):
+    """``pid línea-de-comandos`` de cada proceso de ese navegador, con PowerShell (viene con Windows)."""
+    import base64
+
+    orden = ("[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+             f"Get-CimInstance Win32_Process -Filter \"Name='{_EXE[nombre]}'\" | "
+             "ForEach-Object { [string]$_.ProcessId + ' ' + $_.CommandLine }")
+    codificada = base64.b64encode(orden.encode("utf-16-le")).decode("ascii")
+    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", codificada],
+                       capture_output=True, timeout=30, creationflags=_SIN_VENTANA)
+    return r.stdout.decode("utf-8-sig", "replace") if r.returncode == 0 else None  # sin la marca BOM
+
+
+def procesos_del_perfil(nombre, carpeta):
+    """``[(pid, sin_ventana)]`` de los navegadores abiertos con el perfil de Pandex, o None si no se
+    pudo saber. Solo se usa cuando el perfil está tomado, para no confundir un navegador sin ventana
+    que quedó abierto con la ventana de Pandex."""
+    try:
+        if WINDOWS:
+            salida = _procesos_windows(nombre)
+        else:
+            salida = "\n".join(f"{entrada.name} {_linea_de_comandos(entrada.name) or ''}"
+                                for entrada in Path("/proc").iterdir() if entrada.name.isdigit())
+        return None if salida is None else _leer_procesos(salida, nombre, carpeta)
+    except Exception as exc:  # solo es para decidir mejor: si falla, se sigue como antes
+        log.info("no pude ver qué navegador tiene el perfil: %s", exc.__class__.__name__)
+        return None
+
+
+def cerrar_procesos(pids, forzar=False):
+    """Cierra navegadores sin ventana que Pandex dejó abiertos con su perfil (y sus procesos hijos)."""
+    import signal
+
+    for pid in pids:
+        try:
+            if WINDOWS:
+                subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True, timeout=15,
+                               creationflags=_SIN_VENTANA)
+            else:
+                os.kill(pid, signal.SIGKILL if forzar else signal.SIGTERM)
+        except (OSError, subprocess.SubprocessError) as exc:
+            log.info("no pude cerrar el proceso %s: %s", pid, exc.__class__.__name__)
+
+
+_PROPIOS = Counter()  # perfiles con un navegador de Selenium abierto ahora por este Pandex
+
+
+def abierto_aqui(carpeta):
+    """¿Otra tarea de este mismo Pandex tiene abierto un navegador con ese perfil?"""
+    return carpeta is not None and _PROPIOS[str(carpeta)] > 0
 
 
 # ---------- el contexto (lo que usa sesion.py) ----------
@@ -264,11 +375,31 @@ def _cerrado(exc):
     return any(p in texto for p in _CERRADO)
 
 
-def primera_linea(exc):
-    """El motivo de un error de Selenium en una línea, sin «Message:» ni la traza."""
+# una dirección y lo que va desde su primer «?», «#» o «;» (también codificados: %3F, %23, %3B)
+_PARAMETROS = re.compile(r"(\b[a-z][a-z0-9+.-]*:(?:(?!%3f|%23|%3b)[^\s?#;\"'<>])*)(?:[?#;]|%3f|%23|%3b)[^\s\"'<>]*",
+                         re.IGNORECASE)
+
+
+def limpiar(texto):
+    """Quita los parámetros de toda dirección de un texto: pueden traer códigos del login (P1)."""
+    return _PARAMETROS.sub(r"\1", texto)
+
+
+def _sin_traza(exc):
     texto = str(exc).strip()
     texto = texto[len("Message:"):].strip() if texto.startswith("Message:") else texto
-    return (texto.splitlines() or [""])[0][:200]
+    return [linea.strip() for linea in re.split(r"\n\s*(?:Stacktrace|Backtrace):", texto)[0].splitlines()
+            if linea.strip()]
+
+
+def primera_linea(exc):
+    """El motivo de un error de Selenium en una línea, sin «Message:», la traza ni parámetros."""
+    return limpiar((_sin_traza(exc) or [""])[0])[:200]
+
+
+def para_registro(exc):
+    """El error completo para el registro, en una línea, sin la traza ni parámetros."""
+    return limpiar(" | ".join(_sin_traza(exc)))[:400] or exc.__class__.__name__
 
 
 class _Pedidos:
@@ -318,16 +449,19 @@ class _Pestana:
         except TimeoutException:
             pass  # la página sigue cargando (SSO): se sigue preguntando a la API
         except Exception as exc:
-            if _cerrado(exc) or any(p in str(exc) for p in _SIN_RED):
+            if any(p in str(exc) for p in _SIN_RED):
+                raise SinRed(str(exc)) from exc
+            if _cerrado(exc):
                 raise ErrorNavegador(str(exc)) from exc
             # p. ej. net::ERR_ABORTED: una redirección cortó la carga; se sigue preguntando a la API
-            log.info("la página siguió con un aviso del navegador: %s", primera_linea(exc))
+            log.info("la página siguió con un aviso del navegador: %s", para_registro(exc))
 
     def wait_for_timeout(self, ms):
         try:
             self.url = self.driver.current_url  # si cerraste la ventana, esto falla
             self._fallos = 0
         except Exception as exc:
+            self.url = None  # sin leerla no se sabe si la página se movió: no cuenta como quieta
             self._fallos += 1
             if _cerrado(exc) or self._fallos >= FALLOS_SEGUIDOS:
                 raise ErrorNavegador("el navegador se cerró: " + primera_linea(exc)) from exc
@@ -336,16 +470,19 @@ class _Pestana:
 
 
 class Contexto:
-    def __init__(self, driver):
+    def __init__(self, driver, carpeta=None):
         self.driver = driver
         self.pages = [_Pestana(driver)]
         self.request = _Pedidos(self)
         self._ua = None
+        self._carpeta = str(carpeta) if carpeta is not None else None
+        if self._carpeta:
+            _PROPIOS[self._carpeta] += 1
 
     def user_agent(self):
-        """Se lee una vez: pedirlo en plena redirección es lo que más falla."""
+        """Se lee una vez, antes de navegar (``sesion._pagina``): en plena redirección es lo que más falla."""
         if self._ua is None:
-            self._ua = self.driver.execute_script("return navigator.userAgent")
+            self._ua = self.pages[0].evaluate("navigator.userAgent")
         return self._ua
 
     def cookies(self):
@@ -366,6 +503,10 @@ class Contexto:
             self.driver.quit()
         except Exception:
             pass
+        finally:
+            if self._carpeta and _PROPIOS[self._carpeta] > 0:
+                _PROPIOS[self._carpeta] -= 1
+            self._carpeta = None
 
 
 # ---------- abrir ----------
@@ -412,8 +553,8 @@ def abrir_ventana_normal(nombre, url):
     """
     binario = ruta(nombre)
     if binario is None:
-        raise ErrorNavegador(f"No encontré {NOMBRES[nombre]}. Instálalo o elige otro navegador en "
-                             "Configuración → Tareas → Sincronizar Canvas.")
+        raise SinInstalar(f"No encontré {NOMBRES[nombre]}. Instálalo o elige otro navegador en "
+                          "Configuración → Tareas → Sincronizar Canvas.")
     carpeta = perfil(nombre, binario)
     carpeta.mkdir(parents=True, exist_ok=True)
     comando = [binario, f"--user-data-dir={carpeta}", "--no-first-run", "--no-default-browser-check",
@@ -421,22 +562,22 @@ def abrir_ventana_normal(nombre, url):
     try:
         return subprocess.Popen(comando)
     except OSError as exc:
-        log.error("%s no abrió: %s", NOMBRES[nombre], exc)
-        raise ErrorNavegador(f"No pude abrir {NOMBRES[nombre]}. Ciérralo si estaba abierto con Pandex y "
-                             "vuelve a intentar.") from exc
+        log.error("%s no abrió: %s", NOMBRES[nombre], para_registro(exc))
+        raise ErrorNavegador(f"No pude abrir {NOMBRES[nombre]}. Vuelve a intentar; si sigue, el motivo "
+                             "está en «Ver registro».") from exc
 
 
 def abrir(nombre, headless):
     """Abre ``nombre`` con el perfil de Pandex. Lanza ``ErrorNavegador`` si no puede."""
     binario = ruta(nombre)
     if binario is None:
-        raise ErrorNavegador(f"No encontré {NOMBRES[nombre]}."
+        raise SinInstalar(f"No encontré {NOMBRES[nombre]}."
                              + ("" if WINDOWS else f" Instálalo ({INSTALAR_LINUX[nombre]}) o elige otro "
                                 "en Configuración → Tareas → Sincronizar Canvas."))
     try:
         from selenium import webdriver
     except ImportError as exc:
-        raise ErrorNavegador("Falta Selenium: ejecuta " + ("instalar.bat" if WINDOWS else "./instalar.sh")
+        raise SinInstalar("Falta Selenium: ejecuta " + ("instalar.bat" if WINDOWS else "./instalar.sh")
                              + " de nuevo.") from exc
 
     # el driver que descarga Selenium va a la carpeta de Pandex (no a ~/.cache/selenium)
@@ -460,16 +601,18 @@ def abrir(nombre, headless):
     try:
         driver = clase(options=opciones, service=servicio(executable_path=propio) if propio else servicio())
     except Exception as exc:
-        log.error("%s no abrió: %s", NOMBRES[nombre], exc)
-        raise ErrorNavegador(f"No pude abrir {NOMBRES[nombre]}. Ciérralo si estaba abierto con Pandex, "
-                             "revisa tu internet (la primera vez descarga un componente pequeño) y vuelve "
-                             "a intentar. El detalle está en «Ver registro».") from exc
+        log.error("%s no abrió: %s", NOMBRES[nombre], para_registro(exc))
+        if type(exc).__name__ == "NoSuchDriverException":  # Selenium no pudo bajar su driver
+            raise SinInstalar(f"No pude descargar lo que {NOMBRES[nombre]} necesita para Pandex (3 a 15 MB). "
+                              "Revisa tu internet y vuelve a intentar.") from exc
+        raise ErrorNavegador(f"No pude abrir {NOMBRES[nombre]}. Vuelve a intentar; si sigue, el motivo "
+                             "está en «Ver registro».") from exc
     if nombre == "firefox":
         try:
             driver.set_window_size(1366, 900)
         except Exception:
             pass
-    return Contexto(driver)
+    return Contexto(driver, carpeta)
 
 
 if __name__ == "__main__":  # diagnóstico: python -m pandex.canvas.navegador

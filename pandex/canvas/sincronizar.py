@@ -213,7 +213,7 @@ class Sincronizacion:
         except CanvasError as exc:
             return {"ok": False, "resumen": str(exc), "detalle": [str(exc)]}
         except sesion.error_navegador() as exc:
-            primera = str(exc).splitlines()[0] if str(exc) else exc.__class__.__name__
+            primera = sesion.para_registro(exc)  # en una línea y sin parámetros de direcciones (P1)
             return {"ok": False, "resumen": sesion.mensaje_de_error(exc), "detalle": [primera]}
         manual = sesion.ULTIMO.get("espera_manual") or 0.0
         self._fases["sesión"] = max(time.monotonic() - t - manual, 0.0)  # esperarte a ti no cuenta

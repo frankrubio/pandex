@@ -180,7 +180,7 @@ class _Trabajo(QThread):
         except CanvasError as exc:
             self.fallo.emit(str(exc))
         except sesion.error_navegador() as exc:
-            log.warning("navegador: %s", exc)
+            log.warning("navegador: %s", sesion.para_registro(exc))  # sin parámetros de direcciones (P1)
             self.fallo.emit(sesion.mensaje_de_error(exc))
         except Exception as exc:
             log.exception("el asistente falló en segundo plano")
