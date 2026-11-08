@@ -16,6 +16,9 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 - Dependencias con versión fija y marcadores de plataforma (`playwright`, `winrt-*` solo en
   Windows; `selenium` solo fuera de Windows).
 - XWayland por defecto en Linux para que la mascota se pueda mover y quede encima.
+- Un solo Pandex por PC: al instalar en otra carpeta, `accesos.instalar_aqui()` trae el
+  `config.json` de la copia anterior y deja el acceso directo y el arranque automático en la
+  nueva. Recuerda la carpeta en `DATOS/instalacion.json`.
 
 **Huecos encontrados:**
 
@@ -28,6 +31,8 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 | H5 | La plantilla de issue «Algo falla» solo ofrece Windows 10/11. |
 | H6 | No hay prueba de que, con el mismo Canvas, Windows y Linux dejan **el mismo árbol de carpetas**. |
 | H7 | Windows en ARM no está documentado (PyQt6 puede no tener paquete para esa arquitectura). |
+| H8 | Al instalar en otra carpeta, el despertador del modo «a la hora» (`pandex.service` / tarea «Pandex») sigue abriendo la copia anterior hasta que pulsas Guardar en Configuración. Si borras esa carpeta, como sugiere el instalador, deja de abrir Pandex sin avisar. |
+| H9 | La copia anterior solo se reconoce por `DATOS/instalacion.json`, que no existe si se instaló antes de 2.4.1: ahí el instalador no trae la configuración ni avisa. |
 
 ## Sistemas soportados
 
@@ -51,6 +56,8 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 | PLA-08 | La plantilla de issue pregunta el sistema (Windows 10, Windows 11, Linux + distribución). | revisión |
 | PLA-09 | Lo que no se soporta (Windows ARM, macOS, Python < 3.12 sin portátil) lo dice el instalador con un mensaje claro y el README lo lista. | revisión |
 | PLA-10 | Todo texto que ve el usuario es el mismo en los dos sistemas, salvo los nombres propios del sistema (Explorador / Archivos, Chrome / Firefox). | revisión |
+| PLA-11 | Instalar en otra carpeta deja **un solo Pandex**: el acceso directo, el arranque automático y el despertador abren la copia nueva. Solo se mueve lo que ya estaba (no se crea un despertador ni un arranque que no pediste) y los horarios no cambian. | `tests/test_linux.py::AccesosLinux::test_instalar_otra_copia_mueve_tambien_el_despertador`, `::UnaSolaCopiaEnWindows` |
+| PLA-12 | La copia anterior se reconoce también sin `DATOS/instalacion.json`: por la línea `Path=` del lanzador del menú o del arranque (Linux) o por el `WorkingDirectory` del acceso del Escritorio o del arranque (Windows). | `tests/test_linux.py::AccesosLinux::test_reconoce_una_copia_instalada_antes_de_anotar_la_carpeta`, `::UnaSolaCopiaEnWindows` |
 
 ✅ = la prueba ya existe y pasa.
 
@@ -67,6 +74,25 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 - *Dado* el Canvas falso de `tests/apoyo.py` con cursos de teoría y laboratorio
 - *Cuando* se sincroniza en Windows y en Linux
 - *Entonces* la lista de rutas relativas creadas es idéntica.
+
+**PLA-11 · Instalar en otra carpeta con el modo «a la hora»**
+- *Dado* Pandex en `~/Descargas/pandex` con acceso directo y «Cerrarse, y abrirse sola a la
+  hora de sus tareas»
+- *Cuando* el usuario instala otra copia en `~/pandex` y borra `~/Descargas/pandex`
+- *Entonces* a la hora de su tarea el sistema abre `~/pandex`, sin pasar por Configuración.
+
+**PLA-11 · El sistema no responde al mover el despertador**
+- *Dado* el mismo caso, pero `systemctl --user` no responde (por ejemplo, instalando por SSH)
+- *Cuando* el instalador mueve el despertador
+- *Entonces* `pandex.service` queda escrito con la copia nueva y vale desde el próximo inicio
+  de sesión; el instalador termina igual. En Windows, si el Programador de tareas falla, queda
+  en el registro con qué hacer (abrir Configuración y pulsar Guardar).
+
+**PLA-12 · Copia instalada antes de 2.4.1**
+- *Dado* `~/pandex` instalado con 2.4.0 (sin `DATOS/instalacion.json`)
+- *Cuando* el usuario instala otra copia en otra carpeta
+- *Entonces* el instalador trae su configuración, mueve los accesos y le dice qué carpeta
+  puede borrar, igual que con una copia nueva. Si reinstala en la misma carpeta, no avisa nada.
 
 ## Fuera de alcance
 
@@ -85,3 +111,4 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión con los huecos H1–H7. | Requisito de Frank: sin conflictos con su versión de Windows ni de Linux. |
+| 2026-10-19 | H8, H9 y requisitos PLA-11, PLA-12 (tarea T006.7). | «Un solo Pandex por PC» (2.4.0) movía el acceso y el arranque, pero no el despertador, y no veía copias instaladas antes. |

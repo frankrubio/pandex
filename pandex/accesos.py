@@ -17,6 +17,7 @@ import sys
 from pathlib import Path
 
 from . import inventario
+from . import despertador
 from .log import get_logger
 from .rutas import ASSETS_DIR, CONFIG_FILE, DATOS, ICONO, RAIZ, WINDOWS
 
@@ -262,11 +263,45 @@ def desactivar_arranque():
 INSTALACION = DATOS / "instalacion.json"  # en qué carpeta se instaló Pandex la última vez
 
 
+def _carpeta_de_los_accesos():
+    """La carpeta que abren los accesos que ya existen, o None.
+
+    Sirve para las copias instaladas antes de que existiera ``instalacion.json`` (2.4.0 y anteriores).
+    """
+    if WINDOWS:
+        script = (
+            "$shell = New-Object -ComObject WScript.Shell;"
+            f"foreach ($lnk in @((Join-Path ([Environment]::GetFolderPath('Desktop')) {_ps(NOMBRE + '.lnk')}), "
+            f"{_ps(ruta_inicio())})) {{"
+            " if (Test-Path -LiteralPath $lnk) { $shell.CreateShortcut($lnk).WorkingDirectory; break } }"
+        )
+        try:
+            salida = subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return Path(salida.splitlines()[-1]) if salida else None
+    for ruta in (_carpeta_menu() / DESKTOP, ruta_inicio()):
+        try:
+            lineas = ruta.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for linea in lineas:
+            if linea.startswith("Path="):
+                return Path(linea[len("Path="):])
+    return None
+
+
 def instalacion_anterior(raiz=RAIZ):
     """La carpeta de otra copia de Pandex instalada antes en esta PC (que sigue ahí), o None."""
     try:
         previa = Path(json.loads(INSTALACION.read_text(encoding="utf-8"))["carpeta"])
     except (OSError, ValueError, KeyError, TypeError):
+        previa = _carpeta_de_los_accesos()
+    if previa is None:
         return None
     if not (previa / "main.py").is_file():
         return None
@@ -312,8 +347,8 @@ def instalar_aqui(raiz=RAIZ, config=CONFIG_FILE):
     """Lo que hace el instalador: deja los accesos apuntando a esta copia.
 
     Si ya había otra copia, trae su ``config.json`` (tus cursos y ajustes) y mueve el
-    arranque automático a esta; así no quedan dos Pandex compitiendo. Devuelve la
-    carpeta de la copia anterior (para avisar que se puede borrar) o None.
+    arranque automático y el despertador a esta; así no quedan dos Pandex compitiendo.
+    Devuelve la carpeta de la copia anterior (para avisar que se puede borrar) o None.
     """
     previa = instalacion_anterior(raiz)
     if previa is not None:
@@ -325,6 +360,10 @@ def instalar_aqui(raiz=RAIZ, config=CONFIG_FILE):
     if arranca_con_el_sistema():
         activar_arranque()  # el que había apuntaba a la otra copia
     anteriores = [str(c) for c in instalaciones_anteriores(raiz)]  # para «Liberar espacio»
+    try:
+        despertador.mover_aqui()  # ídem; si no está puesto, no lo crea
+    except (despertador.ErrorDespertador, OSError, subprocess.SubprocessError) as exc:
+        log.warning("no pude mover el despertador a esta copia (%s): abre Configuración y pulsa Guardar", exc)
     INSTALACION.parent.mkdir(parents=True, exist_ok=True)
     INSTALACION.write_text(json.dumps({"carpeta": str(raiz), "anteriores": anteriores}, ensure_ascii=False),
                            encoding="utf-8")
