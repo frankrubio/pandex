@@ -103,6 +103,9 @@ def a_markdown(datos, extension):
 
 def convertidor():
     """Un conversor para registrar en MarkItDown (se importa aquí: solo al convertir)."""
+    from .conversion import sin_magika
+
+    sin_magika()
     from markitdown import DocumentConverter, DocumentConverterResult
 
     class ExcelSinPandas(DocumentConverter):

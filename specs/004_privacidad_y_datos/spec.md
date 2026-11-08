@@ -46,6 +46,7 @@ mensajes de Canvas.
 | PRI-07 | Configuración → Canvas → **Olvidar mi sesión** borra el perfil del navegador y cualquier atajo de sesión, sin tocar cursos ni historial. | `test_olvidar_sesion` |
 | PRI-08 | `docs/privacidad.md` lista cada dato guardado; toda clave nueva de `config.json` aparece ahí. | `test_claves_de_config_documentadas` |
 | PRI-09 | La CI corre un escáner de secretos sobre cada PR (p. ej. `gitleaks`) y falla si encuentra uno. | job `secretos` |
+| PRI-10 | Ninguna biblioteca que Pandex carga manda telemetría. «Convertir a Markdown» no carga Magika ni `onnxruntime`: MarkItDown crea un `Magika()` al construirse, y `onnxruntime` intenta conectarse a `mobile.events.data.microsoft.com`. Pandex decide el tipo por la extensión y nunca lo usa. | `tests/test_markdown.py::SinTelemetria` |
 
 ✅ = la prueba ya existe y pasa.
 
@@ -82,3 +83,4 @@ mensajes de Canvas.
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión. | Repo público; requisito de Frank: solo datos necesarios. |
+| 2026-11-07 | PRI-10. | Al correr las pruebas, el proxy registró intentos de conexión a `mobile.events.data.microsoft.com`. La pila de llamadas lleva a `onnxruntime`, que Magika carga cuando MarkItDown se construye. Una conversión de un CSV hizo 2 intentos (Linux, MarkItDown 0.1.7 y onnxruntime 1.29.0; la 0.1.8 que fija Pandex crea `Magika()` igual). |

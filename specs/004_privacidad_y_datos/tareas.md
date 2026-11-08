@@ -74,3 +74,17 @@
   job falla (luego se cierra sin fusionar).
 - **Cambio:** job `secretos` en `.github/workflows/pruebas.yml`.
 - **Terminado cuando:** el job corre en cada PR.
+
+## T004.9 · MarkItDown sin Magika ni onnxruntime
+
+- **Requisitos:** PRI-10
+- **Depende de:** —
+- **Prueba primero:** `tests/test_markdown.py::SinTelemetria`: en un intérprete limpio, convertir un
+  CSV y un Excel no deja `onnxruntime` en `sys.modules`, y el `magika` cargado es el de Pandex.
+- **Cambio:** `pandex/markdown/conversion.py` pone un `magika` vacío antes de importar MarkItDown
+  (`sin_magika()`); `excel.py` lo usa también.
+- **Terminado cuando:**
+  - [x] la prueba pasa y antes fallaba;
+  - [ ] toda la suite pasa en Windows y Linux (CI);
+  - [x] una conversión real ya no intenta conectarse a Microsoft (medido con el proxy o `strace`);
+  - [x] `CHANGELOG.md` y `docs/` al día.

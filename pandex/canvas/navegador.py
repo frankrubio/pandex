@@ -179,12 +179,54 @@ def perfil(nombre, binario=None):
 
 
 def hay_sesion(nombre):
-    """¿Ya se inició sesión alguna vez con este navegador? (Si no, ni intentar sin ventana.)"""
+    """¿Ya se entró a Canvas con este navegador? Si no, el intento sin ventana es tiempo perdido.
+
+    Cuenta el navegador anotado (o el Chrome de las versiones 2.x). Un perfil solo no basta: un
+    intento que Google rechazó también lo deja creado.
+    """
+    if recordado() not in (None, nombre):
+        return False
     try:
         carpeta = perfil(nombre)
     except OSError:
         return False
     return (carpeta / ("cookies.sqlite" if nombre == "firefox" else "Default")).exists()
+
+
+def _se_puede_abrir(archivo):
+    """Windows: un navegador abierto tiene su candado tomado y nadie más lo puede abrir para escribir."""
+    try:
+        fd = os.open(archivo, os.O_WRONLY)
+    except PermissionError:
+        return False
+    except OSError:
+        return True
+    os.close(fd)
+    return True
+
+
+def _proceso_vivo(enlace):
+    """Linux: el candado es un enlace a ``equipo-pid`` (Chrome y Edge) o ``ip:+pid`` (Firefox)."""
+    try:
+        pid = int(os.readlink(enlace).rsplit("-", 1)[-1].rsplit("+", 1)[-1])
+        os.kill(pid, 0)
+    except PermissionError:
+        return True  # existe, pero es de otro usuario
+    except (OSError, ValueError):
+        return False
+    return True
+
+
+def en_uso(nombre, carpeta=None):
+    """¿Hay un navegador abierto ahora con el perfil de Pandex? Solo mira el candado del perfil."""
+    try:
+        carpeta = Path(carpeta) if carpeta else perfil(nombre)
+    except OSError:
+        return False
+    if WINDOWS:
+        candado = carpeta / ("parent.lock" if nombre == "firefox" else "lockfile")
+        return candado.exists() and not _se_puede_abrir(candado)
+    return _proceso_vivo(carpeta / ("lock" if nombre == "firefox" else "SingletonLock"))
 
 
 # ---------- el contexto (lo que usa sesion.py) ----------
@@ -204,6 +246,31 @@ def _del_sitio(dominio, host):
     return host == dominio or host.endswith("." + dominio)
 
 
+_CERRADO = ("no such window", "invalid session id", "target window already closed", "session deleted",
+            "not connected to devtools", "not reachable", "tab crashed", "browsing context has been discarded",
+            "without establishing a connection", "failed to decode response from marionette",
+            "max retries exceeded", "connection refused", "failed to establish a new connection")
+_SIN_RED = ("ERR_INTERNET_DISCONNECTED", "ERR_NAME_NOT_RESOLVED", "ERR_CONNECTION", "ERR_ADDRESS_UNREACHABLE",
+            "ERR_NETWORK_CHANGED", "ERR_TIMED_OUT", "ERR_PROXY", "about:neterror")
+FALLOS_SEGUIDOS = 10
+
+
+def _cerrado(exc):
+    """¿El error dice que la ventana o el navegador ya no están? Los demás son pasajeros: pasan
+    mientras la página redirige al login de tu institución."""
+    if type(exc).__name__ in ("NoSuchWindowException", "InvalidSessionIdException"):
+        return True
+    texto = str(exc).lower()
+    return any(p in texto for p in _CERRADO)
+
+
+def primera_linea(exc):
+    """El motivo de un error de Selenium en una línea, sin «Message:» ni la traza."""
+    texto = str(exc).strip()
+    texto = texto[len("Message:"):].strip() if texto.startswith("Message:") else texto
+    return (texto.splitlines() or [""])[0][:200]
+
+
 class _Pedidos:
     """``contexto.request.get(url).status`` con las cookies del navegador que son de ese sitio.
 
@@ -221,7 +288,7 @@ class _Pedidos:
 
         host = urlsplit(url).hostname
         try:
-            ua = self._contexto.driver.execute_script("return navigator.userAgent")
+            ua = self._contexto.user_agent()
             frasco = {c["name"]: c["value"] for c in self._contexto.cookies() if _del_sitio(c.get("domain"), host)}
             r = requests.get(url, cookies=frasco, headers={"User-Agent": ua},
                              timeout=timeout / 1000, allow_redirects=False)
@@ -233,6 +300,8 @@ class _Pedidos:
 class _Pestana:
     def __init__(self, driver):
         self.driver = driver
+        self.url = None  # la última vista al esperar
+        self._fallos = 0
 
     def evaluate(self, js):
         try:
@@ -249,13 +318,20 @@ class _Pestana:
         except TimeoutException:
             pass  # la página sigue cargando (SSO): se sigue preguntando a la API
         except Exception as exc:
-            raise ErrorNavegador(str(exc)) from exc
+            if _cerrado(exc) or any(p in str(exc) for p in _SIN_RED):
+                raise ErrorNavegador(str(exc)) from exc
+            # p. ej. net::ERR_ABORTED: una redirección cortó la carga; se sigue preguntando a la API
+            log.info("la página siguió con un aviso del navegador: %s", primera_linea(exc))
 
     def wait_for_timeout(self, ms):
         try:
-            self.driver.current_url  # si cerraste la ventana, esto falla
+            self.url = self.driver.current_url  # si cerraste la ventana, esto falla
+            self._fallos = 0
         except Exception as exc:
-            raise ErrorNavegador("cerraste el navegador") from exc
+            self._fallos += 1
+            if _cerrado(exc) or self._fallos >= FALLOS_SEGUIDOS:
+                raise ErrorNavegador("el navegador se cerró: " + primera_linea(exc)) from exc
+            log.info("el navegador no respondió un momento: %s", primera_linea(exc))
         time.sleep(ms / 1000)
 
 
@@ -264,13 +340,23 @@ class Contexto:
         self.driver = driver
         self.pages = [_Pestana(driver)]
         self.request = _Pedidos(self)
+        self._ua = None
+
+    def user_agent(self):
+        """Se lee una vez: pedirlo en plena redirección es lo que más falla."""
+        if self._ua is None:
+            self._ua = self.driver.execute_script("return navigator.userAgent")
+        return self._ua
 
     def cookies(self):
-        try:
-            return [{"name": c["name"], "value": c["value"], "domain": c.get("domain"),
-                     "path": c.get("path", "/")} for c in self.driver.get_cookies()]
-        except Exception as exc:
-            raise ErrorNavegador(str(exc)) from exc
+        for intento in range(3):
+            try:
+                return [{"name": c["name"], "value": c["value"], "domain": c.get("domain"),
+                         "path": c.get("path", "/")} for c in self.driver.get_cookies()]
+            except Exception as exc:
+                if _cerrado(exc) or intento == 2:
+                    raise ErrorNavegador(str(exc)) from exc
+                time.sleep(0.3)  # la página terminaba de redirigir
 
     def new_page(self):
         return self.pages[0]
