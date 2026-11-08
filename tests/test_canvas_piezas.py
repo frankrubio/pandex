@@ -81,6 +81,27 @@ class Destinos(unittest.TestCase):
         d = destinos.carpeta_destino(self.curso, regla, self.item("Material de clase"), 4, mapa)
         self.assertEqual(d, self.curso / "Sem 4" / "Laboratorio" / "Material de clase")
 
+    def test_teo_existente_se_reutiliza_con_regla_teoria(self):
+        """«teo» es «Teoría»: no se crea una carpeta nueva junto a la tuya."""
+        (self.curso / "Sem 14" / "teo" / "Material_de_clase").mkdir(parents=True)
+        regla = {"crear_secciones": True, "subcarpeta_fija": "Teoría", "alias_subcarpeta": []}
+        mapa = {"material de clase": "Material de clase"}
+        d = destinos.carpeta_destino(self.curso, regla, self.item("Material de clase", "Semana 14"), 14, mapa)
+        self.assertEqual(d, self.curso / "Sem 14" / "teo" / "Material_de_clase")
+        self.assertEqual(sorted(p.name for p in (self.curso / "Sem 14").iterdir()), ["teo"])
+
+    def test_laboratorio_y_lab_son_la_misma_mitad(self):
+        (self.curso / "Sem 2" / "Laboratorio").mkdir(parents=True)
+        regla = {"crear_secciones": True, "subcarpeta_fija": "Lab"}
+        d = destinos.carpeta_destino(self.curso, regla, self.item(None), 2, {})
+        self.assertEqual(d, self.curso / "Sem 2" / "Laboratorio")
+
+    def test_mitad_de_reconoce_teo(self):
+        teoria = {"subcarpeta_fija": "Teoría"}
+        lab = {"subcarpeta_fija": "Lab"}
+        ruta = self.curso / "Sem 1" / "teo" / "a.pdf"
+        self.assertIs(destinos.mitad_de(ruta, self.curso, [teoria, lab]), teoria)
+
     def test_semana_existente_con_otro_nombre(self):
         (self.curso / "Semana 05").mkdir()
         d = destinos.carpeta_destino(self.curso, {"crear_secciones": True}, self.item(None), 5, {})

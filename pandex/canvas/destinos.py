@@ -23,13 +23,24 @@ from .nombres import limpiar_nombre, normalizar
 # --------------------------------------------------------------------------
 
 
+# Abreviaturas que se escriben distinto pero son la misma mitad del curso.
+_EQUIVALENTES = {"teo": "teoria", "teor": "teoria", "teorico": "teoria",
+                 "laboratorio": "lab", "labo": "lab"}
+
+
+def clave_carpeta(nombre):
+    """``normalizar`` más las abreviaturas conocidas: ``"teo"`` = ``"Teoría"``, ``"Laboratorio"`` = ``"lab"``."""
+    clave = normalizar(nombre)
+    return _EQUIVALENTES.get(clave, clave)
+
+
 def buscar_subcarpeta(padre, nombre, alias=()):
     """La subcarpeta que ya existe con ese nombre (o un alias), comparando flexible."""
     if not padre.is_dir():
         return None
-    objetivos = {normalizar(nombre)} | {normalizar(a) for a in alias}
+    objetivos = {clave_carpeta(nombre)} | {clave_carpeta(a) for a in alias}
     for hijo in padre.iterdir():
-        if hijo.is_dir() and normalizar(hijo.name) in objetivos:
+        if hijo.is_dir() and clave_carpeta(hijo.name) in objetivos:
             return hijo
     return None
 
@@ -148,7 +159,7 @@ def marcas_de(regla):
     """Carpetas que identifican una mitad del curso: Teoría, Lab, Material de Laboratorio…"""
     nombres = [regla.get("subcarpeta_fija"), regla.get("subcarpeta_raiz"),
                *regla.get("alias_subcarpeta", [])]
-    return {normalizar(n) for n in nombres if n}
+    return {clave_carpeta(n) for n in nombres if n}
 
 
 def mitad_de(ruta, carpeta, hermanas):
@@ -159,7 +170,7 @@ def mitad_de(ruta, carpeta, hermanas):
     la otra.
     """
     try:
-        partes = {normalizar(p) for p in ruta.relative_to(carpeta).parts[:-1]}
+        partes = {clave_carpeta(p) for p in ruta.relative_to(carpeta).parts[:-1]}
     except ValueError:
         return None
     for regla in hermanas:
