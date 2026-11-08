@@ -107,7 +107,9 @@ hechos con OCR lo dicen en su primera línea: revísalos, el OCR a veces confund
 
 - **MarkItDown sin plugins** (`enable_plugins=False`), sin cliente de LLM y sin Azure.
 - **El tipo se decide por la extensión.** Por defecto MarkItDown pasa cada archivo por
-  *Magika* (una red neuronal) para adivinar qué es; Pandex reemplaza ese paso y nunca se ejecuta.
+  *Magika* (una red neuronal) para adivinar qué es. Pandex reemplaza ese paso y ni siquiera
+  carga Magika ni `onnxruntime` (`conversion.sin_magika`). `onnxruntime` intenta mandar
+  telemetría a Microsoft; sin él, la conversión usa unos 40 MB menos.
 - **La codificación** de CSV/HTML/JSON/XML sale de reglas fijas: marca BOM → UTF-8 →
   `cp1252` (la de Excel en Windows en español). La detección estadística rompía la Ñ.
 

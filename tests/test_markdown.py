@@ -122,5 +122,39 @@ class Conversion(unittest.TestCase):
         salida = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True)
         self.assertEqual(salida.stdout.strip(), "false")
 
+@unittest.skipUnless(extras.instalado("markdown"),
+                     "«Convertir a Markdown» es opcional y no está instalado (requirements-markdown.txt)")
+class SinTelemetria(unittest.TestCase):
+    """PRI-10: MarkItDown crea un Magika() al construirse, y Magika carga onnxruntime, que intenta
+    mandar telemetría a Microsoft (mobile.events.data.microsoft.com). Pandex no usa Magika: el tipo
+    sale de la extensión. Se comprueba en un intérprete limpio, como el proceso de conversión."""
+
+    def cargado_tras(self, codigo):
+        import json
+        import subprocess
+        import sys
+
+        from pandex.rutas import RAIZ
+
+        revisar = ("\nimport json, sys\nm = sys.modules.get('magika')\n"
+                   "print(json.dumps({'onnxruntime': 'onnxruntime' in sys.modules,"
+                   " 'magika_real': m is not None and not getattr(m, 'PANDEX_SIN_MAGIKA', False)}))")
+        salida = subprocess.run([sys.executable, "-c", codigo + revisar], cwd=RAIZ, capture_output=True,
+                                text=True, timeout=120)
+        self.assertEqual(salida.returncode, 0, salida.stderr[-2000:])
+        return json.loads(salida.stdout.strip().splitlines()[-1])
+
+    def test_convertir_no_carga_magika_ni_onnxruntime(self):
+        cargado = self.cargado_tras(
+            "import io\nfrom pandex.markdown.conversion import crear_markitdown\n"
+            "r = crear_markitdown().convert_stream(io.BytesIO(b'curso,nota\\nCalculo,18\\n'), file_extension='.csv')\n"
+            "assert 'Calculo' in r.markdown, r.markdown")
+        self.assertEqual(cargado, {"onnxruntime": False, "magika_real": False})
+
+    def test_el_conversor_de_excel_tampoco(self):
+        cargado = self.cargado_tras("from pandex.markdown import excel\nexcel.convertidor()")
+        self.assertEqual(cargado, {"onnxruntime": False, "magika_real": False})
+
+
 if __name__ == "__main__":
     unittest.main()

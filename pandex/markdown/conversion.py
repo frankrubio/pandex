@@ -37,16 +37,41 @@ def detectar_codificacion(muestra):
         return mejor.encoding if mejor else None
 
 
+def sin_magika():
+    """Pone un ``magika`` vacío antes de importar MarkItDown (spec 004, PRI-10).
+
+    MarkItDown importa Magika al cargarse y crea un ``Magika()`` al construirse: eso carga una red
+    neuronal con onnxruntime, que además intenta mandar telemetría a Microsoft. Pandex decide el
+    tipo por la extensión y nunca lo usa, así que no se carga (de paso, menos memoria y tiempo).
+    """
+    if "magika" in sys.modules:
+        return
+    import types
+
+    class Magika:
+        def identify_stream(self, *_a, **_k):
+            raise RuntimeError("Pandex no usa Magika: el tipo sale de la extensión")
+
+        identify_bytes = identify_path = identify_stream
+
+    vacio = types.ModuleType("magika")
+    vacio.Magika = Magika
+    vacio.PANDEX_SIN_MAGIKA = True
+    sys.modules["magika"] = vacio
+
+
 def crear_markitdown():
     """MarkItDown sin plugins, sin LLM y decidiendo el tipo solo por la extensión.
 
     Por defecto MarkItDown corre Magika (una red neuronal) sobre cada archivo para
     adivinar su tipo. Aquí se reemplaza ese paso: la extensión manda, y la
     codificación de los formatos de texto sale de detectar_codificacion().
-    Se importa aquí dentro para no alargar el arranque de Pandex.
+    Se importa aquí dentro para no alargar el arranque de Pandex. Magika ni siquiera se carga
+    (``sin_magika``).
     """
     import mimetypes
 
+    sin_magika()
     from markitdown import MarkItDown
 
     class MarkItDownPorExtension(MarkItDown):

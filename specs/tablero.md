@@ -33,6 +33,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T004.6 | Olvidar mi sesión | 004 | — | libre |
 | T004.7 | Claves de config documentadas | 004 | — | libre |
 | T004.8 | Escáner de secretos en la CI | 004 | — | libre |
+| T004.9 | MarkItDown sin Magika ni onnxruntime: sin telemetría | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Prioridad 3 · Rendimiento y peso (los requisitos de números)
 
@@ -82,6 +83,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T008.1 | Estilo de carpetas (`_` por defecto, o el tuyo) | 008 | — | hecha |
 | T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | hecha |
 | T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T010.1 | Iniciar sesión sin trabas en Chrome y Edge | 010 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Preguntas abiertas para Frank
 

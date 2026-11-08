@@ -38,7 +38,7 @@ dentro de cada semana. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 1
 
 | Fase | Qué pasa | Tiempo típico |
 |---|---|---|
-| sesión | El navegador abre sin ventana con tu sesión guardada, confirma con la API que estás dentro y se cierra. Si la sesión venció, abre una ventana para que entres. | ~4 s |
+| sesión | Primero prueba la sesión guardada, sin navegador. Si venció, abre el navegador sin ventana con tu perfil (solo si ya entraste antes con ese navegador), confirma con la API que estás dentro y lo cierra. Si la página se queda 6 s pidiendo iniciar sesión, abre la ventana para que entres. | ~4 s con el navegador; menos con la sesión guardada |
 | módulos | Lee los módulos de todos tus cursos **a la vez**. | ~2 s |
 | consultas | Pide nombre real y tamaño **solo de lo que el historial no conoce**. | 0 s si no hay nada nuevo |
 | revisar disco | Para cada archivo nuevo: ¿ya lo tienes? ¿a qué carpeta va? | < 1 s |
@@ -181,7 +181,9 @@ Ejemplo escrito a mano:
 
 | Qué pasa | Por qué / qué hacer |
 |---|---|
-| Se abre el navegador cada vez | Tu universidad pide iniciar sesión seguido. Entra y la ventana se cierra sola. |
+| Se abre el navegador cada vez | Tu universidad pide iniciar sesión seguido. Entra: en Firefox la ventana se cierra sola; en Chrome y Edge, ciérrala tú cuando veas tu Canvas. |
+| *«No pude abrir el navegador para entrar a Canvas… Detalle: …»* | Cierra las ventanas de tu navegador y reintenta. Si sigue, manda el detalle (o las líneas de **Ver registro** con `navegador` o `la página se quedó en`): dice qué falló. |
+| *«Ya hay una ventana de Firefox abierta por Pandex»* | Quedó abierta de un intento anterior: ciérrala y reintenta. En Chrome y Edge, Pandex abre Canvas en esa misma ventana. |
 | *"No reconocí ninguno de tus cursos"* | Empezó otro ciclo: **Configurar Canvas…** |
 | Una semana o `Lab` queda vacía | Pandex solo ve los módulos **publicados** para alumnos. |
 | *"🔒 aún sin abrir en Canvas"* | El ítem tiene fecha de apertura futura; se baja solo cuando se abra. |
