@@ -98,6 +98,27 @@ class Destinos(unittest.TestCase):
                                      self.item(None, "Sílabo: y anexo"), None, {})
         self.assertEqual(d, self.curso / "Sílabo- y anexo")
 
+    def test_modulo_sin_semana_es_del_curso_entero_no_de_una_mitad(self):
+        """El sílabo y los anexos valen para teoría y laboratorio: no van dentro de «Teoría» ni «Lab»."""
+        for fija in ("Teoría", "Lab"):
+            with self.subTest(mitad=fija):
+                regla = {"crear_secciones": True, "subcarpeta_fija": fija}
+                d = destinos.carpeta_destino(self.curso, regla, self.item(None, "Sílabo y anexo"), None, {},
+                                             crear=False)
+                self.assertEqual(d, self.curso / "Sílabo y anexo")
+
+    def test_modulo_sin_semana_clasico_tampoco_usa_la_mitad(self):
+        regla = {"subcarpeta_fija": "Teoría"}
+        mapa = {"recursos": "Recursos"}
+        d = destinos.carpeta_destino(self.curso, regla, self.item("Cronograma", "Recursos y materiales"),
+                                     None, mapa, crear=False)
+        self.assertEqual(d, self.curso / "Recursos y materiales")
+
+    def test_con_semana_la_mitad_se_conserva(self):
+        regla = {"crear_secciones": True, "subcarpeta_fija": "Lab"}
+        d = destinos.carpeta_destino(self.curso, regla, self.item(None), 3, {}, crear=False)
+        self.assertEqual(d, self.curso / "Sem 3" / "Lab")
+
     def test_modo_lista(self):
         regla = {"modo": "lab_comunicacion", "subcarpeta_raiz": "Material de Laboratorio"}
         d = destinos.carpeta_destino(self.curso, regla, self.item("Material de laboratorio"), 7, {})

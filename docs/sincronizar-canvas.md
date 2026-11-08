@@ -24,7 +24,10 @@ lista de ítems: archivos, enlaces, tareas y **subencabezados** (`Material de cl
 tipo **archivo** de los módulos **publicados**.
 
 La semana sale del **nombre del módulo** (`Semana 7`, `Sem 7`, `Week 07`). Los módulos sin
-número de semana van a una carpeta con su nombre.
+número de semana van a una carpeta con su nombre, **sin** `Teoría` ni `Lab` dentro: el sílabo y
+los anexos valen para las dos mitades del curso. Si teoría y laboratorio traen en uno de esos
+módulos archivos distintos con el mismo nombre, solo se guarda el primero (el resumen lo lista
+entre los que «ya tenías»); renombra uno a mano si quieres los dos.
 
 Muchas universidades separan **teoría y laboratorio en dos cursos** de Canvas
 (`Programación I - Teoría 1` y `Programación I - Laboratorio 14`). El asistente los reconoce

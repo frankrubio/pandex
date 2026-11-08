@@ -7,7 +7,8 @@ Estructura que se arma dentro de la carpeta de cada curso::
         Teoría/ | Lab/          solo si el curso tiene teoría y laboratorio en Canvas
           Material de clase/    el subencabezado del módulo
             archivo.pdf
-      Sílabo y anexo/           módulos sin número de semana (si se activó)
+      Sílabo y anexo/           módulos sin número de semana (si se activó); son del
+                                curso entero, así que no llevan «Teoría» ni «Lab»
 
 Las carpetas no están escritas a fuego: siempre se busca primero una que ya
 exista con un nombre parecido (``"Sem 3"`` = ``"Semana 3"``, ``"Lab"`` =
@@ -101,11 +102,14 @@ def carpeta_destino(carpeta, regla, item, semana, secciones, formato="Sem {n}", 
 
     fija = regla.get("subcarpeta_fija")  # "Teoría" / "Lab" cuando el curso tiene las dos mitades
     alias_fija = regla.get("alias_subcarpeta", [])
+    # Un módulo sin semana (Sílabo y anexo, Recursos…) es del curso entero: sirve a las
+    # dos mitades, así que no se guarda dentro de «Teoría» ni de «Lab».
+    en_mitad = bool(fija) and semana is not None
 
     if regla.get("crear_secciones"):
         # lo que arma el asistente: copia la organización de Canvas tal cual
         destino = base()
-        if fija:
+        if en_mitad:
             destino = sub(destino, fija, alias_fija)
         if not (item.seccion or "").strip():
             return destino
@@ -119,8 +123,9 @@ def carpeta_destino(carpeta, regla, item, semana, secciones, formato="Sem {n}", 
     destino = base()
     if not fija:
         return sub(destino, nombre_seccion)
-    destino = sub(destino, fija, alias_fija)
-    # dentro de la mitad se usa la carpeta de sección solo si ya la tienes
+    if en_mitad:
+        destino = sub(destino, fija, alias_fija)
+    # dentro de la mitad (o del módulo común) se usa la carpeta de sección solo si ya la tienes
     if nombre_seccion:
         propia = buscar_subcarpeta(destino, nombre_seccion)
         if propia is not None:

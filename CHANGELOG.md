@@ -3,6 +3,12 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.2
+
+- **Arreglo: el sílabo y los anexos ya no van dentro de `teo` ni `Lab`.** Los módulos sin número de
+  semana (`Sílabo y anexo`, `Recursos y materiales`…) son del curso entero, así que ahora quedan
+  directo en su carpeta y no dentro de `Teoría` o `Lab`. Lo de las semanas sigue igual.
+
 ## 2.6.0
 
 - **Sincronizar sin abrir el navegador.** Pandex guarda la sesión de tu Canvas (solo las cookies de
