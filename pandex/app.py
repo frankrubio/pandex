@@ -42,6 +42,7 @@ ESTRENAR_TRAS = 20_000         # ms tras abrir una versión nueva: limpiar lo qu
 
 class PandexApp(QObject):
     _disparo_programado = pyqtSignal(str)
+    _error_inesperado = pyqtSignal(str)  # puede venir de cualquier hilo (pandex/errores.py)
 
     def __init__(self, qapp, salir_al_terminar=False):
         super().__init__()
@@ -58,6 +59,7 @@ class PandexApp(QObject):
         self.mascota = Mascota(self.config)
         self.mascota.menu_pedido.connect(self._abrir_menu)
         self.mascota.al_clic = self._clic_en_mascota
+        self._error_inesperado.connect(self._decir_error, Qt.ConnectionType.QueuedConnection)
 
         self.ejecutor = Ejecutor(self.config)
         self.ejecutor.iniciada.connect(self._tarea_iniciada)
@@ -74,6 +76,16 @@ class PandexApp(QObject):
         self._logo = None
         self.aplicar_logo()
         self._crear_bandeja()
+
+    # ---------- errores inesperados (ROB-01) ----------
+
+    def avisar_error(self, texto):
+        """Lo llama ``errores.atender`` desde el hilo que sea."""
+        self._error_inesperado.emit(texto)
+
+    def _decir_error(self, texto):
+        self.mascota.set_estado("error", 4)
+        self.mascota.decir(texto, tipo="error", segundos=10)
 
     # ---------- arranque ----------
 
@@ -95,7 +107,14 @@ class PandexApp(QObject):
         if self.salir_al_terminar:
             self.mascota.decir(f"¡{horas.saludo()}! Vengo a hacer lo que toca y me voy.")
             return
-        self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
+        if self.config.recuperada == "copia":  # ROB-02: config.json estaba dañado
+            self.mascota.decir("Tu configuración estaba dañada. Recuperé la última copia buena; revisa que "
+                               "todo esté como lo dejaste.", tipo="error", segundos=15)
+        elif self.config.recuperada == "fabrica":
+            self.mascota.decir("Tu configuración estaba dañada y no tenía copia. Empecé de cero: vamos a "
+                               "configurar Canvas otra vez.", tipo="error", segundos=15)
+        else:
+            self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
         QTimer.singleShot(1500, self._primera_vez)
         QTimer.singleShot(ESTRENAR_TRAS, self._estrenar_version)
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día

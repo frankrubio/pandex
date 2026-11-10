@@ -14,9 +14,10 @@ devuelven.
 | `pandex/tareas.py` | El contrato de los plug-ins: `descubrir()` y `TaskContext` (el `ctx`). |
 | `pandex/ejecutor.py` | `Ejecutor`: corre una tarea a la vez en un `QThread`. |
 | `pandex/programador.py` | `Programador`: dispara tareas con horario cron (APScheduler). |
-| `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
+| `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. Si el archivo está dañado, abre con la última copia buena (`DATOS/config-ultima-buena.json`) o con los valores de fábrica. |
 | `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
 | `pandex/log.py` | `logs/pandex.log`, rotativo. |
+| `pandex/errores.py` | Red de seguridad: un error que nadie atrapó (en la interfaz o en un hilo) va al registro y la mascota avisa; Pandex no se cierra (spec 011). |
 | `pandex/pendientes.py` | Qué tarea programada se perdió (PC apagada o suspendida) y hay que hacer ya. Sin Qt. |
 | `pandex/despertador.py` | Modo «a la hora»: temporizador de systemd (Linux) o tarea programada (Windows) que lanza `main.py --pendientes`. |
 | `pandex/extras.py` | Funciones opcionales (hoy, «Convertir a Markdown» = `requirements-markdown.txt`): instalar y quitar. |
@@ -65,6 +66,9 @@ Reglas del modelo de hilos:
 - El reloj (APScheduler) corre en su propio hilo; su disparo se reenvía a la interfaz con una
   señal Qt encolada antes de llamar al ejecutor.
 - Un error en `run` no tumba la app: se registra con su traceback y la mascota avisa.
+- Un error en cualquier otra parte (un clic, un reloj, otro hilo) tampoco: lo atiende
+  `pandex/errores.py`. Si Pandex no puede ni arrancar, `main.py` lo anota y muestra una ventana
+  que dice qué hacer.
 
 ## Primera ejecución
 

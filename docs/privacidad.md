@@ -18,6 +18,7 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 |---|---|---|
 | Dirección de tu Canvas, carpeta destino, cursos y secciones | `config.json` (carpeta de Pandex) | saber qué bajar y dónde ponerlo |
 | Preferencias de la mascota y horarios | `config.json` | apariencia y tareas programadas |
+| Copia de tu configuración (`config-ultima-buena.json`) y, si alguna vez se dañó, hasta 3 copias del archivo dañado (`config-danado-*.json`) | carpeta de datos | abrir Pandex aunque `config.json` se dañe |
 | Fecha de la última búsqueda de actualizaciones | `config.json` (`ultima_busqueda`) | buscar una vez al día como máximo |
 | Qué archivo de Canvas está en qué ruta de tu PC | `historial_canvas.json` (carpeta de datos) | no volver a bajar lo que ya tienes |
 | Sesión guardada (`sesion_canvas.json`: solo las cookies de tu Canvas, permisos solo para tu usuario) | carpeta de datos | no abrir el navegador cada vez; se borra sola si Canvas la rechaza y al desinstalar |

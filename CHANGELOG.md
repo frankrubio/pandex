@@ -3,6 +3,14 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.7.0
+
+- **Pandex ya no se cierra solo por un error.** Si algo falla donde nadie lo esperaba, queda en el
+  registro y la mascota avisa: «Algo falló y lo anoté». Antes desaparecía sin decir nada.
+- **Abre aunque `config.json` se dañe.** Si el archivo quedó vacío o cortado (un corte de luz, el
+  disco lleno), Pandex recupera la última copia buena y te lo dice. Si no puede ni arrancar,
+  muestra una ventana que dice qué hacer.
+
 ## 2.6.7
 
 - **Sin internet, Pandex lo dice enseguida.** Ya no abre la ventana para iniciar sesión cuando el
