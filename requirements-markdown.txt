@@ -1,8 +1,22 @@
 # «Convertir a Markdown» (opcional): PDF, Word, PowerPoint, Excel y más a .md, todo local y sin IA.
 # Pandex lo instala si lo pides en el instalador o en Configuración → Tareas.
-#   .venv/bin/python -m pip install -r requirements-markdown.txt          (Linux)
-#   .venv\Scripts\python.exe -m pip install -r requirements-markdown.txt   (Windows)
-markitdown[pdf,docx,pptx]==0.1.8
+#   .venv/bin/python -m pandex.paquetes requirements-markdown.txt          (Linux)
+#   .venv\Scripts\python.exe -m pandex.paquetes requirements-markdown.txt   (Windows)
+# (Con «pip install -r» también funciona, pero trae Magika y pesa unos 150 MB más.)
+
+# MarkItDown va sin sus dependencias: pide Magika, una red neuronal que adivina el tipo de archivo y
+# trae onnxruntime y numpy (unos 150 MB). onnxruntime además intenta mandar datos de uso a Microsoft.
+# Pandex decide el tipo por la extensión y nunca la usa (spec 002, PES-10; spec 004, PRI-10).
+markitdown==0.1.8  # pandex: sin-dependencias
+# Lo que MarkItDown sí usa (base, PDF, Word y PowerPoint), en versiones dentro de los rangos que pide
+beautifulsoup4==4.15.0
+defusedxml==0.7.1
+markdownify==1.2.3
+pdfminer.six==20260107
+pdfplumber==0.11.10
+mammoth==1.11.0
+lxml==6.1.3
+python-pptx==1.0.2
 # Excel (.xlsx y .xls) con un conversor propio (pandex/markdown/excel.py): sin pandas, que pesa 81 MB
 openpyxl==3.1.5
 xlrd==2.0.2

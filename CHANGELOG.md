@@ -3,6 +3,24 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.6.7
+
+- **Sin internet, Pandex lo dice enseguida.** Ya no abre la ventana para iniciar sesión cuando el
+  problema es la conexión, o cuando falta el navegador, Selenium o su componente.
+- **Iniciar sesión, más firme.** Un navegador sin ventana que quedó abierto (por ejemplo, si Pandex se
+  cerró de golpe) ya no recibe Canvas sin que lo veas: Pandex lo cierra y sigue. En Firefox también
+  espera a que se suelte el perfil antes de abrir la ventana. En Linux, un candado viejo de otro
+  programa ya no bloquea el perfil.
+- **Menos falsas alarmas.** Si el navegador no deja leer la página un momento, eso ya no cuenta como
+  «la página se quedó quieta». Después de que inicias sesión y cierras la ventana, Pandex espera al
+  login de tu universidad hasta 20 s, como antes, en vez de cortar a los 6 s.
+- **Mensajes más claros.** El globo dice qué pasó y qué hacer, sin texto técnico en inglés: el
+  detalle va a «Ver registro».
+- **Privacidad:** el registro ya no puede guardar códigos de sesión que vengan en una dirección
+  (`;jsessionid=…`) ni dentro de un error del navegador.
+- **«Convertir a Markdown» pesa unos 125 MB menos.** Ya no instala Magika, `onnxruntime` ni `numpy`,
+  que Pandex no usaba. Si los tenías, se quitan al actualizar. Todos los formatos se convierten igual.
+
 ## 2.6.6
 
 - **Un solo Pandex por PC.** Si instalas una copia en otra carpeta, el instalador trae tu

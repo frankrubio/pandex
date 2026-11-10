@@ -38,6 +38,39 @@ class PipSinCache(unittest.TestCase):
         self.assertIn("--no-cache-dir", comando)
         self.assertIn("--no-compile", comando)
 
+    def test_lo_marcado_sin_dependencias_se_instala_aparte(self):
+        """PES-10: MarkItDown va sin sus dependencias (Magika, onnxruntime y numpy, que Pandex no usa)."""
+        with tempfile.TemporaryDirectory() as tmp:
+            req = Path(tmp) / "requirements-x.txt"
+            req.write_text("# comentario\nmarkitdown==0.1.8  # pandex: sin-dependencias\n"
+                           "beautifulsoup4\nxlrd==2.0.2; sys_platform == 'win32'\n", encoding="utf-8")
+            with mock.patch.object(paquetes.subprocess, "run", return_value=mock.Mock(returncode=0)) as run:
+                paquetes.instalar([RAIZ / "requirements.txt", req], "python")
+        normal, suelto = (c.args[0] for c in run.call_args_list)
+        self.assertIn(str(RAIZ / "requirements.txt"), normal)
+        self.assertIn("beautifulsoup4", normal)
+        self.assertIn("xlrd==2.0.2; sys_platform == 'win32'", normal)
+        self.assertNotIn("markitdown==0.1.8", normal, "con sus dependencias traería Magika")
+        self.assertIn("--no-deps", suelto)
+        self.assertIn("markitdown==0.1.8", suelto)
+        for opcion in ("--no-cache-dir", "--no-compile"):
+            self.assertIn(opcion, normal)
+            self.assertIn(opcion, suelto)
+
+    def test_se_puede_llamar_desde_los_instaladores(self):
+        with mock.patch.object(paquetes, "instalar") as instalar:
+            self.assertEqual(paquetes.main(["requirements-markdown.txt"]), 0)
+        instalar.assert_called_once_with(["requirements-markdown.txt"])
+        with mock.patch.object(paquetes, "instalar", side_effect=paquetes.ErrorPaquetes("x", "sin red")), \
+                mock.patch("sys.stderr"):
+            self.assertEqual(paquetes.main(["requirements-markdown.txt"]), 1)
+
+    def test_los_instaladores_respetan_lo_que_va_sin_dependencias(self):
+        for nombre in ("instalar.sh", "instalar.bat"):
+            texto = (RAIZ / nombre).read_text(encoding="utf-8")
+            self.assertNotRegex(texto, r"pip install -r requirements-markdown", nombre)
+            self.assertIn("-m pandex.paquetes requirements-markdown.txt", texto, nombre)
+
     def test_instalar_fallido_avisa(self):
         with mock.patch.object(paquetes.subprocess, "run", return_value=mock.Mock(returncode=1, stderr="sin red")), \
                 self.assertRaises(paquetes.ErrorPaquetes):
@@ -55,6 +88,15 @@ class Huerfanos(unittest.TestCase):
             sobran = paquetes.huerfanos([req])
         for necesario in ("requests", "urllib3", "idna", "certifi", "pip"):
             self.assertNotIn(necesario, sobran)
+
+    def test_lo_que_va_sin_dependencias_no_las_retiene(self):
+        """Al actualizar se quitan Magika, onnxruntime y numpy: MarkItDown ya no los pide."""
+        with tempfile.TemporaryDirectory() as tmp:
+            req = Path(tmp) / "requirements.txt"
+            req.write_text("requests  # pandex: sin-dependencias\n", encoding="utf-8")
+            sobran = paquetes.huerfanos([req])
+        self.assertNotIn("requests", sobran)
+        self.assertIn("idna", sobran, "es dependencia de requests, que va sin ellas")
 
     def test_ante_un_error_no_quita_nada(self):
         with mock.patch.object(paquetes.subprocess, "run", return_value=mock.Mock(returncode=1, stdout="", stderr="x")):

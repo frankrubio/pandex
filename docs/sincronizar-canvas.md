@@ -183,8 +183,11 @@ Ejemplo escrito a mano:
 | Qué pasa | Por qué / qué hacer |
 |---|---|
 | Se abre el navegador cada vez | Tu universidad pide iniciar sesión seguido. Entra: en Firefox la ventana se cierra sola; en Chrome y Edge, ciérrala tú cuando veas tu Canvas. |
-| *«No pude abrir el navegador para entrar a Canvas… Detalle: …»* | Cierra las ventanas de tu navegador y reintenta. Si sigue, manda el detalle (o las líneas de **Ver registro** con `navegador` o `la página se quedó en`): dice qué falló. |
-| *«Ya hay una ventana de Firefox abierta por Pandex»* | Quedó abierta de un intento anterior: ciérrala y reintenta. En Chrome y Edge, Pandex abre Canvas en esa misma ventana. |
+| *«No pude entrar a Canvas con el navegador…»* | Reintenta. Si sigue, mira **Ver registro**: las líneas con `navegador`, `intento sin ventana` o `la página se quedó en` dicen qué falló (sin datos de tu sesión). |
+| *«No hay conexión: no pude llegar a Canvas»* | Revisa tu internet. Pandex no abre la ventana para iniciar sesión: sin internet no serviría. |
+| *«No pude descargar lo que … necesita para Pandex»* | La primera vez, Selenium baja un componente de 3 a 15 MB para manejar tu navegador. Revisa tu internet y reintenta. |
+| *«Ya hay una ventana de Firefox abierta por Pandex»* | Quedó abierta de un intento anterior: ciérrala y reintenta. En Chrome y Edge, Pandex abre Canvas en esa misma ventana. Si lo que quedó abierto es un navegador **sin ventana** (por ejemplo, Pandex se cerró de golpe), Pandex lo cierra solo y sigue. |
+| *«Ya estoy entrando a Canvas en otra tarea»* | Otra tarea de Pandex está iniciando sesión con el mismo navegador. Espera a que termine. |
 | *"No reconocí ninguno de tus cursos"* | Empezó otro ciclo: **Configurar Canvas…** |
 | Una semana o `Lab` queda vacía | Pandex solo ve los módulos **publicados** para alumnos. |
 | *"🔒 aún sin abrir en Canvas"* | El ítem tiene fecha de apertura futura; se baja solo cuando se abra. |

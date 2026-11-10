@@ -42,7 +42,7 @@ jobs:
         shell: bash
         env:
           PIP_NO_CACHE_DIR: "1"
-        run: $PY -m pip install -r requirements-markdown.txt --quiet --no-compile
+        run: $PY -m pandex.paquetes requirements-markdown.txt  # como lo instala Pandex (PES-10)
       - name: Medir todo (≤ 600 MB)
         shell: bash
         run: |

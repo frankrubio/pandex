@@ -35,12 +35,13 @@ está medida. El código tenía cuatro puntos que podían dar ese resultado:
 
 | Id | Requisito | Se comprueba con |
 |---|---|---|
-| SES-01 | Si el intento sin ventana falla, se sigue con la ventana para iniciar sesión. | `tests/test_navegador.py::IniciarSesionConVentanaNormal::test_si_el_intento_sin_ventana_falla_se_sigue_con_la_ventana_normal` |
+| SES-01 | Si el intento sin ventana no encuentra la sesión o falla por otro motivo (un perfil viejo, un error de un momento), se sigue con la ventana para iniciar sesión. Si falla porque no hay internet, o falta el navegador, Selenium o su driver, se dice enseguida: la ventana no lo arreglaría. | `tests/test_navegador.py::IniciarSesionConVentanaNormal` (`test_si_el_intento_sin_ventana_falla_se_sigue_con_la_ventana_normal`, `test_sin_red_no_abre_la_ventana`, `test_si_falta_algo_por_instalar_no_abre_la_ventana`) y `::Abrir::test_sin_driver_lo_dice_y_no_se_toma_como_perfil_viejo` |
 | SES-02 | El intento sin ventana solo se hace con el navegador con el que ya se entró a Canvas: el anotado, o el Chrome de las versiones 2.x si no hay uno anotado. Con otro, va directo a la ventana. | `tests/test_navegador.py::HaySesion` |
-| SES-03 | Si la página se queda 6 s en el mismo lugar sin que la sesión valga (pide iniciar sesión o elegir cuenta), el intento sin ventana termina ahí, sin esperar los 20 s. | `tests/test_navegador.py::EsperarSesion` |
+| SES-03 | Si la página se queda 6 s en el mismo lugar sin que la sesión valga (pide iniciar sesión o elegir cuenta), el intento sin ventana termina ahí, sin esperar los 20 s. Si no se puede leer la dirección, el conteo vuelve a empezar. Solo vale para el intento sin ventana: la comprobación tras cerrar la ventana espera los 20 s, porque ya iniciaste sesión. | `tests/test_navegador.py::EsperarSesion`, `::ErroresPasajeros::test_una_lectura_fallida_olvida_la_direccion`, `::IniciarSesionConVentanaNormal::test_tras_la_ventana_no_corta_a_los_6_s` |
 | SES-04 | Un error pasajero de Selenium mientras la página redirige no corta el intento. Solo cuenta como cerrado si la ventana o el navegador ya no existen, o si falla 10 veces seguidas. | `tests/test_navegador.py::ErroresPasajeros` |
-| SES-05 | En Chrome y Edge, Pandex comprueba la sesión recién cuando el navegador suelta su perfil, no cuando termina el proceso que abrió. Si la ventana de Pandex ya estaba abierta, Canvas se abre en ella y se espera a que la cierres. En Firefox, lo dice. | `tests/test_navegador.py::EnUso` y `::IniciarSesionConVentanaNormal` |
-| SES-06 | El mensaje genérico de error trae el motivo técnico en una línea. El registro dice en qué página se quedó: solo el sitio y la ruta, sin parámetros (P1). | `tests/test_navegador.py::EsperarSesion`, `::IniciarSesionConVentanaNormal` |
+| SES-05 | En Chrome y Edge, Pandex comprueba la sesión recién cuando el navegador suelta su perfil, no cuando termina el proceso que abrió. Si la ventana de Pandex ya estaba abierta, Canvas se abre en ella y se espera a que la cierres. En Firefox, lo dice. Antes de abrir la ventana, en los tres navegadores, espera a que el navegador sin ventana suelte el perfil. En Linux el candado cuenta solo si su proceso existe y abre ese perfil (tras reiniciar, el número puede ser de otro programa). La carpeta del perfil se busca una vez. | `tests/test_navegador.py::EnUso` y `::IniciarSesionConVentanaNormal` |
+| SES-06 | El mensaje genérico de error es corto y sin jerga; el motivo técnico va al registro y al detalle del informe (IU-06, IU-07). El registro dice en qué página se quedó: solo el sitio y la ruta. Nada de lo que va al registro lleva parámetros de direcciones, tampoco los de la ruta (`;jsessionid=`) ni los que traen los errores de Selenium (P1, PRI-03). | `tests/test_navegador.py::EsperarSesion`, `::RegistroSinDatos`, `::IniciarSesionConVentanaNormal::test_el_mensaje_generico_es_corto_y_sin_jerga` |
+| SES-08 | Si el perfil lo tiene un navegador sin ventana que quedó abierto, Pandex lo cierra y sigue: nunca le pasa Canvas a una ventana que no se ve. Una ventana que se ve no se cierra. Si es de otra tarea de Pandex que está entrando a Canvas, no la toca y dice que esperes. | `tests/test_navegador.py::ProcesosDelPerfil`, `::IniciarSesionConVentanaNormal` (`test_un_navegador_sin_ventana_que_quedo_abierto_se_cierra`, `test_una_ventana_que_se_ve_no_se_cierra`, `test_si_otra_tarea_esta_entrando_lo_dice`) |
 | SES-07 | La ventana para iniciar sesión en Chrome y Edge no lleva puerto de depuración ni otro control remoto: con `--remote-debugging-port`, Chrome marca `navigator.webdriver` y Google rechaza el inicio de sesión. | `tests/test_navegador.py::VentanaNormal::test_la_ventana_normal_no_lleva_ningun_control_remoto` |
 
 ## Escenarios
@@ -61,6 +62,16 @@ está medida. El código tenía cuatro puntos que podían dar ese resultado:
 - *Entonces* Canvas se abre en esa ventana, Pandex dice que la cierres al ver tu Canvas y
   comprueba al cerrarla.
 
+**SES-01 · Sin internet**
+- *Dado* un perfil con el que ya entraste y la PC sin internet
+- *Cuando* sincronizas
+- *Entonces* «No hay conexión: no pude llegar a Canvas.», sin abrir la ventana para iniciar sesión.
+
+**SES-08 · Quedó un navegador sin ventana abierto**
+- *Dado* un Edge sin ventana con el perfil de Pandex, de un Pandex que se cerró de golpe
+- *Cuando* sincronizas
+- *Entonces* Pandex lo cierra y sigue como siempre; no dice «tu ventana ya estaba abierta».
+
 **Error · No entraste**
 - *Dado* que cierras la ventana sin iniciar sesión
 - *Entonces* «No pude confirmar tu sesión…», y el registro dice en qué página se quedó.
@@ -80,3 +91,4 @@ Ninguna.
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-11-04 | Primera versión. | Error de una alumna con Chrome y Edge en Windows (2.6.0). |
+| 2026-11-08 | SES-01, 03, 05 y 06 precisados; SES-08. | Revisión de código de la 2.6.2: sin red se abría la ventana, el corte de 6 s se activaba con lecturas fallidas y tras la ventana, el registro podía guardar `;jsessionid=`, un número de proceso reusado bloqueaba el perfil, un navegador sin ventana recibía Canvas y el mensaje del globo traía jerga. |
