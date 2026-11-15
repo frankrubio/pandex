@@ -22,6 +22,10 @@ cuando buscas actualizaciones desde el menú.
 - **Más privacidad.** El registro ya no puede guardar cookies ni tokens (los cambia por `[oculto]`).
   Pandex solo pide datos a tu Canvas y a GitHub. En Linux, tu sesión y tu cuenta de OneDrive solo las
   puede leer tu usuario.
+- **Actualizar sin miedo.** El clic en la mascota ya no instala de golpe: muestra qué trae la versión
+  nueva y espera a que pulses «Actualizar ahora». Pandex instala solo versiones publicadas y comprueba
+  su huella (SHA-256). Si no te convence, «Volver a la versión anterior…»; si no llega a abrir, vuelve
+  sola y te lo dice.
 - **Seguridad: Pillow 13.0.0.** La versión anterior (12.3.0) tenía fallas conocidas al abrir
   imágenes dañadas. Se instala sola al actualizar.
 

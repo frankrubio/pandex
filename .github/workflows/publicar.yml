@@ -1,0 +1,49 @@
+name: Publicar
+
+# Al empujar una etiqueta vX.Y.Z publica esa versión con su ZIP y su SHA-256 (spec 012, ACT-06).
+# Pandex instala solo versiones publicadas y comprueba la huella antes de copiar nada.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # crea la versión (release) y sube sus archivos
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - name: La etiqueta coincide con pandex/__init__.py
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if ! grep -qx "__version__ = \"$VERSION\"" pandex/__init__.py; then
+            echo "::error::La etiqueta $GITHUB_REF_NAME no coincide con __version__ de pandex/__init__.py"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: ZIP y SHA-256
+        run: |
+          git archive --format=zip --prefix="pandex-$VERSION/" -o "pandex-$VERSION.zip" HEAD
+          sha256sum "pandex-$VERSION.zip" > "pandex-$VERSION.zip.sha256"
+          cat "pandex-$VERSION.zip.sha256"
+      - name: Novedades (la sección del CHANGELOG)
+        run: |
+          python3 - "$VERSION" > novedades.md <<'PY'
+          import re, sys
+          texto = open("CHANGELOG.md", encoding="utf-8").read()
+          for seccion in re.split(r"(?m)^## ", texto)[1:]:
+              if seccion.split("\n", 1)[0].strip().split(" ")[0] == sys.argv[1]:
+                  print("## " + seccion.strip())
+                  break
+          else:
+              sys.exit(f"CHANGELOG.md no tiene la sección {sys.argv[1]}")
+          PY
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "pandex-$VERSION.zip" "pandex-$VERSION.zip.sha256" \
+            --title "Pandex $VERSION" --notes-file novedades.md --verify-tag

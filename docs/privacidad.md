@@ -28,6 +28,7 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 | Movimientos de un reordenamiento | `reordenamientos/` (carpeta de datos) | poder deshacerlo |
 | Personajes que añadiste | `personajes/` (carpeta de datos) | mostrarlos |
 | Respaldos de actualizaciones | `respaldos/` (carpeta de datos) | volver atrás si algo sale mal |
+| Punto de vuelta de la última actualización (versiones y archivos, nada tuyo) | `actualizacion.json` (carpeta de datos) | «Volver a la versión anterior» |
 | Registro de eventos | `logs/pandex.log` (carpeta de Pandex, máx. ~4 MB) | entender qué pasó |
 
 **Carpeta de datos:** `%LOCALAPPDATA%\Pandex` en Windows, `~/.local/share/Pandex` en Linux.
@@ -57,7 +58,7 @@ El registro incluye nombres de cursos y de archivos, y rutas de tu PC. Por eso:
 | Destino | Cuándo | Qué envía |
 |---|---|---|
 | Tu Canvas (la dirección que escribiste) | al configurar y sincronizar | pedidos de lectura de la API con tu sesión, y descargas (Canvas las redirige a su almacenamiento de archivos; esa redirección la decide Canvas) |
-| GitHub (`raw.githubusercontent.com`, `codeload.github.com`; `github.com` con `git pull`) | al buscar actualizaciones (una vez al día como máximo; se puede apagar) | nada tuyo: solo lee la versión y las novedades, y descarga el código |
+| GitHub (`api.github.com`, `github.com`, `raw.githubusercontent.com`, `codeload.github.com`) | al buscar actualizaciones (una vez al día como máximo; se puede apagar) | nada tuyo: lee la última versión publicada y sus novedades, y descarga su ZIP y su SHA-256 (GitHub los sirve desde su almacenamiento) |
 | PyPI (`pypi.org`, `files.pythonhosted.org`) | al instalar o actualizar Pandex o una función opcional | nada tuyo: descarga paquetes |
 
 Programas que Pandex abre y que hablan por su cuenta:

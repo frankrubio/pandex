@@ -21,6 +21,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T005.1 | Reglas de aspecto como pruebas | 005 | — | libre |
 | T011.1 | Errores inesperados y `config.json` dañado no cierran Pandex | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T011.2 | Cancelar una tarea y salir limpio | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T012.1 | Actualizar sin miedo: confirmar, versiones publicadas con SHA-256 y volver atrás | 012 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Prioridad 2 · Residuos y privacidad (riesgo bajo, valor alto)
 

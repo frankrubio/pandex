@@ -140,8 +140,12 @@ paso? Lee [la guía de la primera vez](docs/ayuda.md#qué-vas-a-ver-la-primera-v
 ## Actualizar
 
 **Clic derecho → Buscar actualizaciones…** Pandex te muestra qué hay de nuevo y se actualiza
-con un clic. Tus cursos y tu configuración no se tocan, y lo que la versión nueva ya no usa se
-borra solo.
+cuando pulsas **Actualizar ahora**. Instala solo versiones publicadas y comprueba su huella
+(SHA-256) antes de copiar nada. Tus cursos y tu configuración no se tocan, y lo que la versión
+nueva ya no usa se aparta a la carpeta de datos.
+
+Si la versión nueva no te convence, en la misma ventana: **Volver a la versión anterior…**. Si no
+llega a abrir, Pandex vuelve solo a la anterior y te lo dice.
 
 ## Liberar espacio o desinstalar
 

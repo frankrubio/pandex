@@ -110,7 +110,12 @@ class PandexApp(QObject):
         if self.salir_al_terminar:
             self.mascota.decir(f"¡{horas.saludo()}! Vengo a hacer lo que toca y me voy.")
             return
-        if self.config.recuperada == "copia":  # ROB-02: config.json estaba dañado
+        from . import vuelta
+
+        devuelta = vuelta.aviso_pendiente()  # ACT-05: la versión nueva no abrió y volví sola
+        if devuelta:
+            self.mascota.decir(devuelta + " Si se repite, mira «Ver registro».", tipo="error", segundos=15)
+        elif self.config.recuperada == "copia":  # ROB-02: config.json estaba dañado
             self.mascota.decir("Tu configuración estaba dañada. Recuperé la última copia buena; revisa que "
                                "todo esté como lo dejaste.", tipo="error", segundos=15)
         elif self.config.recuperada == "fabrica":
@@ -283,8 +288,8 @@ class PandexApp(QObject):
             menu.addAction(titulo)
 
         if self._nueva:
-            nueva = accion(f"Actualizar a la versión {self._nueva['remota']}", "descargar", self.actualizar_ya,
-                           "Descarga, aplica y reinicia Pandex. Tu configuración no se toca.")
+            nueva = accion(f"Actualizar a la versión {self._nueva['remota']}…", "descargar", self.actualizar_ya,
+                           "Muestra qué trae y te pregunta antes de instalar. Tu configuración no se toca.")
             fuente = nueva.font()
             fuente.setBold(True)
             nueva.setFont(fuente)
@@ -487,20 +492,20 @@ class PandexApp(QObject):
         self._menu_bandeja = self._construir_menu(parent=None)
         self.bandeja.setContextMenu(self._menu_bandeja)
         self.mascota.set_estado("feliz", 3)
-        self.mascota.decir(f"¡Hay una versión nueva ({info['remota']})! Haz clic en mí para "
-                           "instalarla.", tipo="exito", segundos=15)
-        self.bandeja.showMessage("Pandex", f"Versión {info['remota']} disponible. Clic aquí para "
-                                 "instalarla.", self._icono(), 10_000)
+        self.mascota.decir(f"¡Hay una versión nueva ({info['remota']})! Haz clic en mí para ver "
+                           "qué trae.", tipo="exito", segundos=15)
+        self.bandeja.showMessage("Pandex", f"Versión {info['remota']} disponible. Clic aquí para ver "
+                                 "qué trae.", self._icono(), 10_000)
 
     def _clic_en_mascota(self):
-        """Con una actualización pendiente, el clic en Rusty la instala."""
+        """Con una actualización pendiente, el clic en Rusty muestra qué trae (ACT-01)."""
         if not self._nueva or self.ejecutor.ocupado:
             return False
         self.actualizar_ya()
         return True
 
     def actualizar_ya(self):
-        """Un clic: descarga, aplica y reinicia, sin más preguntas."""
+        """Abre la ventana con las novedades: nada se instala hasta pulsar «Actualizar ahora» (ACT-01)."""
         if not self._nueva:
             self.buscar_actualizaciones()
             return
@@ -511,7 +516,7 @@ class PandexApp(QObject):
         if abierto:
             abierto.raise_()
             return
-        dlg = DialogoActualizacion(self.reiniciar, info=self._nueva, aplicar_ya=True)
+        dlg = DialogoActualizacion(self.reiniciar, info=self._nueva)
         self._dialogos.append(dlg)
         dlg.finished.connect(lambda _r, d=dlg: self._dialogos.remove(d))
         dlg.show()

@@ -1,12 +1,17 @@
 """Actualizar Pandex desde GitHub (menú → «Buscar actualizaciones…»).
 
 Por su cuenta solo **pregunta** una vez al día si hay versión nueva (se apaga en Configuración →
-Comportamiento) y lo avisa; instalar es siempre a pedido. Dos caminos, según cómo lo instalaste:
+Comportamiento) y lo avisa; instalar es siempre a pedido y con tu confirmación (spec 012).
 
-- **Con git** (``git clone``): ``git pull --ff-only``. Si cambiaste archivos del
-  proyecto, no fuerza nada y te lo dice.
-- **Con ZIP** (*Download ZIP*): baja el ZIP de la rama ``main`` y copia encima.
-  Antes guarda lo que va a reemplazar en ``%LOCALAPPDATA%\\Pandex\\respaldos``.
+Se instala la última **versión publicada** (etiqueta ``vX.Y.Z``, con el SHA-256 de su ZIP). Si el
+repositorio aún no publicó ninguna, se usa la rama ``main``. Dos caminos, según cómo lo instalaste:
+
+- **Con git** (``git clone``): trae la etiqueta y avanza con ``--ff-only`` (sin versiones
+  publicadas, ``git pull --ff-only``). Si cambiaste archivos del proyecto, no fuerza nada y te lo dice.
+- **Con ZIP** (*Download ZIP*): baja el ZIP, comprueba su SHA-256 y copia encima. Antes guarda lo
+  que va a reemplazar en ``%LOCALAPPDATA%\\Pandex\\respaldos``.
+
+Antes de copiar queda un punto de vuelta (``pandex/vuelta.py``) para «Volver a la versión anterior».
 
 En los dos casos **no se tocan** tus datos: ``config.json``, ``logs/``, ``.venv/`` ni las
 tareas propias que agregaste en ``tasks/``. Si cambió ``requirements.txt``, se
@@ -34,6 +39,9 @@ URL_VERSION = f"https://raw.githubusercontent.com/{REPO}/{RAMA}/pandex/__init__.
 URL_NOVEDADES = f"https://raw.githubusercontent.com/{REPO}/{RAMA}/CHANGELOG.md"
 URL_ZIP = f"https://codeload.github.com/{REPO}/zip/refs/heads/{RAMA}"
 URL_PAGINA = f"https://github.com/{REPO}"
+# la última versión publicada (etiqueta vX.Y.Z con su ZIP y su .sha256, ver publicar.yml)
+URL_PUBLICADA = f"https://api.github.com/repos/{REPO}/releases/latest"
+ETIQUETA = re.compile(r"v\d+\.\d+\.\d+")
 
 # lo tuyo: nunca se reemplaza ni se borra
 PROTEGIDOS = {"config.json", "config.json.tmp", "logs", ".venv", "venv", ".git", "__pycache__"}
@@ -115,9 +123,9 @@ def _explicar(exc):
             "abren bien, mira «Ver registro» para el motivo exacto.")
 
 
-def _abrir(url, timeout=10):
+def _abrir(url, timeout=10, si_falta=False):
     """GET con la librería de Python (urllib): la revisión diaria no carga ``requests``
-    (~17 MB que quedarían en memoria hasta cerrar Pandex)."""
+    (~17 MB que quedarían en memoria hasta cerrar Pandex). Con ``si_falta``, un 404 devuelve None."""
     import urllib.error
     import urllib.request
 
@@ -131,6 +139,11 @@ def _abrir(url, timeout=10):
     try:
         return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Pandex"}),
                                       timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        if si_falta and exc.code == 404:
+            return None
+        log.warning("no pude abrir %s: %s: %s", url, type(exc).__name__, exc)
+        raise ErrorActualizacion(_explicar(exc)) from exc
     except (urllib.error.URLError, OSError) as exc:
         log.warning("no pude abrir %s: %s: %s", url, type(exc).__name__, exc)  # la causa real
         raise ErrorActualizacion(_explicar(exc)) from exc
@@ -141,8 +154,37 @@ def _texto(url):
         return r.read().decode("utf-8", errors="replace")
 
 
+def _publicada():
+    """La última versión publicada, o None si el repositorio aún no publicó ninguna (ACT-02)."""
+    import json
+
+    respuesta = _abrir(URL_PUBLICADA, si_falta=True)
+    if respuesta is None:
+        return None
+    with respuesta:
+        try:
+            datos = json.loads(respuesta.read().decode("utf-8"))
+        except ValueError as exc:
+            raise ErrorActualizacion("GitHub respondió algo que no entiendo. Inténtalo de nuevo más tarde.") from exc
+    etiqueta = str(datos.get("tag_name") or "")
+    if not ETIQUETA.fullmatch(etiqueta):
+        log.warning("la versión publicada tiene una etiqueta rara: %r", etiqueta)
+        return None
+    version = etiqueta[1:]
+    archivos = {a.get("name"): a.get("browser_download_url") for a in datos.get("assets") or []
+                if isinstance(a, dict)}
+    nombre = f"pandex-{version}.zip"
+    return {"remota": version, "etiqueta": etiqueta, "zip": archivos.get(nombre),
+            "sha256": archivos.get(nombre + ".sha256"), "novedades": str(datos.get("body") or "")}
+
+
 def buscar():
-    """Consulta GitHub. Devuelve ``{"local", "remota", "hay_nueva", "novedades"}``."""
+    """Consulta GitHub. Devuelve ``{"local", "remota", "hay_nueva", "novedades"}``; si hay una
+    versión publicada, además ``"etiqueta"``, ``"zip"`` y ``"sha256"`` (sus direcciones)."""
+    publicada = _publicada()
+    if publicada is not None:
+        return {"local": version_local(), "hay_nueva": es_mas_nueva(publicada["remota"], version_local()),
+                **publicada}
     remota = leer_version(_texto(URL_VERSION))
     if not remota:
         raise ErrorActualizacion("No pude leer la versión publicada en GitHub.")
@@ -168,14 +210,24 @@ def _huella(ruta):
     return hashlib.sha256(ruta.read_bytes()).hexdigest() if ruta.exists() else None
 
 
-def aplicar(raiz=RAIZ, avisar=lambda texto: None, zip_local=None):
+def aplicar(raiz=RAIZ, avisar=lambda texto: None, zip_local=None, info=None):
     """Actualiza la carpeta ``raiz``. Devuelve ``{"modo", "archivos", "respaldo", "dependencias"}``.
 
-    ``zip_local`` (pruebas): usa ese ZIP en vez de descargarlo.
+    ``info`` es lo que devolvió ``buscar()``: con una versión publicada, se instala esa (con git, su
+    etiqueta; con ZIP, su ZIP comprobado con su SHA-256). ``zip_local`` (pruebas): usa ese ZIP.
     """
+    info = info or {}
+    etiqueta = info.get("etiqueta")
+    if etiqueta is not None and not ETIQUETA.fullmatch(str(etiqueta)):
+        raise ErrorActualizacion("La versión publicada tiene un nombre que no reconozco; no toqué nada.")
     antes = _huellas(raiz)
     if zip_local is None and modo(raiz) == "git":
-        resultado = _con_git(raiz, avisar)
+        resultado = _con_git(raiz, avisar, etiqueta)
+    elif zip_local is None and etiqueta:
+        if not info.get("zip") or not info.get("sha256"):
+            raise ErrorActualizacion("La versión publicada no trae su huella (SHA-256), así que no la instalo. "
+                                     "Inténtalo más tarde.")
+        resultado = _con_zip(raiz, avisar, url=info["zip"], sha256=info["sha256"])
     else:
         resultado = _con_zip(raiz, avisar, zip_local)
     resultado["dependencias"] = _huellas(raiz) != antes
@@ -195,7 +247,7 @@ def _git(raiz, *args):
                           encoding="utf-8", errors="replace", creationflags=_SIN_VENTANA)
 
 
-def _con_git(raiz, avisar):
+def _con_git(raiz, avisar, etiqueta=None):
     avisar("Revisando tu copia del proyecto…")
     cambios = _git(raiz, "status", "--porcelain", "--untracked-files=no")
     if cambios.returncode != 0:
@@ -205,19 +257,32 @@ def _con_git(raiz, avisar):
         raise ErrorActualizacion(
             "Modificaste archivos del proyecto y no quiero pisarlos: "
             f"{archivos}. Guárdalos con git (commit o stash) y vuelve a intentarlo.")
+    anterior = _git(raiz, "rev-parse", "HEAD").stdout.strip()
     avisar("Descargando la versión nueva con git…")
-    r = _git(raiz, "pull", "--ff-only", "origin", RAMA)
+    if etiqueta:  # ACT-02: la versión publicada, no lo último de main
+        r = _git(raiz, "fetch", "--no-tags", "origin", f"refs/tags/{etiqueta}:refs/tags/{etiqueta}")
+        if r.returncode == 0:
+            r = _git(raiz, "merge", "--ff-only", etiqueta)
+    else:
+        r = _git(raiz, "pull", "--ff-only", "origin", RAMA)
     if r.returncode != 0:
-        raise ErrorActualizacion(f"git pull no pudo terminar:\n{(r.stderr or r.stdout).strip()}")
+        raise ErrorActualizacion(f"git no pudo traer la versión nueva:\n{(r.stderr or r.stdout).strip()}")
     log.info("actualizado con git: %s", r.stdout.strip().splitlines()[-1:] or "")
+    if anterior:
+        from . import vuelta
+
+        nueva = (raiz / "pandex" / "__init__.py")
+        vuelta.guardar({"modo": "git", "desde": version_local(), "commit": anterior, "estado": "probando",
+                        "hacia": leer_version(nueva.read_text(encoding="utf-8")) if nueva.exists() else None,
+                        "fecha": datetime.now().isoformat(timespec="seconds")})
     return {"modo": "git", "archivos": None, "respaldo": None}
 
 
-def _descargar_zip(destino, avisar):
+def _descargar_zip(destino, avisar, url=URL_ZIP):
     avisar("Descargando la versión nueva…")
     destino.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with _abrir(URL_ZIP, timeout=30) as respuesta, open(destino, "wb") as fh:
+        with _abrir(url, timeout=30) as respuesta, open(destino, "wb") as fh:
             while trozo := respuesta.read(64 * 1024):
                 fh.write(trozo)
     except OSError as exc:  # la conexión se cortó a mitad de la descarga
@@ -225,17 +290,34 @@ def _descargar_zip(destino, avisar):
     return destino
 
 
+def _comprobar(archivo, url_sha256):
+    """ACT-02: el ZIP tiene que coincidir con el SHA-256 publicado; si no, no se toca nada."""
+    publicado = (_texto(url_sha256).split() or [""])[0].lower()
+    if not re.fullmatch(r"[0-9a-f]{64}", publicado):
+        raise ErrorActualizacion("La huella publicada (SHA-256) no se puede leer; no toqué nada. Inténtalo más tarde.")
+    huella = hashlib.sha256()
+    with open(archivo, "rb") as fh:
+        while trozo := fh.read(1024 * 1024):
+            huella.update(trozo)
+    if huella.hexdigest() != publicado:
+        log.warning("SHA-256 distinto: esperaba %s y bajé %s", publicado, huella.hexdigest())
+        raise ErrorActualizacion("Lo descargado no coincide con la versión publicada; no toqué nada. "
+                                 "Vuelve a intentar.")
+
+
 def _protegido(relativa):
     return any(parte in PROTEGIDOS for parte in relativa.parts)
 
 
-def _con_zip(raiz, avisar, zip_local=None):
+def _con_zip(raiz, avisar, zip_local=None, url=URL_ZIP, sha256=None):
     trabajo = DATOS / "actualizacion"
     shutil.rmtree(trabajo, ignore_errors=True)
     trabajo.mkdir(parents=True, exist_ok=True)
     try:
-        archivo = Path(zip_local) if zip_local else _descargar_zip(trabajo / "pandex.zip", avisar)
+        archivo = Path(zip_local) if zip_local else _descargar_zip(trabajo / "pandex.zip", avisar, url)
         avisar("Revisando lo descargado…")
+        if sha256:
+            _comprobar(archivo, sha256)
         try:
             with zipfile.ZipFile(archivo) as z:
                 for nombre in z.namelist():  # nada de rutas que se salgan de la carpeta
@@ -252,13 +334,18 @@ def _con_zip(raiz, avisar, zip_local=None):
 
         avisar("Copiando los archivos nuevos…")
         respaldo = DATOS / "respaldos" / f"{version_local()}-{datetime.now():%Y%m%d-%H%M%S}"
+        nuevos = [(n, n.relative_to(origen)) for n in sorted(origen.rglob("*"))
+                  if n.is_file() and not _protegido(n.relative_to(origen))]
+        from . import vuelta
+
+        version_nueva = origen / "pandex" / "__init__.py"
+        vuelta.guardar({  # ACT-03: antes de tocar nada, cómo volver
+            "modo": "zip", "desde": version_local(), "estado": "probando", "respaldo": str(respaldo),
+            "hacia": leer_version(version_nueva.read_text(encoding="utf-8")) if version_nueva.exists() else None,
+            "agregados": [r.as_posix() for _n, r in nuevos if not (raiz / r).exists()],
+            "fecha": datetime.now().isoformat(timespec="seconds")})
         copiados = 0
-        for nuevo in sorted(origen.rglob("*")):
-            if not nuevo.is_file():
-                continue
-            relativa = nuevo.relative_to(origen)
-            if _protegido(relativa):
-                continue
+        for nuevo, relativa in nuevos:
             actual = raiz / relativa
             if actual.exists():
                 if actual.read_bytes() == nuevo.read_bytes():

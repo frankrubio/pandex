@@ -81,7 +81,10 @@ Si la imagen tiene fondo blanco u otro color liso, Pandex lo quita. El personaje
 Clic derecho en Rusty → **Ocultar**, o **Salir**. Si lo ocultas, vuelve a aparecer al hacer clic en su ícono junto al reloj.
 
 **¿Cómo me entero de una versión nueva?**
-Pandex revisa una vez al día mientras está abierto. Si hay una versión nueva, Rusty te avisa: haz clic sobre él y Pandex se descarga, se actualiza y se reinicia solo. Tus cursos y tu configuración no se tocan.
+Pandex revisa una vez al día mientras está abierto. Si hay una versión nueva, Rusty te avisa: haz clic sobre él, mira qué trae y pulsa **Actualizar ahora**; Pandex se actualiza y se reinicia solo. Tus cursos y tu configuración no se tocan.
+
+**La versión nueva no me convence (o me dijo «no abrió; volví a la anterior»).**
+Clic derecho → **Buscar actualizaciones…** → **Volver a la versión anterior…**. Si la versión nueva no llega a abrir, Pandex vuelve solo y te lo dice al abrir. Nada se borra: lo que trajo la versión nueva queda apartado en la carpeta de datos (`respaldos/`).
 
 **Empezó el ciclo nuevo y no aparecen mis cursos.**
 Clic derecho → **Configurar Canvas…** y vuelve a marcar tus cursos. La lista anterior se guarda en una copia.
