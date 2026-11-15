@@ -37,6 +37,9 @@ pueden probar con sí o no, así que esta spec los traduce a reglas medibles.
 | IU-06 | El globo de la mascota muestra como máximo **2 líneas**; lo largo va al informe. | `test_globo_maximo_dos_lineas` |
 | IU-07 | Todo mensaje de error dice **qué pasó y qué hacer**, en español de Perú neutro, sin jerga ni trazas. El detalle técnico va al registro. | revisión + `test_errores_conocidos_tienen_accion` (recorre los mensajes de `mensaje_de_error`, `ErrorExtra`, `ErrorActualizacion`…) |
 | IU-08 | Cada ventana tiene **una** acción principal resaltada (botón con estilo de acento). | `test_una_accion_principal_por_ventana` |
+| IU-18 | El menú pone primero la función principal (Sincronizar Canvas). El orden lo da el atributo opcional `orden` de cada tarea (menor va antes; sin él, 100). | `tests/test_menu.py::test_canvas_va_primero` |
+| IU-19 | Lo que solo sirve a quien programa («Saludar», el ejemplo de `tasks/`, y «Recargar tareas») no se muestra salvo que se active «Mostrar opciones para programadores» en Configuración → Comportamiento. Una tarea se marca así con `solo_programador = True`. | `test_lo_de_programadores_se_oculta`, `test_modo_programador_lo_muestra` |
+| IU-20 | Si una tarea falla por un error que nadie previó, el globo dice en español qué hacer («No pude terminar «X». Vuelve a intentar; si se repite, mira «Ver registro».»), nunca el texto técnico del error. | `test_error_inesperado_dice_que_hacer` |
 
 ### Configuración fácil
 
@@ -88,10 +91,11 @@ pueden probar con sí o no, así que esta spec los traduce a reglas medibles.
 | # | Pregunta | Por defecto | Decide |
 |---|---|---|---|
 | 1 | ¿Se usa el color de acento del sistema (Windows/GNOME) en vez del azul del panda? | No: el azul es parte de la identidad. | Frank |
-| 2 | ¿Las acciones menos usadas del menú (Recargar tareas, Ver registro, Buscar actualizaciones) pasan a un submenú «Más»? | Sí, si el menú supera 9 entradas. | Frank |
+| 2 | ¿Las acciones menos usadas del menú (Recargar tareas, Ver registro, Buscar actualizaciones) pasan a un submenú «Más»? | Sí, si el menú supera 9 entradas. «Recargar tareas» ya no se muestra salvo en modo programador (IU-19). | Frank |
 
 ## Historial
 
 | Fecha | Cambio | Por qué |
 |---|---|---|
 | 2026-10-19 | Primera versión. | Requisitos de Frank: interfaz bonita, simple, concisa y funcional; configuración fácil; adaptarse a la PC. |
+| 2026-11-15 | IU-18, IU-19 e IU-20. | Revisión de UX: Canvas salía tercero, el ejemplo «Saludar» se mostraba a todos y un error inesperado salía como «Error: …» en inglés. |

@@ -122,6 +122,7 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
     "frases_click": ["¿Qué tal?", "..."]
   },
   "arrancar_con_windows": false,
+  "modo_programador": false,       // muestra «Saludar» y «Recargar tareas» en el menú
   "version_config": 4,             // para poner al día un config.json viejo al actualizar
   "tareas": {
     "<id de la tarea>": {

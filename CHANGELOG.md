@@ -13,6 +13,10 @@ cuando buscas actualizaciones desde el menú.
 - **Cancelar una tarea.** Mientras Pandex trabaja, el menú ofrece «Cancelar»: para la sincronización,
   cierra la ventana de inicio de sesión o detiene la conversión. Lo que ya se guardó se queda.
   «Salir» ya no deja una tarea a medias ni un navegador abierto.
+- **Menú más claro.** «Sincronizar Canvas» va primero. El ejemplo «Saludar» y «Recargar tareas» solo
+  aparecen si activas «Mostrar opciones para programadores» (Configuración → Comportamiento).
+- **Errores que dicen qué hacer.** Si una tarea falla por algo imprevisto, el globo ya no muestra el
+  error técnico en inglés: dice «No pude terminar…» y te indica qué hacer.
 
 ## 2.6.7
 

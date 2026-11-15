@@ -5,7 +5,7 @@ import traceback
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from .log import get_logger
-from .tareas import Cancelada, TaskContext
+from .tareas import Cancelada, TaskContext, mensaje_inesperado
 
 log = get_logger("pandex.ejecutor")
 
@@ -29,10 +29,9 @@ class _Hilo(QThread):
         except Cancelada:
             log.info("tarea %s cancelada", self.tarea.id)
             resultado = {"ok": False, "cancelada": True, "resumen": f"Cancelé «{self.tarea.nombre}»."}
-        except Exception as exc:
+        except Exception:  # la traza completa queda en el registro; el globo dice qué hacer (IU-20)
             log.error("tarea %s falló:\n%s", self.tarea.id, traceback.format_exc())
-            resultado = {"ok": False, "resumen": f"Error: {exc}",
-                         "detalle": traceback.format_exc().splitlines()}
+            resultado = {"ok": False, "resumen": mensaje_inesperado(self.tarea.nombre)}
         resultado.setdefault("ok", True)
         resultado.setdefault("resumen", "")
         resultado.setdefault("detalle", [])

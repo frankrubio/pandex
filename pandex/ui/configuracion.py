@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .. import __version__, accesos, extras, personaje_nuevo, rutas
+from ..tareas import visible
 from . import iconos, logo, personajes, tema
 
 HORARIOS = (("manual", "Solo cuando lo pida"), ("diario", "Todos los días"),
@@ -152,7 +153,7 @@ class DialogoConfiguracion(QDialog):
     def __init__(self, config, tareas, parent=None, al_buscar_actualizaciones=None, al_desinstalar=None):
         super().__init__(parent)
         self.config = config
-        self.tareas = tareas
+        self.tareas = [t for t in tareas if visible(t, config.datos)]  # IU-19: el ejemplo, solo para quien programa
         self._al_buscar = al_buscar_actualizaciones
         self._al_desinstalar = al_desinstalar
         self.setWindowTitle("Configuración de Pandex")
@@ -463,6 +464,11 @@ class DialogoConfiguracion(QDialog):
         self.avisar_nuevas = QCheckBox("Avisarme cuando haya una versión nueva (revisa una vez al día)")
         self.avisar_nuevas.setChecked(bool(self.config.datos.get("buscar_actualizaciones", True)))
         interno.addWidget(self.avisar_nuevas)
+        self.programador = QCheckBox("Mostrar opciones para programadores")
+        self.programador.setToolTip("Agrega al menú el ejemplo «Saludar» y «Recargar tareas»,\n"
+                                    "útiles si creas tus propias tareas en tasks/.")
+        self.programador.setChecked(bool(self.config.datos.get("modo_programador", False)))
+        interno.addWidget(self.programador)
         caja.addWidget(tarjeta)
 
         caja.addSpacing(10)
@@ -732,6 +738,7 @@ class DialogoConfiguracion(QDialog):
         m["siempre_encima"] = self.encima.isChecked()
         m["animar"] = self.animar.isChecked()
         self.config.datos["buscar_actualizaciones"] = self.avisar_nuevas.isChecked()
+        self.config.datos["modo_programador"] = self.programador.isChecked()
 
         for task_id, (activa, cron) in self.filas.items():
             opciones = self.config.tarea(task_id)

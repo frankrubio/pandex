@@ -190,7 +190,8 @@ specs/         qué se va a cambiar y por qué: principios, specs, planes y tare
 herramientas/  íconos, capturas del README y skins/ (personajes en el estilo de Rusty)
 ```
 
-Una tarea nueva es un archivo en `tasks/`. Aparece en el menú al pulsar **Recargar tareas**:
+Una tarea nueva es un archivo en `tasks/`. Aparece en el menú al pulsar **Recargar tareas** (se ve al
+activar «Mostrar opciones para programadores» en Configuración → Comportamiento):
 
 ```python
 class Task:

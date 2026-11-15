@@ -9,6 +9,8 @@ Una tarea es un archivo ``tasks/<algo>.py`` con una clase ``Task``::
         schedule = None                 # cron opcional, p. ej. "0 19 * * 1-5"
         icono = "tarea"                 # opcional: el ícono del menú (ver pandex/ui/iconos.py)
         programable = True              # opcional: False si no tiene sentido darle un horario
+        orden = 100                     # opcional: el puesto en el menú (menor va antes)
+        solo_programador = False        # opcional: True la oculta salvo en modo programador
 
         def run(self, ctx):             # corre en un hilo aparte: nada de ventanas aquí
             return {"ok": True, "resumen": "Listo."}
@@ -59,8 +61,30 @@ def si_cancelaron(ctx):
         raise Cancelada()
 
 
+ORDEN = 100  # el puesto de una tarea que no dice ``orden``
+
+INESPERADO = "No pude terminar «{}». Vuelve a intentar; si se repite, mira «Ver registro»."
+
+
+def mensaje_inesperado(nombre):
+    """Lo que dice el globo cuando una tarea falla por algo que nadie previó (spec 005, IU-20):
+    qué hacer, en español; el texto técnico del error va al registro."""
+    return INESPERADO.format(nombre)
+
+
+def visible(tarea, datos):
+    """¿Va en el menú? Lo de programadores solo con ``modo_programador`` (spec 005, IU-19)."""
+    return not getattr(tarea, "solo_programador", False) or bool(datos.get("modo_programador"))
+
+
+def _orden(tarea):
+    valor = getattr(tarea, "orden", ORDEN)
+    return valor if isinstance(valor, (int, float)) and not isinstance(valor, bool) else ORDEN
+
+
 def descubrir(carpeta=TASKS_DIR):
-    """Carga cada ``tasks/*.py`` y devuelve una instancia de su ``Task``.
+    """Carga cada ``tasks/*.py`` y devuelve una instancia de su ``Task``, ordenadas por ``orden``
+    (y luego por nombre de archivo): la función principal va primero en el menú (IU-18).
 
     Un archivo roto se salta con un aviso en el log: nunca tumba la app. Los que
     empiezan con ``_`` se ignoran (sirven para desactivar una tarea sin borrarla).
@@ -93,7 +117,7 @@ def descubrir(carpeta=TASKS_DIR):
         except Exception:
             log.error("no pude cargar %s:\n%s", archivo.name, traceback.format_exc())
 
-    return encontradas
+    return sorted(encontradas, key=_orden)  # sorted es estable: a igual orden, por archivo
 
 
 def _importar(archivo):

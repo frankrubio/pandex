@@ -296,8 +296,11 @@ class PandexApp(QObject):
             menu.addSeparator()
 
         seccion("Tareas")
+        programador = bool(self.config.datos.get("modo_programador"))
         for tarea in self.tareas:
             if not extras.disponible(tarea):  # función opcional no instalada: ni se muestra
+                continue
+            if not plugins.visible(tarea, self.config.datos):  # el ejemplo, solo para quien programa
                 continue
             accion(tarea.nombre, tarea.icono, lambda _c=False, t=tarea: self.ejecutor.ejecutar(t),
                    tarea.descripcion)
@@ -307,7 +310,8 @@ class PandexApp(QObject):
             menu.addAction(vacio)
 
         configurables = [t for t in self.tareas
-                         if callable(getattr(t, "configurar", None)) and extras.disponible(t)]
+                         if callable(getattr(t, "configurar", None)) and extras.disponible(t)
+                         and plugins.visible(t, self.config.datos)]
         for tarea in configurables:
             texto = getattr(tarea, "configurar_texto", None) or f"Configurar «{tarea.nombre}»…"
             accion(texto, "engranaje", lambda _c=False, t=tarea: self._configurar(t))
@@ -316,7 +320,8 @@ class PandexApp(QObject):
         seccion("Pandex")
         accion("Configuración…", "engranaje", self._abrir_configuracion)
         accion("Ver registro", "lista", self._abrir_registro)
-        accion("Recargar tareas", "recargar", self._recargar_tareas)
+        if programador:  # IU-19: a quien solo estudia no le sirve
+            accion("Recargar tareas", "recargar", self._recargar_tareas)
         accion("Buscar actualizaciones…", "descargar", self.buscar_actualizaciones)
         menu.addSeparator()
         if parent is None or self.mascota.isVisible():
@@ -421,6 +426,8 @@ class PandexApp(QObject):
         if dlg.exec():
             self.mascota.recargar_apariencia()
             self.programador.montar(self.tareas)
+            self._menu_bandeja = self._construir_menu(parent=None)  # el modo programador cambia el menú
+            self.bandeja.setContextMenu(self._menu_bandeja)
             self.actualizar_despertador()
             self.aplicar_logo()
             self.bandeja.setToolTip(self.config.mascota.get("nombre", "Pandex"))

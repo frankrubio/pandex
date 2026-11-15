@@ -69,3 +69,20 @@
 - **Prueba primero:** `test_configuracion_abre_rapido` (≤ 1 s en la CI, mediana de 3).
 - **Cambio:** solo si falla (cargar páginas al mostrarlas).
 - **Terminado cuando:** prueba en verde; medición real ≤ 300 ms anotada.
+
+## T005.8 · Menú para estudiantes
+
+- **Requisitos:** IU-18, IU-19, IU-20
+- **Depende de:** —
+- **Prueba primero:** `tests/test_menu.py`: `test_canvas_va_primero`, `test_lo_de_programadores_se_oculta`,
+  `test_modo_programador_lo_muestra`, `test_error_inesperado_dice_que_hacer`,
+  `test_el_hijo_de_markdown_tampoco_dice_error_en_ingles`.
+- **Cambio:** atributo `orden` y `solo_programador` en el contrato de tareas (`pandex/tareas.py`);
+  `modo_programador` en `config.json` con su casilla; el menú y la página «Tareas» los respetan;
+  mensaje en español en `ejecutor.py` y `markdown/proceso.py`.
+- **Terminado cuando:** pruebas en verde.
+
+- [x] Pruebas escritas y fallando por el motivo correcto
+- [x] Cambio hecho, suite en verde
+- [x] Documentación (README, `docs/crear-tareas.md`, `docs/arquitectura.md`, `docs/privacidad.md`)
+

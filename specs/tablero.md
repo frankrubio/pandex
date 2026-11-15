@@ -72,6 +72,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T005.5 | Configuración sin JSON (Restablecer, Cancelar) | 005 | — | libre |
 | T005.6 | Leer las preferencias del sistema en un solo lugar | 005 | — | libre |
 | T005.7 | Configuración abre rápido | 005 | — | libre |
+| T005.8 | Menú para estudiantes (Canvas primero, lo de programadores oculto, errores en español) | 005 | — | hecha |
 | T004.4 | Copiar el registro anonimizado | 004 | — | libre |
 
 ## Prioridad 5 · Comodidad para quien programa

@@ -51,6 +51,8 @@ DEFAULTS = {
     "arrancar_con_windows": False,
     # una consulta pequeña a GitHub al día; si hay versión nueva, Rusty avisa
     "buscar_actualizaciones": True,
+    # muestra en el menú el ejemplo «Saludar» y «Recargar tareas» (spec 005, IU-19)
+    "modo_programador": False,
     "tareas": {},
 }
 
