@@ -1,6 +1,7 @@
-"""Actualizar Pandex desde GitHub, a pedido (menú → «Buscar actualizaciones…»).
+"""Actualizar Pandex desde GitHub (menú → «Buscar actualizaciones…»).
 
-Nunca se conecta solo: solo cuando lo pides. Dos caminos, según cómo lo instalaste:
+Por su cuenta solo **pregunta** una vez al día si hay versión nueva (se apaga en Configuración →
+Comportamiento) y lo avisa; instalar es siempre a pedido. Dos caminos, según cómo lo instalaste:
 
 - **Con git** (``git clone``): ``git pull --ff-only``. Si cambiaste archivos del
   proyecto, no fuerza nada y te lo dice.
@@ -120,6 +121,13 @@ def _abrir(url, timeout=10):
     import urllib.error
     import urllib.request
 
+    from . import red
+
+    try:  # PRI-04: solo GitHub
+        red.exigir(url, red.GITHUB)
+    except red.ErrorRed as exc:
+        log.warning("%s", exc)
+        raise ErrorActualizacion("No pude buscar la actualización: la dirección no es de GitHub.") from exc
     try:
         return urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Pandex"}),
                                       timeout=timeout)

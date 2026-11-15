@@ -17,6 +17,13 @@ cuando buscas actualizaciones desde el menú.
   aparecen si activas «Mostrar opciones para programadores» (Configuración → Comportamiento).
 - **Errores que dicen qué hacer.** Si una tarea falla por algo imprevisto, el globo ya no muestra el
   error técnico en inglés: dice «No pude terminar…» y te indica qué hacer.
+- **Olvidar mi sesión.** En Configuración → Tareas → Sincronizar Canvas, un botón borra la sesión de
+  Canvas que guarda Pandex (pide confirmación; no toca tus cursos ni tu configuración).
+- **Más privacidad.** El registro ya no puede guardar cookies ni tokens (los cambia por `[oculto]`).
+  Pandex solo pide datos a tu Canvas y a GitHub. En Linux, tu sesión y tu cuenta de OneDrive solo las
+  puede leer tu usuario.
+- **Seguridad: Pillow 13.0.0.** La versión anterior (12.3.0) tenía fallas conocidas al abrir
+  imágenes dañadas. Se instala sola al actualizar.
 
 ## 2.6.7
 

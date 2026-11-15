@@ -31,21 +31,38 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 | Registro de eventos | `logs/pandex.log` (carpeta de Pandex, máx. ~4 MB) | entender qué pasó |
 
 **Carpeta de datos:** `%LOCALAPPDATA%\Pandex` en Windows, `~/.local/share/Pandex` en Linux.
+En Linux, la carpeta de datos y los perfiles del navegador son solo para tu usuario (`0700`), y
+`sesion_canvas.json` y `rclone.conf` también (`0600`). En Windows, `%LOCALAPPDATA%` ya es solo tuyo.
+
+### Las claves de `config.json`
+
+| Clave | Qué guarda |
+|---|---|
+| `version_config` | la versión del formato, para ponerlo al día al actualizar |
+| `mascota` | nombre, personaje, logo, tamaño, globo, posición y frases de la mascota |
+| `arrancar_con_windows` | si Pandex abre al iniciar sesión en tu PC |
+| `buscar_actualizaciones` | si revisa una vez al día si hay versión nueva |
+| `modo_programador` | si el menú muestra «Saludar» y «Recargar tareas» |
+| `tareas` | lo propio de cada tarea: si está activa, su horario y sus opciones (Canvas: la dirección, la carpeta, los cursos; ver [sincronizar-canvas.md](sincronizar-canvas.md)) |
+| `modo`, `ultima_busqueda` | se crean al usarse: «siempre» o «a la hora», y la fecha de la última búsqueda de actualizaciones |
 
 El registro incluye nombres de cursos y de archivos, y rutas de tu PC. Por eso:
 
 - **Antes de pegarlo en un issue, revísalo** y borra lo que no quieras compartir.
-- Nunca incluye contraseñas, cookies ni tokens.
+- Nunca incluye contraseñas, cookies ni tokens: un filtro los cambia por `[oculto]` antes de
+  escribir, aunque vengan dentro de un error (spec 004, PRI-03).
 
 ## Con quién habla
 
 | Destino | Cuándo | Qué envía |
 |---|---|---|
-| Tu Canvas (la dirección que escribiste) | al configurar y sincronizar | pedidos de lectura de la API con tu sesión, y descargas |
+| Tu Canvas (la dirección que escribiste) | al configurar y sincronizar | pedidos de lectura de la API con tu sesión, y descargas (Canvas las redirige a su almacenamiento de archivos; esa redirección la decide Canvas) |
 | GitHub (`raw.githubusercontent.com`, `codeload.github.com`; `github.com` con `git pull`) | al buscar actualizaciones (una vez al día como máximo; se puede apagar) | nada tuyo: solo lee la versión y las novedades, y descarga el código |
 | PyPI (`pypi.org`, `files.pythonhosted.org`) | al instalar o actualizar Pandex o una función opcional | nada tuyo: descarga paquetes |
 
 Programas que Pandex abre y que hablan por su cuenta:
+
+Pandex rechaza cualquier pedido propio a otro host (`pandex/red.py`, spec 004, PRI-04).
 
 | Programa | Con quién | Cuándo |
 |---|---|---|
@@ -59,9 +76,11 @@ instala ni los carga: decide el tipo de archivo por la extensión (spec 004, PRI
 
 ## Borrar tus datos
 
-- **Solo la sesión de Canvas:** borra las carpetas `browser-profile*` de la carpeta de datos
-  (con el Firefox de snap, la sesión está en `~/snap/firefox/common/pandex-perfil`).
+- **Solo la sesión de Canvas:** Configuración → Tareas → Sincronizar Canvas → **Olvidar mi
+  sesión**. Borra los perfiles del navegador de Pandex (también el de Firefox snap) y
+  `sesion_canvas.json`; no toca tus cursos, tu historial ni `config.json`. La próxima vez inicias
+  sesión otra vez.
 - **Todo lo de Pandex:** cierra Pandex y borra la carpeta de datos y `config.json`. Tus cursos
   descargados no se tocan.
-- Cuando exista el desinstalador ([specs/003](../specs/003_sin_residuos_y_desinstalar/spec.md)),
-  hará esto por ti.
+  **Desinstalar Pandex…** (Configuración → Comportamiento) hace esto por ti
+  ([specs/003](../specs/003_sin_residuos_y_desinstalar/spec.md)).

@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# solo lectura: ningún job escribe en el repositorio (las acciones van fijadas por SHA)
+permissions:
+  contents: read
+
 jobs:
   pruebas:
     runs-on: ${{ matrix.os }}
@@ -13,8 +17,8 @@ jobs:
         os: [windows-latest, ubuntu-latest]
         python: ["3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -37,3 +41,32 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: python -m unittest discover -s tests -t . -v
+
+  # PRI-09: si alguien sube por error una contraseña, una cookie o un token, la CI falla.
+  secretos:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read  # lista los commits del PR
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+        with:
+          fetch-depth: 0  # revisa todos los commits del push o del PR
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_ENABLE_COMMENTS: "false"  # no escribe en el PR: el resultado está en el job
+
+  # Dependencias con fallas de seguridad conocidas (las versiones van fijas: PLA-06).
+  auditoria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: "3.13"
+      - name: pip-audit
+        run: |
+          python -m pip install pip-audit==2.10.1
+          pip-audit --strict -r requirements.txt -r requirements-markdown.txt

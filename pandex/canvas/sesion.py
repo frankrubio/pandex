@@ -142,6 +142,37 @@ def olvidar_atajo():
         log.warning("no pude borrar la sesión guardada: %s", exc)
 
 
+def olvidar():
+    """«Olvidar mi sesión» (spec 004, PRI-07): borra los perfiles de navegador de Pandex y el atajo
+    de sesión. No toca tus cursos, tu historial ni ``config.json``: la próxima vez inicias sesión
+    otra vez. Devuelve lo que no se pudo borrar (un navegador que sigue abierto)."""
+    import shutil
+
+    carpetas = set(_navegador.PERFILES.values())
+    for nombre in _navegador.PERFILES:
+        try:
+            carpetas.add(_navegador.perfil(nombre))  # el de snap, en Linux
+        except OSError:
+            pass
+    fallaron = []
+    for carpeta in sorted(carpetas):
+        if not carpeta.exists():
+            continue
+        try:
+            shutil.rmtree(carpeta)
+        except OSError as exc:
+            log.warning("no pude borrar %s: %s", carpeta.name, exc)
+            fallaron.append(carpeta)
+    for archivo in (ATAJO, _navegador.USADO):
+        try:
+            archivo.unlink(missing_ok=True)
+        except OSError as exc:
+            log.warning("no pude borrar %s: %s", archivo.name, exc)
+            fallaron.append(archivo)
+    log.info("sesión olvidada (%s)", "completa" if not fallaron else f"faltaron {len(fallaron)}")
+    return fallaron
+
+
 def intentar_atajo(base):
     """``(cookies, user_agent)`` si la sesión guardada sigue valiendo; si no, None.
 
@@ -159,6 +190,9 @@ def intentar_atajo(base):
     if guardado != base.rstrip("/") or not cookies:
         olvidar_atajo()
         return None
+    from ..log import ocultar
+
+    ocultar(*(c.get("value") for c in cookies if isinstance(c, dict)))  # PRI-03
     import requests
 
     try:

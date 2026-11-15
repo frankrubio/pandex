@@ -24,7 +24,7 @@ from collections import Counter
 from pathlib import Path
 
 from ..log import get_logger
-from ..rutas import DATOS, NAVEGADORES, WINDOWS
+from ..rutas import DATOS, NAVEGADORES, WINDOWS, carpeta_privada
 
 log = get_logger("pandex.navegador")
 
@@ -555,8 +555,7 @@ def abrir_ventana_normal(nombre, url):
     if binario is None:
         raise SinInstalar(f"No encontré {NOMBRES[nombre]}. Instálalo o elige otro navegador en "
                           "Configuración → Tareas → Sincronizar Canvas.")
-    carpeta = perfil(nombre, binario)
-    carpeta.mkdir(parents=True, exist_ok=True)
+    carpeta = carpeta_privada(perfil(nombre, binario))  # PRI-06: tu sesión, solo para ti
     comando = [binario, f"--user-data-dir={carpeta}", "--no-first-run", "--no-default-browser-check",
                "--disable-background-mode", "--disable-features=msStartupBoost,StartupBoost", url]
     try:
@@ -590,7 +589,7 @@ def abrir(nombre, headless):
         from ..inventario import anotar
 
         anotar(carpeta, f"perfil de {NOMBRES[nombre]} (snap)")
-    carpeta.mkdir(parents=True, exist_ok=True)
+    carpeta_privada(carpeta)  # PRI-06: tu sesión, solo para ti
     opciones = _opciones(webdriver, nombre, binario, carpeta, headless)
     clase, servicio = {
         "firefox": (webdriver.Firefox, webdriver.FirefoxService),

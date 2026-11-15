@@ -15,8 +15,9 @@ devuelven.
 | `pandex/ejecutor.py` | `Ejecutor`: corre una tarea a la vez en un `QThread`. |
 | `pandex/programador.py` | `Programador`: dispara tareas con horario cron (APScheduler). |
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. Si el archivo está dañado, abre con la última copia buena (`DATOS/config-ultima-buena.json`) o con los valores de fábrica. |
-| `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
-| `pandex/log.py` | `logs/pandex.log`, rotativo. |
+| `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`); `privado()`: en Linux, carpetas 0700 y archivos 0600. |
+| `pandex/log.py` | `logs/pandex.log`, rotativo, con filtro que tapa cookies y tokens (`[oculto]`). |
+| `pandex/red.py` | Los únicos hosts a los que Pandex pide algo: tu Canvas y GitHub (spec 004, PRI-04). |
 | `pandex/errores.py` | Red de seguridad: un error que nadie atrapó (en la interfaz o en un hilo) va al registro y la mascota avisa; Pandex no se cierra (spec 011). |
 | `pandex/pendientes.py` | Qué tarea programada se perdió (PC apagada o suspendida) y hay que hacer ya. Sin Qt. |
 | `pandex/despertador.py` | Modo «a la hora»: temporizador de systemd (Linux) o tarea programada (Windows) que lanza `main.py --pendientes`. |

@@ -19,6 +19,8 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T001.1 | Contar pedidos por fase; separar inicio de sesión manual | 001 | — | libre |
 | T006.1 | Matriz completa en la CI (Ubuntu 22.04/24.04, Windows; Python 3.12–3.14) | 006 | — | libre |
 | T005.1 | Reglas de aspecto como pruebas | 005 | — | libre |
+| T011.1 | Errores inesperados y `config.json` dañado no cierran Pandex | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T011.2 | Cancelar una tarea y salir limpio | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Prioridad 2 · Residuos y privacidad (riesgo bajo, valor alto)
 
@@ -27,20 +29,20 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T003.2 | pip sin caché, en un solo lugar | 003 | — | hecha |
 | T003.3 | Drivers y navegadores en la carpeta de datos | 003 | — | hecha |
 | T003.4 | Límites para respaldos y copias de configuración | 003 | — | hecha |
-| T004.2 | Filtro de secretos en el registro | 004 | — | libre |
-| T004.3 | Solo hosts permitidos | 004 | — | libre |
-| T004.5 | Permisos privados en Linux | 004 | — | libre |
-| T004.6 | Olvidar mi sesión | 004 | — | libre |
-| T004.7 | Claves de config documentadas | 004 | — | libre |
-| T004.8 | Escáner de secretos en la CI | 004 | — | libre |
-| T004.9 | MarkItDown sin Magika ni onnxruntime: sin telemetría | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T004.2 | Filtro de secretos en el registro | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T004.3 | Solo hosts permitidos | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T004.5 | Permisos privados en Linux | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T004.6 | Olvidar mi sesión | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T004.7 | Claves de config documentadas | 004 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T004.8 | Escáner de secretos en la CI | 004 | — | en curso (falta probarlo con un token falso en un PR) |
+| T004.9 | MarkItDown sin Magika ni onnxruntime: sin telemetría | 004 | — | hecha |
 
 ## Prioridad 3 · Rendimiento y peso (los requisitos de números)
 
 | Tarea | Qué | Spec | Depende de | Estado |
 |---|---|---|---|---|
 | T001.2 | Spike: ¿cuánto dura la sesión de Canvas? | 001 | — | libre |
-| T001.3 | Atajo de sesión con cookies guardadas | 001 | T001.1, T001.2 | en curso (claude/vibrant-volta-t1vhh9) |
+| T001.3 | Atajo de sesión con cookies guardadas | 001 | T001.1, T001.2 | hecha |
 | T001.4 | Leer todos los cursos en una sola tanda | 001 | T001.1 | libre |
 | T001.5 | Concurrencia adaptativa para la primera vez | 001 | T001.1 | libre |
 | T001.6 | Descargas sin esperas en serie | 001 | — | libre |
@@ -51,7 +53,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T002.5 | Navegador a elección (Firefox, Chrome o Edge) sin descargas, con Selenium | 002 | — | hecha |
 | T002.6 | Pesos reales en la documentación | 002 | T002.4 | libre |
 | T002.7 | Memoria en reposo ≤ 80 MB de RSS siempre (hoy 74–88 MB) | 002 | — | libre |
-| T002.8 | MarkItDown sin Magika, onnxruntime ni numpy | 002 | T004.9 | en curso (claude/vibrant-volta-t1vhh9) |
+| T002.8 | MarkItDown sin Magika, onnxruntime ni numpy | 002 | T004.9 | hecha |
 
 ## Prioridad 4 · Desinstalar, paridad e interfaz
 
@@ -65,14 +67,14 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T006.4 | Mismo árbol en los dos sistemas | 006 | — | libre |
 | T006.5 | Rutas con espacios, tildes y ñ | 006 | — | libre |
 | T006.6 | Plantilla de issue y sistemas no soportados | 006 | — | libre |
-| T006.7 | Un solo Pandex: también el despertador y las copias de antes | 006 | — | en curso (arreglo/una-sola-copia) |
+| T006.7 | Un solo Pandex: también el despertador y las copias de antes | 006 | — | hecha |
 | T005.2 | Globo conciso y errores con acción | 005 | — | libre |
 | T005.3 | Una acción principal por ventana | 005 | T005.1 | libre |
 | T005.4 | Primera vez solo con la URL | 005 | — | libre |
 | T005.5 | Configuración sin JSON (Restablecer, Cancelar) | 005 | — | libre |
 | T005.6 | Leer las preferencias del sistema en un solo lugar | 005 | — | libre |
 | T005.7 | Configuración abre rápido | 005 | — | libre |
-| T005.8 | Menú para estudiantes (Canvas primero, lo de programadores oculto, errores en español) | 005 | — | hecha |
+| T005.8 | Menú para estudiantes (Canvas primero, lo de programadores oculto, errores en español) | 005 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T004.4 | Copiar el registro anonimizado | 004 | — | libre |
 
 ## Prioridad 5 · Comodidad para quien programa
@@ -85,9 +87,9 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T007.5 | Errores en los ganchos no tumban la app | 007 | — | libre |
 | T008.1 | Estilo de carpetas (`_` por defecto, o el tuyo) | 008 | — | hecha |
 | T008.2 | Aplicar una configuración de Canvas ya escrita | 008 | — | hecha |
-| T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | en curso (claude/vibrant-volta-t1vhh9) |
-| T010.1 | Iniciar sesión sin trabas en Chrome y Edge | 010 | — | en curso (claude/vibrant-volta-t1vhh9) |
-| T010.2 | Correcciones de la revisión de código del inicio de sesión | 010 | T010.1 | en curso (claude/vibrant-volta-t1vhh9) |
+| T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | hecha |
+| T010.1 | Iniciar sesión sin trabas en Chrome y Edge | 010 | — | hecha |
+| T010.2 | Correcciones de la revisión de código del inicio de sesión | 010 | T010.1 | hecha |
 
 ## Preguntas abiertas para Frank
 

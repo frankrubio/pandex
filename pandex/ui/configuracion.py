@@ -593,8 +593,32 @@ class DialogoConfiguracion(QDialog):
                                    "No mueve ni borra nada: solo vuelve a apuntar a ella.")
         self.reconectar.clicked.connect(self._reconectar_carpeta)
         fila.addWidget(self.reconectar)
+        self.olvidar_sesion = QPushButton("Olvidar mi sesión…")
+        self.olvidar_sesion.setToolTip("Borra la sesión de Canvas que guarda el navegador de Pandex.\n"
+                                       "No toca tus cursos ni tu configuración: la próxima vez\n"
+                                       "inicias sesión otra vez.")
+        self.olvidar_sesion.clicked.connect(self._olvidar_sesion)
+        fila.addWidget(self.olvidar_sesion)
         fila.addStretch()
         return fila
+
+    def _olvidar_sesion(self):
+        """PRI-07: con confirmación; no hay nada que deshacer más allá de volver a iniciar sesión."""
+        from ..canvas import sesion
+
+        respuesta = QMessageBox.question(
+            self, "Olvidar mi sesión",
+            "¿Borro la sesión de Canvas que guarda Pandex?\n\nTus cursos, tu historial y tu configuración "
+            "no se tocan. La próxima vez que sincronices, inicias sesión otra vez.")
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        fallaron = sesion.olvidar()
+        if fallaron:
+            QMessageBox.warning(self, "Olvidar mi sesión",
+                                "No pude borrar todo: el navegador de Pandex sigue abierto. Ciérralo y vuelve a "
+                                "intentar.")
+        else:
+            QMessageBox.information(self, "Olvidar mi sesión", "Listo: Pandex ya no guarda tu sesión de Canvas.")
 
     def _reconectar_carpeta(self):
         from pathlib import Path
