@@ -128,9 +128,14 @@ class Canvas:
         except CanvasError:
             return {}
 
-    def descargar(self, curso_id, file_id, destino_tmp, espera_html=False):
-        """Baja el archivo a ``destino_tmp`` y devuelve cuántos bytes escribió."""
+    def descargar(self, curso_id, file_id, destino_tmp, espera_html=False, parar=None):
+        """Baja el archivo a ``destino_tmp`` y devuelve cuántos bytes escribió.
+
+        ``parar()`` se consulta en cada trozo: si da True (el usuario canceló), lanza ``Cancelada``.
+        """
         import requests
+
+        from ..tareas import Cancelada
         url = f"{self.base}/courses/{curso_id}/files/{file_id}/download?download_frd=1"
         resp = self._get(url, stream=True, timeout=(10, 180))
         with resp:
@@ -145,6 +150,8 @@ class Canvas:
                     for trozo in resp.iter_content(1 << 16):
                         fh.write(trozo)
                         escritos += len(trozo)
+                        if parar is not None and parar():
+                            raise Cancelada()
             except requests.RequestException as exc:
                 raise SinConexion("Se cortó la conexión con Canvas") from exc
         if not escritos:

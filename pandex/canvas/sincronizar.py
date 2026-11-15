@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .. import horas, onedrive
 from ..rutas import DATOS
+from ..tareas import Cancelada, fue_cancelada, si_cancelaron
 from . import nombres, sesion
 from .cliente import Canvas, CanvasError, SinConexion
 from .destinos import (
@@ -232,6 +233,7 @@ class Sincronizacion:
             candidatos = self._candidatos(canvas, parejas)
             candidatos = self._aplicar_descarga_inicial(candidatos, historial)
             self._fase("módulos", t, canvas)
+            si_cancelaron(ctx)  # entre fases: cancelar no espera a que termine todo (ROB-05)
 
             # ---- 3. qué no conocemos todavía, y sus datos (en paralelo)
             t = time.monotonic()
@@ -239,6 +241,7 @@ class Sincronizacion:
             self._res["ya"] += len(candidatos) - len(desconocidos)
             metas = metadatos(canvas, desconocidos, historial)
             self._fase("consultas", t, canvas)
+            si_cancelaron(ctx)
 
             # ---- 4. decidir: ¿ya lo tienes? ¿dónde va? (en orden, contra tu disco)
             t = time.monotonic()
@@ -381,25 +384,32 @@ class Sincronizacion:
             return
         self.ctx.decir(f"Encontré {len(descargas)} archivo(s) nuevo(s). Bajando…")
 
+        def cancelada():
+            return fue_cancelada(self.ctx)
+
         def bajar(d):
             tmp = TEMPORAL / f"{d.candidato.file_id}.part"
             es_html = d.nombre.lower().endswith((".html", ".htm"))
             try:
+                if cancelada():
+                    raise Cancelada()
                 escritos = canvas.descargar(d.candidato.curso["id"], d.candidato.file_id,
-                                            tmp, espera_html=es_html)
+                                            tmp, espera_html=es_html, parar=cancelada)
                 if d.tamano and escritos != d.tamano:
                     raise CanvasError(f"llegó incompleto: {escritos} de {d.tamano} bytes")
                 return tmp, escritos, None
-            except (CanvasError, OSError) as exc:
-                tmp.unlink(missing_ok=True)
+            except (CanvasError, OSError, Cancelada) as exc:
+                tmp.unlink(missing_ok=True)  # nada a medias, tampoco al cancelar
                 return tmp, 0, exc
 
         with ThreadPoolExecutor(min(HILOS_DESCARGA, len(descargas))) as ex:
             futuros = {ex.submit(bajar, d): d for d in descargas}
             for hechos, futuro in enumerate(as_completed(futuros), start=1):
                 d = futuros[futuro]
-                self.ctx.progreso(hechos, len(descargas))
                 tmp, escritos, error = futuro.result()
+                if isinstance(error, Cancelada):
+                    continue  # no llegó entero y su .part ya se borró; lo que sí llegó se guarda
+                self.ctx.progreso(hechos, len(descargas))
                 if error is not None:
                     if getattr(error, "estado", None) == 403:
                         # Canvas lo muestra pero no deja bajarlo todavía: no es una falla
@@ -412,6 +422,8 @@ class Sincronizacion:
                     self.ctx.log(f"falló la descarga de «{d.nombre}»: {error}", "error")
                     continue
                 self._mover(d, tmp, escritos, historial)
+        if cancelada():  # ROB-05: las que no habían empezado ya no bajan
+            raise Cancelada()
 
     def _mover(self, d, tmp, escritos, historial):
         """Un solo hilo mueve a la carpeta final, y solo si el destino sigue libre."""

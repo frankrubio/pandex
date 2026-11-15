@@ -131,6 +131,7 @@ Tu sesión de Canvas y tu historial están aparte (`%LOCALAPPDATA%\Pandex` o
 | *"N aún sin abrir en Canvas"* (🔒) | El docente programó esos archivos para más adelante. | Nada: Pandex los baja solo cuando se abran. |
 | *"N no se pudieron bajar"* | Un archivo dio error (internet, archivo dañado en Canvas). | Vuelve a sincronizar. Si se repite, mira el motivo en **Ver registro**. |
 | Al convertir: *"La conversión se cerró de golpe"* | Un archivo muy pesado o dañado. | Conviértelo solo, o déjalo fuera. El motivo está en **Ver registro**. |
+| Una tarea tarda demasiado o la lancé sin querer | Está esperando a Canvas, a que inicies sesión o a un archivo grande. | Clic derecho → **Cancelar «…»**. Lo que ya se guardó se queda; lo que faltaba se baja la próxima vez. |
 | *"Algo falló y lo anoté"* | Un error que Pandex no esperaba. Pandex sigue abierto. | Si se repite, abre **Ver registro** y pega el final en un issue (revisa antes que no tenga nada personal). |
 | *"Tu configuración estaba dañada"* | El archivo `config.json` quedó vacío o cortado (un corte de luz, el disco lleno). | Nada si dice que recuperó la copia. Si dice que empezó de cero, vuelve a pasar por **Configurar Canvas…**: tus archivos ya bajados no se vuelven a bajar. |
 | *"Pandex no pudo abrir"* (ventana al iniciar) | Faltan archivos o dependencias de la instalación. | Ejecuta `instalar.bat` (o `./instalar.sh`) otra vez: repara la instalación y no toca tu configuración. |

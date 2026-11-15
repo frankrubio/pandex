@@ -6,6 +6,7 @@ La lógica vive en ``pandex/comprimir.py``; este archivo solo la conecta con Pan
 from pathlib import Path
 
 from pandex import comprimir
+from pandex.tareas import si_cancelaron
 
 
 class Task:
@@ -39,7 +40,11 @@ class Task:
         entrada = ctx.entrada or {}
         if not entrada.get("carpeta"):
             return {"ok": False, "resumen": "Elige una carpeta desde el menú."}
-        r = comprimir.comprimir(entrada["carpeta"], pdfs=entrada.get("pdfs", False), progreso=ctx.progreso)
+        def avance(n, total):
+            si_cancelaron(ctx)  # entre archivos: al cancelar no queda un .zip a medias
+            ctx.progreso(n, total)
+
+        r = comprimir.comprimir(entrada["carpeta"], pdfs=entrada.get("pdfs", False), progreso=avance)
         ahorro = 100 - (r["despues"] * 100 // r["antes"]) if r["antes"] else 0
         resumen = (f"✓ {r['zip'].name}: {comprimir.tamano(r['antes'])} → {comprimir.tamano(r['despues'])} "
                    f"({ahorro} % menos)")

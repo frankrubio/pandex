@@ -34,6 +34,9 @@ class Task:
 | `ctx.guardar()` | Guarda en `config.json` lo que cambiaste en `ctx.params`. |
 | `ctx.config` | Todo `config.json`, por si lo necesitas. |
 | `ctx.entrada` | Lo que devolvió `preparar(ctx)` o `configurar(ctx)`; si no, `None`. |
+| `ctx.comprobar_cancelacion()` | Lanza `Cancelada` si el usuario eligió **Cancelar** en el menú. Llámala en cada vuelta de tu bucle; Pandex atrapa el error y dice «Cancelé…». |
+| `ctx.cancelada` | `True` si se pidió cancelar, por si prefieres salir tú del bucle. |
+| `ctx.al_cancelar(f)` | `f()` se llama al cancelar: para cerrar ya algo que no puede esperar (un proceso que lanzaste). |
 
 ## Qué devuelve `run(ctx)`
 
@@ -50,6 +53,15 @@ return {
 ```
 
 Si `run` lanza una excepción, Pandex la registra con su traceback y avisa: nunca se cae.
+
+Una tarea que tarda debe dejarse cancelar. Basta una línea en su bucle:
+
+```python
+    def run(self, ctx):
+        for archivo in archivos:
+            ctx.comprobar_cancelacion()   # si cancelaron, sale aquí; lo ya hecho se queda
+            procesar(archivo)
+```
 
 ## Preguntar algo antes: `preparar(ctx)`
 

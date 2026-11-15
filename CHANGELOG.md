@@ -10,6 +10,9 @@ cuando buscas actualizaciones desde el menú.
 - **Abre aunque `config.json` se dañe.** Si el archivo quedó vacío o cortado (un corte de luz, el
   disco lleno), Pandex recupera la última copia buena y te lo dice. Si no puede ni arrancar,
   muestra una ventana que dice qué hacer.
+- **Cancelar una tarea.** Mientras Pandex trabaja, el menú ofrece «Cancelar»: para la sincronización,
+  cierra la ventana de inicio de sesión o detiene la conversión. Lo que ya se guardó se queda.
+  «Salir» ya no deja una tarea a medias ni un navegador abierto.
 
 ## 2.6.7
 

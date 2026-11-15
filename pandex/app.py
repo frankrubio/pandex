@@ -6,6 +6,8 @@ Flujo de una tarea::
                  ─► hilo: tarea.run(ctx) ─► resultado ─► globo + ventana de informe
 """
 
+import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -33,6 +35,7 @@ from .ui.visor_registro import VisorRegistro
 log = get_logger("pandex.app")
 
 PENDIENTES_CADA = 10 * 60 * 1000  # ms
+ESPERA_AL_SALIR = 5000  # ms: lo que se espera a una tarea cancelada antes de cerrar (ROB-06)
 SALIR_TRAS = 9000  # ms: lo justo para leer el último globo
 PROGRESO_CADA = 0.25  # s: el globo de avance se refresca como mucho 4 veces por segundo
 REVISAR_TRAS = 45_000          # ms tras abrir: la primera revisión no frena el arranque
@@ -287,6 +290,11 @@ class PandexApp(QObject):
             nueva.setFont(fuente)
             menu.addSeparator()
 
+        if self.ejecutor.ocupado:  # ROB-05: lo que está corriendo se puede cancelar
+            accion(f"Cancelar «{self.ejecutor.actual}»", "salir", self.ejecutor.cancelar,
+                   "Para la tarea. Lo que ya se guardó se queda.")
+            menu.addSeparator()
+
         seccion("Tareas")
         for tarea in self.tareas:
             if not extras.disponible(tarea):  # función opcional no instalada: ni se muestra
@@ -378,6 +386,10 @@ class PandexApp(QObject):
         if cron:
             pendientes.marcar(task_id, cron)
         QTimer.singleShot(1000, self._ponerse_al_dia)  # ¿quedó otra pendiente?
+        if resultado.get("cancelada"):  # la cancelaste tú: no es un error
+            self.mascota.set_estado("idle")
+            self.mascota.decir(resultado["resumen"])
+            return
         ok = resultado["ok"]
         self.mascota.set_estado("feliz" if ok else "error", 4)
         resumen = resultado["resumen"] or ("Listo." if ok else "Algo falló.")
@@ -516,7 +528,7 @@ class PandexApp(QObject):
     def salir(self):
         if self.ejecutor.ocupado:
             respuesta = QMessageBox.question(
-                None, "Salir", "Hay una tarea corriendo. ¿Salir igual?",
+                None, "Salir", "Hay una tarea corriendo. Si sales, la cancelo. ¿Salir igual?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -529,4 +541,17 @@ class PandexApp(QObject):
         self.programador.detener()
         self.mascota.globo.ocultar_ya()
         self.bandeja.hide()
+        if self.ejecutor.ocupado:  # ROB-06: no se deja una tarea a medias
+            self.ejecutor.cancelar()
+            if not self.ejecutor.esperar(ESPERA_AL_SALIR):
+                log.warning("la tarea no alcanzó a terminar en %d s: cierro igual", ESPERA_AL_SALIR // 1000)
+                self._forzar_salida()
+                return
         self.qapp.quit()
+
+    def _forzar_salida(self):
+        """Con el hilo de una tarea aún vivo, una salida normal haría que Qt aborte el proceso
+        (un cierre con error). Se cierra el registro y se sale ya; el navegador sin ventana que
+        quede lo cierra Pandex la próxima vez (010, SES-08)."""
+        logging.shutdown()
+        os._exit(0)

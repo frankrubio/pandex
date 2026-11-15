@@ -65,6 +65,9 @@ Reglas del modelo de hilos:
   `preparar(ctx)`, que corre antes, en el hilo de la interfaz.
 - El reloj (APScheduler) corre en su propio hilo; su disparo se reenvía a la interfaz con una
   señal Qt encolada antes de llamar al ejecutor.
+- **Cancelar:** mientras corre una tarea, el menú ofrece «Cancelar «tarea»». `Ejecutor.cancelar()`
+  marca el `ctx`; la tarea lo ve en `ctx.comprobar_cancelacion()` (lanza `tareas.Cancelada`) y
+  cierra lo que abrió. «Salir» cancela, espera 5 s y cierra (spec 011).
 - Un error en `run` no tumba la app: se registra con su traceback y la mascota avisa.
 - Un error en cualquier otra parte (un clic, un reloj, otro hilo) tampoco: lo atiende
   `pandex/errores.py`. Si Pandex no puede ni arrancar, `main.py` lo anota y muestra una ventana

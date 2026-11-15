@@ -8,9 +8,9 @@
   `ArranqueFallido`) y `tests/test_nucleo.py::Ganchos`.
 - **Cambio:** `pandex/errores.py`, `pandex/config.py`, `main.py`, `pandex/app.py`.
 - **Terminado cuando:**
-  - [ ] las pruebas nuevas pasan y antes fallaban;
+  - [x] las pruebas nuevas pasan y antes fallaban;
   - [ ] toda la suite pasa en Windows y en Linux (CI);
-  - [ ] `CHANGELOG.md` y `docs/` al día.
+  - [x] `CHANGELOG.md` y `docs/` al día.
 
 ## T011.2 · Cancelar una tarea y salir limpio
 
@@ -20,6 +20,8 @@
 - **Cambio:** `pandex/tareas.py`, `pandex/ejecutor.py`, `pandex/app.py` y los bucles de
   `pandex/canvas/` y `pandex/markdown/`.
 - **Terminado cuando:**
-  - [ ] las pruebas nuevas pasan y antes fallaban;
+  - [x] las pruebas nuevas pasan y antes fallaban;
+  - [x] probado con un proceso real en Linux: una tarea que coopera cierra limpio; una que no
+        responde ya no cuelga a Pandex ni hace que Qt aborte;
   - [ ] toda la suite pasa en Windows y en Linux (CI);
-  - [ ] `CHANGELOG.md` y `docs/` al día.
+  - [x] `CHANGELOG.md` y `docs/` al día.

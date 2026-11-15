@@ -5,7 +5,7 @@ import traceback
 from PyQt6.QtCore import QObject, QThread, pyqtSignal
 
 from .log import get_logger
-from .tareas import TaskContext
+from .tareas import Cancelada, TaskContext
 
 log = get_logger("pandex.ejecutor")
 
@@ -18,16 +18,17 @@ class _Hilo(QThread):
     def __init__(self, tarea, config, entrada=None):
         super().__init__()
         self.tarea = tarea
-        self.config = config
-        self.entrada = entrada
+        # se crea aquí (hilo de la interfaz) para poder cancelarla desde el menú
+        self.ctx = TaskContext(tarea.id, config, self.decir.emit, self.progreso.emit, entrada=entrada)
 
     def run(self):
-        ctx = TaskContext(self.tarea.id, self.config, self.decir.emit, self.progreso.emit,
-                          entrada=self.entrada)
         try:
-            resultado = self.tarea.run(ctx) or {}
+            resultado = self.tarea.run(self.ctx) or {}
             if not isinstance(resultado, dict):
                 resultado = {"ok": True, "resumen": str(resultado)}
+        except Cancelada:
+            log.info("tarea %s cancelada", self.tarea.id)
+            resultado = {"ok": False, "cancelada": True, "resumen": f"Cancelé «{self.tarea.nombre}»."}
         except Exception as exc:
             log.error("tarea %s falló:\n%s", self.tarea.id, traceback.format_exc())
             resultado = {"ok": False, "resumen": f"Error: {exc}",
@@ -55,6 +56,19 @@ class Ejecutor(QObject):
     @property
     def ocupado(self):
         return self._hilo is not None and self._hilo.isRunning()
+
+    @property
+    def actual(self):
+        """El nombre de la tarea en curso, o None."""
+        return self._actual if self.ocupado else None
+
+    def cancelar(self):
+        """Pide a la tarea en curso que pare (ROB-05). True si había una."""
+        if not self.ocupado:
+            return False
+        log.info("se pidió cancelar %s", self._hilo.tarea.id)
+        self._hilo.ctx.cancelar()
+        return True
 
     def ejecutar(self, tarea, entrada=None):
         """Lanza la tarea. Si no se da ``entrada``, se le pide a ``preparar(ctx)``."""
@@ -98,5 +112,5 @@ class Ejecutor(QObject):
         self._actual = None
 
     def esperar(self, ms=4000):
-        if self.ocupado:
-            self._hilo.wait(ms)
+        """Espera a que termine la tarea en curso. False si pasó el tiempo y sigue corriendo."""
+        return self._hilo.wait(ms) if self.ocupado else True

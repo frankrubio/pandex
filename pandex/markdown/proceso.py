@@ -50,6 +50,9 @@ def convertir_aparte(ctx):
         return convertir(ctx)
 
     resultado = None
+    cerrar = getattr(ctx, "al_cancelar", None)
+    if callable(cerrar):
+        cerrar(hijo.terminate)  # cancelar no espera a que termine un PDF enorme (011, ROB-05)
     with hijo:  # cierra los canales y espera al hijo al salir
         hijo.stdin.write(pedido)
         hijo.stdin.close()
@@ -68,6 +71,9 @@ def convertir_aparte(ctx):
             elif "resultado" in mensaje:
                 resultado = mensaje["resultado"]
     codigo = hijo.returncode
+    from ..tareas import si_cancelaron
+
+    si_cancelaron(ctx)
     if resultado is None:
         return {"ok": False, "resumen": "La conversión se cerró de golpe. Mira el registro.",
                 "detalle": [f"el proceso de conversión terminó con código {codigo}"]}

@@ -27,16 +27,36 @@ Ganchos opcionales, todos corren en el hilo de la interfaz (pueden abrir diálog
 ``run`` puede devolver además ``"detalle"`` (líneas para el log), ``"informe"``
 (texto que se muestra en una ventana al terminar) y ``"carpeta"`` (botón
 «Abrir carpeta» de esa ventana).
+
+Una tarea que tarda debe dejarse cancelar (menú → «Cancelar…», spec 011): en cada vuelta de
+su bucle llama a ``ctx.comprobar_cancelacion()``, que lanza ``Cancelada``; Pandex la atrapa.
 """
 
 import importlib.util
 import sys
+import threading
 import traceback
 
 from .log import get_logger
 from .rutas import TASKS_DIR
 
 log = get_logger("pandex.tareas")
+
+
+class Cancelada(Exception):
+    """El usuario canceló la tarea. No es un error: Pandex dice «Cancelé…» y sigue."""
+
+
+def fue_cancelada(ctx):
+    """¿Se pidió cancelar? Sirve con cualquier ``ctx`` (también los de prueba y el del asistente,
+    que no se cancelan): solo cuenta un ``cancelada`` que sea exactamente True."""
+    return getattr(ctx, "cancelada", False) is True
+
+
+def si_cancelaron(ctx):
+    """Lanza ``Cancelada`` si se pidió cancelar."""
+    if fue_cancelada(ctx):
+        raise Cancelada()
 
 
 def descubrir(carpeta=TASKS_DIR):
@@ -96,10 +116,15 @@ class TaskContext:
     ``ctx.config``       dict completo de config.json
     ``ctx.guardar()``    persiste en config.json lo que cambiaste en ``ctx.params``
     ``ctx.entrada``      lo que devolvió ``preparar``/``configurar``; si no, None
+    ``ctx.cancelada``    True si el usuario pidió cancelar
+    ``ctx.comprobar_cancelacion()``  lanza ``Cancelada`` si se pidió cancelar
+    ``ctx.al_cancelar(f)``           ``f()`` cierra ya lo que no puede esperar (un proceso hijo)
     ===================  ===========================================================
     """
 
     def __init__(self, task_id, config, decir_cb=None, progreso_cb=None, entrada=None):
+        self._cancelar = threading.Event()
+        self._cierres = []
         self.task_id = task_id
         self.config = config.datos
         self.params = config.tarea(task_id)
@@ -121,3 +146,35 @@ class TaskContext:
 
     def guardar(self):
         self._config.guardar()
+
+    # ---------- cancelar (spec 011, ROB-05) ----------
+
+    @property
+    def cancelada(self):
+        return self._cancelar.is_set()
+
+    def comprobar_cancelacion(self):
+        si_cancelaron(self)
+
+    def al_cancelar(self, cerrar):
+        """``cerrar()`` se llama al cancelar, desde el hilo de la interfaz: solo algo rápido y
+        seguro entre hilos (terminar un proceso). Si ya se canceló, se llama enseguida."""
+        if self.cancelada:
+            self._cerrar(cerrar)
+        else:
+            self._cierres.append(cerrar)
+
+    def cancelar(self):
+        """Lo llama Pandex (no la tarea) cuando el usuario elige «Cancelar»."""
+        if self.cancelada:
+            return
+        self._cancelar.set()
+        cierres, self._cierres = self._cierres, []
+        for cerrar in cierres:
+            self._cerrar(cerrar)
+
+    def _cerrar(self, cerrar):
+        try:
+            cerrar()
+        except Exception as exc:  # que un cierre falle no impide cancelar
+            self._log.warning("al cancelar no pude cerrar algo: %s", exc)
