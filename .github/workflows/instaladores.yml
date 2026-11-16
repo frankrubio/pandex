@@ -1,0 +1,63 @@
+name: Instaladores
+
+# PLA-02 y PLA-03 (spec 006): ejecuta instalar.sh / instalar.bat de verdad, sin preguntas, y abre
+# Pandex. Una variante usa el Python del sistema; la otra fuerza el Python portátil
+# (PANDEX_PYTHON=portatil), que se descarga y se comprueba con su SHA-256.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  instalar:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, python: sistema, markdown: "no" }
+          - { os: ubuntu-latest, python: portatil, markdown: "si" }
+          - { os: windows-latest, python: sistema, markdown: "no" }
+          - { os: windows-latest, python: portatil, markdown: "si" }
+    env:
+      PANDEX_PYTHON: ${{ matrix.python }}
+      PANDEX_MARKDOWN: ${{ matrix.markdown }}
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        if: matrix.python == 'sistema'
+        with:
+          python-version: "3.12"
+      - name: Librerías de Qt (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1 libxcb-cursor0
+
+      - name: instalar.sh
+        if: runner.os == 'Linux'
+        run: |
+          ls -A ~/.cache 2>/dev/null | sort > "$RUNNER_TEMP/cache-antes.txt" || true
+          ./instalar.sh < /dev/null
+          # P3: el instalador no deja nada nuevo en ~/.cache
+          ls -A ~/.cache 2>/dev/null | sort > "$RUNNER_TEMP/cache-despues.txt" || true
+          diff "$RUNNER_TEMP/cache-antes.txt" "$RUNNER_TEMP/cache-despues.txt"
+      - name: instalar.bat
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: call instalar.bat < NUL
+
+      - name: El entorno usa el Python portátil
+        if: matrix.python == 'portatil'
+        shell: bash
+        run: |
+          if [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
+          "$PY" -c "import sys, pathlib; b = pathlib.Path(sys.base_prefix).resolve(); assert b == pathlib.Path('.python').resolve(), b; print('base:', b)"
+          test ! -e .python-descarga.tar.gz && test ! -e .python-nuevo
+      - name: Pandex abre (prueba de humo)
+        shell: bash
+        run: |
+          if [ -x .venv/Scripts/python.exe ]; then PY=.venv/Scripts/python.exe; else PY=.venv/bin/python; fi
+          "$PY" main.py --test

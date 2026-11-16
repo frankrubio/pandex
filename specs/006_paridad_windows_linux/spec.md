@@ -24,7 +24,7 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 
 | # | Hueco |
 |---|---|
-| H1 | Pandex exige Python ≥ 3.12, pero **Ubuntu 22.04 y Linux Mint 21 traen 3.10, y Debian 12 trae 3.11**: ahí `instalar.sh` se detiene. |
+| H1 | Pandex exige Python ≥ 3.12, pero **Ubuntu 22.04 y Linux Mint 21 traen 3.10, y Debian 12 trae 3.11**: ahí `instalar.sh` se detiene. En Windows es peor: la mayoría de estudiantes no tiene Python y `instalar.bat` los manda a python.org (y a marcar «Add python.exe to PATH»). |
 | H2 | `requirements.txt` dice «probado con Python 3.12 a 3.14», pero la CI no prueba 3.14. |
 | H3 | La CI instala con `pip` directo: **nunca ejecuta** `instalar.sh` ni `instalar.bat`. Un error en un instalador no se detecta. |
 | H4 | No hay desinstalador en ningún sistema (ver 003). |
@@ -38,7 +38,7 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 
 | Sistema | Versiones | Python |
 |---|---|---|
-| Windows | 10 (22H2) y 11, x64 | 3.12 – 3.14 de python.org |
+| Windows | 10 (22H2) y 11, x64 | 3.12 – 3.14 de python.org; si no hay, el portátil (PLA-03) |
 | Ubuntu / Linux Mint / Debian | Ubuntu 22.04+, Mint 21+, Debian 12+ | el del sistema si es ≥ 3.12; si no, el portátil (PLA-03) |
 | Fedora / Arch | Fedora 40+, Arch actual | el del sistema |
 
@@ -48,7 +48,7 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 |---|---|---|
 | PLA-01 | La CI prueba Windows y Ubuntu (22.04 y 24.04) con Python 3.12, 3.13 y 3.14. | `.github/workflows/pruebas.yml` |
 | PLA-02 | La CI ejecuta **los instaladores reales** sin preguntas (`PANDEX_EXTRAS=ninguno` y `=markdown`) y luego `main.py --test`. | job `instaladores` |
-| PLA-03 | Si el Python del sistema es menor que 3.12, `instalar.sh` ofrece descargar un Python portátil **dentro de la carpeta de Pandex** (sin `sudo`, sin tocar el Python del sistema, sin cachés fuera). | job `instaladores` en `ubuntu-22.04` |
+| PLA-03 | Si no hay Python 3.12 o más nuevo, `instalar.sh` e `instalar.bat` ofrecen descargar un Python portátil **dentro de la carpeta de Pandex** (`.python/`): sin `sudo`, sin tocar el Python del sistema, sin PATH ni registro, sin cachés fuera. Versión y huella SHA-256 fijas en `herramientas/python_portatil.txt`; si lo descargado no coincide, no se usa. Si ya se descargó, se sigue usando. Desinstalar lo quita y actualizar no lo toca. | `tests/test_instaladores.py` + job `instaladores` (con `PANDEX_PYTHON=portatil`) |
 | PLA-04 | Con el mismo Canvas falso, Windows y Linux crean exactamente el mismo árbol de carpetas y nombres de archivo. | `tests/test_paridad.py::test_mismo_arbol` (compara con `tests/datos/arbol_esperado.txt`) |
 | PLA-05 | Rutas con espacios, tildes, ñ y guiones (`OneDrive - Universidad`, `Diseño`, `Año 1`) funcionan en sincronizar, convertir, comprimir y accesos directos. | `test_rutas_raras` |
 | PLA-06 | Cada dependencia tiene versión fija (`==`) y ninguna se instala en un sistema que no la usa. | `tests/test_principios.py::Dependencias` ✅ |
@@ -66,9 +66,20 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 **PLA-03 · Linux Mint 21**
 - *Dado* Linux Mint 21 con Python 3.10
 - *Cuando* ejecuta `./instalar.sh`
-- *Entonces* le dice «Tu Linux trae Python 3.10 y Pandex necesita 3.12. ¿Descargo un Python
-  solo para Pandex (unos 40 MB, dentro de esta carpeta)? [S/n]», y al aceptar termina igual
-  que en un sistema nuevo.
+- *Entonces* le dice «No encontré Python 3.12 o más nuevo. ¿Descargo un Python solo para
+  Pandex? Ocupa unos 105 MB dentro de esta carpeta (.python) y no toca tu sistema. [S/n]», y al
+  aceptar termina igual que en un sistema nuevo.
+
+**PLA-03 · Windows sin Python**
+- *Dado* Windows 11 sin Python
+- *Cuando* hace doble clic en `instalar.bat`
+- *Entonces* le ofrece lo mismo (unos 70 MB) y al aceptar deja el acceso directo, sin pasar por
+  python.org ni por «Add python.exe to PATH».
+
+**PLA-03 · Descarga alterada**
+- *Dado* que lo descargado no coincide con la huella fija
+- *Entonces* no se descomprime ni se usa, no queda nada a medias y el instalador dice que vuelvas
+  a intentar.
 
 **PLA-04 · Mismo resultado**
 - *Dado* el Canvas falso de `tests/apoyo.py` con cursos de teoría y laboratorio
@@ -103,7 +114,7 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 
 | # | Pregunta | Por defecto | Decide |
 |---|---|---|---|
-| 1 | Para PLA-03, ¿usar `uv` (descarga Python y se puede dejar todo dentro de la carpeta de Pandex) o pedir al usuario instalar Python 3.12 con su gestor? | `uv`, con `UV_CACHE_DIR` y `UV_PYTHON_INSTALL_DIR` dentro de la carpeta de Pandex (P3). | Frank |
+| 1 | ~~Para PLA-03, ¿usar `uv` o pedir al usuario instalar Python 3.12 con su gestor?~~ **Resuelta (2026-11-16):** Python portátil sí (Frank aceptó la propuesta C4). Se baja directo de python-build-standalone, los mismos Python que descarga `uv`: una sola descarga con su SHA-256 fijo, sin un programa más que verificar ni sus carpetas propias fuera de Pandex. | — | Frank |
 | 2 | ¿Bajar el mínimo a Python 3.10 en vez de PLA-03? Hay que revisar qué del código necesita 3.12. | No: más trabajo y más casos que probar. | Frank |
 
 ## Historial
@@ -112,3 +123,4 @@ su sistema. Hoy hay instalador para cada uno (`instalar.bat`, `instalar.sh`) y l
 |---|---|---|
 | 2026-10-19 | Primera versión con los huecos H1–H7. | Requisito de Frank: sin conflictos con su versión de Windows ni de Linux. |
 | 2026-10-19 | H8, H9 y requisitos PLA-11, PLA-12 (tarea T006.7). | «Un solo Pandex por PC» (2.4.0) movía el acceso y el arranque, pero no el despertador, y no veía copias instaladas antes. |
+| 2026-11-16 | PLA-03 también en Windows y cuando no hay ningún Python; pregunta 1 resuelta. | Revisión: instalar exigía Python en el PATH (F8). |

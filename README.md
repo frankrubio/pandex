@@ -43,19 +43,22 @@ El instalador pregunta si quieres **«Convertir a Markdown»** (unos 280 MB). Si
 
 ### En Windows
 
-1. **Instala Python** desde [python.org/downloads](https://www.python.org/downloads/).
-   En la primera pantalla del instalador marca **☑ Add python.exe to PATH**.
-2. **Descarga Pandex:** arriba en esta página, botón verde **Code → Download ZIP**.
+1. **Descarga Pandex:** arriba en esta página, botón verde **Code → Download ZIP**.
    Se guarda en tu carpeta **Descargas** como `pandex-main.zip`.
-3. **Desbloquea el ZIP antes de extraerlo** (si no, Windows puede bloquear Pandex):
+2. **Desbloquea el ZIP antes de extraerlo** (si no, Windows puede bloquear Pandex):
    - Clic **derecho** sobre `pandex-main.zip` → **Propiedades**.
    - Abajo, en *Seguridad*, marca **☑ Desbloquear** → **Aplicar** → **Aceptar**.
    - ¿No aparece la casilla? Entonces ya está desbloqueado: sigue.
-4. **Extráelo:** clic derecho sobre el ZIP → **Extraer todo…** → elige dónde (por ejemplo
+3. **Extráelo:** clic derecho sobre el ZIP → **Extraer todo…** → elige dónde (por ejemplo
    `Documentos`) → **Extraer**. Hazlo ahora: después no muevas la carpeta.
-5. **Instálalo:** abre la carpeta `pandex-main` y haz doble clic en **`instalar.bat`**.
+4. **Instálalo:** abre la carpeta `pandex-main` y haz doble clic en **`instalar.bat`**.
    Tarda unos minutos la primera vez y al final deja el acceso directo **Pandex** en tu
    Escritorio.
+
+¿No tienes Python? No hace falta instalarlo: `instalar.bat` te ofrece bajar uno solo para
+Pandex (unos 70 MB, dentro de su carpeta, en `.python`; no se instala en Windows ni cambia el
+PATH). Comprueba su huella SHA-256 antes de usarlo. Si ya tienes Python 3.12 o más nuevo, usa
+el tuyo.
 
 Listo: abre **Pandex** desde el Escritorio.
 

@@ -13,7 +13,7 @@ repositorio aún no publicó ninguna, se usa la rama ``main``. Dos caminos, seg�
 
 Antes de copiar queda un punto de vuelta (``pandex/vuelta.py``) para «Volver a la versión anterior».
 
-En los dos casos **no se tocan** tus datos: ``config.json``, ``logs/``, ``.venv/`` ni las
+En los dos casos **no se tocan** tus datos: ``config.json``, ``logs/``, ``.venv/``, ``.python/`` ni las
 tareas propias que agregaste en ``tasks/``. Si cambió ``requirements.txt``, se
 instalan las dependencias nuevas en el ``.venv``.
 """
@@ -44,7 +44,7 @@ URL_PUBLICADA = f"https://api.github.com/repos/{REPO}/releases/latest"
 ETIQUETA = re.compile(r"v\d+\.\d+\.\d+")
 
 # lo tuyo: nunca se reemplaza ni se borra
-PROTEGIDOS = {"config.json", "config.json.tmp", "logs", ".venv", "venv", ".git", "__pycache__"}
+PROTEGIDOS = {"config.json", "config.json.tmp", "logs", ".venv", "venv", ".python", ".git", "__pycache__"}
 
 _SIN_VENTANA = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 

@@ -63,8 +63,8 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T003.5 | Quitar paquetes huérfanos al actualizar | 003 | T003.2 | hecha |
 | T003.6 | Inventario de lo creado fuera | 003 | — | hecha |
 | T003.7 | Desinstalar Pandex (`desinstalar.sh`, `desinstalar.bat`, botón) | 003 | T003.6 | hecha |
-| T006.2 | La CI ejecuta los instaladores | 006 | T002.2 | libre |
-| T006.3 | Python portátil en Linux viejo | 006 | T006.2 | bloqueada (pregunta 1 de 006) |
+| T006.2 | La CI ejecuta los instaladores | 006 | T002.2 | en curso (claude/vibrant-volta-t1vhh9) |
+| T006.3 | Python portátil cuando no hay Python 3.12+ (Linux y Windows) | 006 | T006.2 | en curso (claude/vibrant-volta-t1vhh9) |
 | T006.4 | Mismo árbol en los dos sistemas | 006 | — | libre |
 | T006.5 | Rutas con espacios, tildes y ñ | 006 | — | libre |
 | T006.6 | Plantilla de issue y sistemas no soportados | 006 | — | libre |

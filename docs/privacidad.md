@@ -58,8 +58,9 @@ El registro incluye nombres de cursos y de archivos, y rutas de tu PC. Por eso:
 | Destino | Cuándo | Qué envía |
 |---|---|---|
 | Tu Canvas (la dirección que escribiste) | al configurar y sincronizar | pedidos de lectura de la API con tu sesión, y descargas (Canvas las redirige a su almacenamiento de archivos; esa redirección la decide Canvas) |
-| GitHub (`api.github.com`, `github.com`, `raw.githubusercontent.com`, `codeload.github.com`) | al buscar actualizaciones (una vez al día como máximo; se puede apagar) | nada tuyo: lee la última versión publicada y sus novedades, y descarga su ZIP y su SHA-256 (GitHub los sirve desde su almacenamiento) |
+| GitHub (`api.github.com`, `github.com`, `raw.githubusercontent.com`, `codeload.github.com`) | al buscar actualizaciones (una vez al día como máximo; se puede apagar) | nada tuyo: lee la última versión publicada y sus novedades, y descarga su ZIP y su SHA-256 (GitHub los sirve desde `release-assets.githubusercontent.com`) |
 | PyPI (`pypi.org`, `files.pythonhosted.org`) | al instalar o actualizar Pandex o una función opcional | nada tuyo: descarga paquetes |
+| GitHub (`github.com`, que sirve el archivo desde `release-assets.githubusercontent.com`) | solo al instalar, si no tienes Python 3.12 o más nuevo y aceptas bajar uno | nada tuyo: descarga Python (python-build-standalone) y lo comprueba con la huella fija de `herramientas/python_portatil.txt` |
 
 Programas que Pandex abre y que hablan por su cuenta:
 

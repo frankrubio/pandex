@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 PY=.venv/bin/python
 [ -x "$PY" ] || PY=python3
 
-# todo menos .venv (es el Python que está corriendo); .venv se borra al final
+# todo menos .venv y .python (son el Python que está corriendo): se borran al final
 "$PY" -m pandex.desinstalar --sin-venv "$@"
 case $? in
     0) ;;
@@ -15,6 +15,7 @@ case $? in
     *) echo; echo " Algo falló. Lee el mensaje de arriba."; exit 1 ;;
 esac
 rm -rf .venv && echo " Entorno de Python (.venv) borrado."
+if [ -d .python ]; then rm -rf .python && echo " Python que bajó el instalador (.python) borrado."; fi
 echo
 echo " Para terminar, borra esta carpeta:  rm -rf \"$PWD\""
 echo

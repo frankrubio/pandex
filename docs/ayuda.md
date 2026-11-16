@@ -121,10 +121,11 @@ Tu sesión de Canvas y tu historial están aparte (`%LOCALAPPDATA%\Pandex` o
 |---|---|---|
 | *"Windows protegió tu PC"* al abrir `instalar.bat` | No desbloqueaste el ZIP antes de extraerlo. | **Más información → Ejecutar de todas formas**. Después desbloquea toda la carpeta con el comando de la fila siguiente. |
 | *Control inteligente de aplicaciones* bloquea Pandex | Lo mismo: los archivos traen la marca de "descargado de internet". | En PowerShell: `Get-ChildItem "ruta\de\pandex-main" -Recurse \| Unblock-File`. No desactives el Control inteligente de aplicaciones. |
-| *"No encontré Python 3.12 o más nuevo"* | Python no está instalado, o lo instalaste sin marcar **Add python.exe to PATH**. | Vuelve a abrir el instalador de Python → **Modify** (o instálalo de nuevo) y marca esa casilla. Luego repite `instalar.bat`. |
+| *"No encontré Python 3.12 o más nuevo"* | Python no está instalado, o lo instalaste sin marcar **Add python.exe to PATH**. | Responde **S** (o Enter) cuando `instalar.bat` ofrece bajar un Python solo para Pandex. Si prefieres el tuyo: abre el instalador de Python → **Modify** y marca esa casilla; luego repite `instalar.bat`. |
+| *"Lo descargado no coincide con su huella (SHA-256)"* | La descarga del Python portátil llegó cortada o alterada. Pandex no la usa. | Vuelve a abrir `instalar.bat` (o `./instalar.sh`). Si se repite, revisa tu conexión o abre un issue. |
 | La ventana negra se cierra sola o dice *"Algo falló"* | Casi siempre es el internet durante la descarga. | Vuelve a abrir `instalar.bat`: continúa desde donde quedó. |
 | *"Falta instalar Pandex: haz doble clic en instalar.bat"* | Abriste Pandex sin haberlo instalado, o borraste la carpeta `.venv`. | Doble clic en `instalar.bat`. |
-| El acceso directo no hace nada o dice que no encuentra el archivo | Moviste o renombraste la carpeta de Pandex. | Doble clic en `Pandex.pyw` y vuelve a crear el acceso directo (ver arriba). |
+| El acceso directo no hace nada o dice que no encuentra el archivo | Moviste o renombraste la carpeta de Pandex. | Doble clic en `instalar.bat` desde la carpeta nueva: rehace el entorno de Python y el acceso directo, sin tocar tu configuración. |
 | *"¡Aquí estoy! Ya estaba abierto."* | Pandex ya estaba abierto, quizás escondido. | No es un error. Solo puede haber un Rusty a la vez. |
 | *"Cerraste el navegador antes de terminar de iniciar sesión"* o *"Se acabó el tiempo…"* | Se cerró la ventana del login, o pasaron 5 minutos. | En el asistente, pulsa **Reintentar**. Si fue al sincronizar, vuelve a pulsar **Sincronizar Canvas**. |
 | *"No encontré Chrome"* (u otro navegador) | Elegiste un navegador que no está instalado. | En Configuración → Tareas → Sincronizar Canvas, elige «El que uso siempre» u otro navegador. |
