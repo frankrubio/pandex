@@ -334,6 +334,10 @@ def _con_zip(raiz, avisar, zip_local=None, url=URL_ZIP, sha256=None):
 
         avisar("Copiando los archivos nuevos…")
         respaldo = DATOS / "respaldos" / f"{version_local()}-{datetime.now():%Y%m%d-%H%M%S}"
+        for n in range(2, 100):  # dos en el mismo segundo: cada una con su respaldo
+            if not respaldo.exists():
+                break
+            respaldo = respaldo.with_name(f"{respaldo.name.split('_')[0]}_{n}")
         nuevos = [(n, n.relative_to(origen)) for n in sorted(origen.rglob("*"))
                   if n.is_file() and not _protegido(n.relative_to(origen))]
         from . import vuelta
@@ -359,7 +363,7 @@ def _con_zip(raiz, avisar, zip_local=None, url=URL_ZIP, sha256=None):
         log.info("actualizado desde ZIP: %d archivo(s); respaldo en %s", copiados, respaldo)
         from .limpieza import RESPALDOS_QUE_QUEDAN, limitar
 
-        limitar(respaldo.parent, "*", RESPALDOS_QUE_QUEDAN)  # RES-04: no se acumulan
+        limitar(respaldo.parent, "*", RESPALDOS_QUE_QUEDAN, salvo=vuelta.necesarios())  # RES-04
         return {"modo": "zip", "archivos": copiados, "respaldo": respaldo if respaldo.exists() else None}
     finally:
         shutil.rmtree(trabajo, ignore_errors=True)

@@ -25,7 +25,7 @@ cuando buscas actualizaciones desde el menú.
 - **Actualizar sin miedo.** El clic en la mascota ya no instala de golpe: muestra qué trae la versión
   nueva y espera a que pulses «Actualizar ahora». Pandex instala solo versiones publicadas y comprueba
   su huella (SHA-256). Si no te convence, «Volver a la versión anterior…»; si no llega a abrir, vuelve
-  sola y te lo dice.
+  sola y te lo dice. La limpieza automática de respaldos ya no borra lo que hace falta para volver.
 - **Instalar sin tener Python.** Si no tienes Python 3.12 o más nuevo, `instalar.bat` e
   `instalar.sh` ofrecen bajar uno solo para Pandex (dentro de su carpeta, en `.python`), con versión
   y huella SHA-256 fijas. Si moviste la carpeta, el instalador rehace el entorno de Python.

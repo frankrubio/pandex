@@ -20,7 +20,8 @@
 
 - **P4:** volver atrás aparta lo agregado, no lo borra; `git reset --keep` se niega a pisar
   cambios tuyos.
-- **P3:** `deshecho-*` va a `respaldos/` y entra en su límite de 3.
+- **P3:** `deshecho-*` va a `respaldos/` y entra en su límite de 2 (RES-04); ese límite nunca borra
+  el respaldo ni el `obsoletos-<versión>` del punto de vuelta (`vuelta.necesarios()`).
 - **P8:** cada fallo dice qué pasó y qué hacer.
 
 ## Archivos que se tocan

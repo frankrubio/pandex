@@ -240,7 +240,8 @@ class _ConRaiz(unittest.TestCase):
                                 "requirements.txt": "a==1\n", "config.json": '{"mio": true}',
                                 "tasks/mi_tarea.py": "mía"}.items():
             (self.raiz / relativa).parent.mkdir(parents=True, exist_ok=True)
-            (self.raiz / relativa).write_text(texto, encoding="utf-8")
+            # newline="\n": en Windows sería CRLF y requirements.txt no sería igual al del ZIP
+            (self.raiz / relativa).write_text(texto, encoding="utf-8", newline="\n")
         self.archivos = {"main.py": "nuevo", "pandex/app.py": "nuevo", "pandex/igual.py": "igual",
                          "pandex/nuevo.py": "nuevo", "pandex/__init__.py": '__version__ = "9.0.0"\n',
                          "requirements.txt": "a==1\n"}
@@ -363,6 +364,53 @@ class PuntoDeVuelta(_ConRaiz):
         self.assertIn("pandex/nuevo.py", punto["agregados"])
         self.assertNotIn("pandex/igual.py", punto["agregados"])
         self.assertEqual((Path(punto["respaldo"]) / "main.py").read_text(encoding="utf-8"), "viejo")
+
+    def test_el_limite_no_borra_lo_que_usa_volver(self):
+        """RES-04 no se lleva el respaldo ni lo apartado que necesita «Volver a la versión anterior»."""
+        import os
+        import time
+
+        from pandex import limpieza, vuelta
+
+        respaldos = actualizar.DATOS / "respaldos"
+        futuro = time.time() + 3600
+        for i, nombre in enumerate(("8.0.0-20990101-000000", "deshecho-prueba", "obsoletos-prueba")):
+            (respaldos / nombre).mkdir(parents=True, exist_ok=True)
+            self.addCleanup(shutil.rmtree, respaldos / nombre, True)
+            os.utime(respaldos / nombre, (futuro + i, futuro + i))  # más nuevos que el de esta prueba
+        self._aplicar_zip()
+        respaldo = Path(vuelta.leer()["respaldo"])
+        self.addCleanup(shutil.rmtree, respaldo, True)
+        self.assertTrue((respaldo / "main.py").is_file(), "el límite al actualizar")
+        obsoletos = respaldos / "obsoletos-9.0.0"
+        obsoletos.mkdir(exist_ok=True)
+        self.addCleanup(shutil.rmtree, obsoletos, True)
+        os.utime(obsoletos, (1, 1))  # el más viejo de todos
+        limpieza.limpiar_propio()
+        self.assertTrue((respaldo / "main.py").is_file(), "el límite al arrancar")
+        self.assertTrue(obsoletos.is_dir(), "lo apartado por la versión nueva")
+
+    def test_dos_actualizaciones_en_el_mismo_segundo_no_comparten_respaldo(self):
+        import os
+        import time
+        from datetime import datetime
+        from unittest import mock
+
+        from pandex import vuelta
+
+        ocupado = actualizar.DATOS / "respaldos" / f"{actualizar.version_local()}-20260102-030405"
+        ocupado.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, ocupado, True)
+        (ocupado / "main.py").write_text("de otra actualización", encoding="utf-8")
+        os.utime(ocupado, (time.time() + 3600,) * 2)
+        reloj = mock.Mock(now=mock.Mock(return_value=datetime(2026, 1, 2, 3, 4, 5)))
+        with mock.patch.object(actualizar, "datetime", reloj):
+            self._aplicar_zip()
+        respaldo = Path(vuelta.leer()["respaldo"])
+        self.addCleanup(shutil.rmtree, respaldo, True)
+        self.assertNotEqual(respaldo, ocupado)
+        self.assertEqual((ocupado / "main.py").read_text(encoding="utf-8"), "de otra actualización")
+        self.assertEqual((respaldo / "main.py").read_text(encoding="utf-8"), "viejo")
 
     def test_volver_con_zip(self):
         from pandex import vuelta

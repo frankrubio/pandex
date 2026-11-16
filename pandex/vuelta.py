@@ -48,6 +48,17 @@ def guardar(punto):
     os.replace(temporal, ARCHIVO)
 
 
+def necesarios():
+    """Lo de ``respaldos/`` que usaría «Volver a la versión anterior»: el límite no lo borra."""
+    punto = leer()
+    if not punto or punto.get("modo") != "zip":
+        return set()
+    rutas = {RESPALDOS / f"obsoletos-{punto['hacia']}"} if punto.get("hacia") else set()
+    if punto.get("respaldo"):
+        rutas.add(Path(punto["respaldo"]))
+    return rutas
+
+
 def _olvidar():
     try:
         ARCHIVO.unlink(missing_ok=True)
