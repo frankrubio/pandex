@@ -78,7 +78,7 @@ class CanvasFalso:
         nombre, tamano = self.archivos[file_id]
         return {"nombre": nombre, "tamano": tamano}
 
-    def descargar(self, _curso_id, file_id, destino_tmp, espera_html=False):
+    def descargar(self, _curso_id, file_id, destino_tmp, espera_html=False, parar=None):
         self._contar("descargar")
         if file_id in self.fallar:
             raise CanvasError("Canvas devolvió una página, no el archivo")
@@ -98,6 +98,7 @@ class CtxFalso:
         self.entrada = entrada
         self.globos = []
         self.registro = []
+        self.cancelada = False
 
     def log(self, mensaje, nivel="info"):
         self.registro.append((nivel, mensaje))

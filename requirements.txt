@@ -11,6 +11,6 @@ selenium==4.51.0
 requests==2.34.2
 
 # Personajes propios e íconos
-pillow==12.3.0
+pillow==13.0.0
 
 # «Convertir a Markdown» es opcional: requirements-markdown.txt (unos 280 MB más)

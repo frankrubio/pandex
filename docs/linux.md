@@ -18,6 +18,10 @@ sudo apt install python3-venv git libxcb-cursor0 rclone fuse3
 
 `rclone` y `fuse3` son para OneDrive; si no lo vas a usar, puedes quitarlos del comando.
 
+¿Tu Linux trae un Python menor que 3.12 (Ubuntu 22.04, Mint 21, Debian 12)? `instalar.sh` te
+ofrece bajar uno solo para Pandex (unos 105 MB en `~/pandex/.python`, sin `sudo`), comprobado con
+su huella SHA-256.
+
 **2. Descargar Pandex** (se crea la carpeta `~/pandex`):
 
 ```bash
@@ -62,7 +66,7 @@ propio Python dentro (`.venv`). No usa `sudo` ni instala nada fuera de estos lug
 
 | Qué | Dónde |
 |---|---|
-| Pandex, su Python, tu configuración y el registro | `~/pandex/` (`.venv/`, `config.json`, `logs/`) |
+| Pandex, su Python, tu configuración y el registro | `~/pandex/` (`.venv/`, `config.json`, `logs/`; `.python/` si el instalador bajó un Python) |
 | Acceso en el menú de aplicaciones | `~/.local/share/applications/pandex.desktop` |
 | Acceso en el Escritorio | `~/Escritorio/pandex.desktop` |
 | Arrancar al iniciar sesión (si lo activas) | `~/.config/autostart/pandex.desktop` |

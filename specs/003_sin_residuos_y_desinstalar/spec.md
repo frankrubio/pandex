@@ -38,7 +38,7 @@ Bien resuelto:
 | RES-01 | Durante una sesión de pruebas completa, Pandex no crea ni modifica nada fuera de los lugares permitidos de `principios.md#p3`. | `tests/test_residuos.py::test_nada_fuera_de_lugares_permitidos` (HOME, `XDG_*`, `APPDATA` y `LOCALAPPDATA` apuntan a una carpeta temporal y se compara antes/después) |
 | RES-02 | Ninguna llamada a `pip` deja caché (`--no-cache-dir` o `PIP_NO_CACHE_DIR=1`). | `test_pip_sin_cache` (lee los instaladores y busca cada `pip install` en el código) |
 | RES-03 | Los drivers y navegadores que Pandex descarga quedan en `DATOS/navegadores/`. | `test_drivers_en_datos` |
-| RES-04 | `DATOS/respaldos/` guarda como máximo los **2** últimos respaldos; los demás se borran solos. | `test_respaldos_con_limite` |
+| RES-04 | `DATOS/respaldos/` guarda como máximo los **2** últimos respaldos; los demás se borran solos. Nunca borra lo que usa «Volver a la versión anterior» (el respaldo del punto de vuelta y su `obsoletos-<versión>`, spec 012), y eso no cuenta en el límite. | `test_respaldos_con_limite`, `PuntoDeVuelta::test_el_limite_no_borra_lo_que_usa_volver` |
 | RES-05 | `DATOS/config-canvas-anterior-*.json` guarda como máximo **3**. | `test_copias_de_config_con_limite` |
 | RES-06 | Tras actualizar, `.venv` no tiene paquetes que ya no pide ningún `requirements*.txt` instalado. | `test_actualizar_quita_huerfanos` |
 | RES-07 | Hay un desinstalador por sistema (`desinstalar.sh`, `desinstalar.bat`) y la opción **Configuración → Comportamiento → Desinstalar Pandex…**. | `test_desinstalar` + prueba manual |
@@ -84,3 +84,4 @@ Bien resuelto:
 |---|---|---|
 | 2026-10-19 | Primera versión, con los residuos R1–R8 encontrados en el código. | Requisito de Frank: no dejar archivos fuera ni acumular. |
 | 2026-10-31 | Entra en alcance limpiar lo que dejaron versiones anteriores (caché de pip, `~/.cache/selenium`, `ms-playwright`, otras copias de Pandex): se lista con su tamaño y se pregunta (ADR-0001, D4). | Frank: «al actualizar, liberar, eliminar duplicados y aligerar». |
+| 2026-11-16 | RES-04 deja fuera del límite lo que usa «Volver a la versión anterior». | La CI encontró que el límite podía borrar el respaldo recién hecho: contaba también `deshecho-*` y `obsoletos-*`. |

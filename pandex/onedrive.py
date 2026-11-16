@@ -26,7 +26,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from .log import get_logger
-from .rutas import DATOS, WINDOWS
+from .rutas import DATOS, WINDOWS, carpeta_privada, privado
 
 log = get_logger("pandex.onedrive")
 
@@ -148,7 +148,7 @@ class Conexion:
         if not disponible():
             raise ErrorOneDrive(f"Falta rclone. Instálalo con: {INSTALAR}")
         remoto = _slug(self.nombre)
-        CONF.parent.mkdir(parents=True, exist_ok=True)
+        carpeta_privada(CONF.parent)
         self.proceso = subprocess.Popen(_rclone("config", "create", remoto, "onedrive"),
                                         stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                         text=True, encoding="utf-8", errors="replace")
@@ -167,6 +167,7 @@ class Conexion:
             log.error("rclone config create falló:\n%s", "\n".join(salida[-20:]))
             raise ErrorOneDrive("No pude conectar tu OneDrive. El motivo exacto está en «Ver registro».")
 
+        privado(CONF)  # PRI-06: el token de OneDrive, solo para ti
         tipo = _tipo(remoto)
         cuenta = Cuenta(remoto, self.nombre, tipo, str(carpeta_para(self.nombre, tipo)))
         _guardar([*cuentas(), cuenta])

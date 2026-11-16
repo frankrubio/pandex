@@ -35,7 +35,10 @@ tienes Chrome). Es probable que Windows pese más que Linux.
 
 Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin** contar
 `personajes/` añadidos por el usuario + todo navegador o driver que Pandex haya descargado.
-**No** cuenta: Python del sistema, tu Chrome/Firefox/Edge, la carpeta de tus cursos.
+**No** cuenta: Python del sistema, tu Chrome/Firefox/Edge, la carpeta de tus cursos. El Python
+portátil `.python/` (lo baja el instalador solo si no tienes Python 3.12+, spec 006 PLA-03) hace las
+veces del Python del sistema: `medir_peso.py` lo informa aparte (unos 105 MB en Linux, 70 MB en
+Windows) y no suma al total.
 
 ## Requisitos
 
@@ -92,3 +95,4 @@ Suma de: la carpeta del proyecto (incluye `.venv`) + la carpeta de datos **sin**
 | 2026-10-19 | Primera versión con mediciones en Linux. | Requisito de Frank: máximo 600 MB. |
 | 2026-11-08 | PES-10. | Revisión de código: Pandex ya no cargaba Magika (spec 004, PRI-10), pero se seguía instalando con onnxruntime y numpy. Medido en Linux, solo «Convertir a Markdown»: 211 MB antes y 86 MB después de actualizar (se quitaron 8 paquetes). Los seis formatos (PDF, Word, PowerPoint, Excel, CSV y HTML) se convierten igual. |
 | 2026-10-31 | Nueva medición en Linux: base 341 MB y completo 660 MB, antes de los cambios. Con ADR-0001 (pip `--no-compile`, Excel sin pandas, Selenium en los dos sistemas): base 326 MB y completo 532 MB. PES-07 pasa a «el navegador que elijas». | ADR-0001 |
+| 2026-11-16 | El Python portátil (`.python/`, spec 006 PLA-03) no suma: hace las veces del Python del sistema y `medir_peso.py` lo informa aparte. Medido sin descomprimir en la PC: 105 MB en Linux x86_64 y 69 MB en Windows x64 (Python 3.13.18, build 20261026). | Sin esta regla, los que no tienen Python pasarían el límite base de 350 MB por un Python que los demás tienen fuera de Pandex (y que de otro modo instalarían de python.org, tampoco contado). |

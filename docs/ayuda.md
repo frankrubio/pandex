@@ -81,7 +81,10 @@ Si la imagen tiene fondo blanco u otro color liso, Pandex lo quita. El personaje
 Clic derecho en Rusty → **Ocultar**, o **Salir**. Si lo ocultas, vuelve a aparecer al hacer clic en su ícono junto al reloj.
 
 **¿Cómo me entero de una versión nueva?**
-Pandex revisa una vez al día mientras está abierto. Si hay una versión nueva, Rusty te avisa: haz clic sobre él y Pandex se descarga, se actualiza y se reinicia solo. Tus cursos y tu configuración no se tocan.
+Pandex revisa una vez al día mientras está abierto. Si hay una versión nueva, Rusty te avisa: haz clic sobre él, mira qué trae y pulsa **Actualizar ahora**; Pandex se actualiza y se reinicia solo. Tus cursos y tu configuración no se tocan.
+
+**La versión nueva no me convence (o me dijo «no abrió; volví a la anterior»).**
+Clic derecho → **Buscar actualizaciones…** → **Volver a la versión anterior…**. Si la versión nueva no llega a abrir, Pandex vuelve solo y te lo dice al abrir. Nada se borra: lo que trajo la versión nueva queda apartado en la carpeta de datos (`respaldos/`).
 
 **Empezó el ciclo nuevo y no aparecen mis cursos.**
 Clic derecho → **Configurar Canvas…** y vuelve a marcar tus cursos. La lista anterior se guarda en una copia.
@@ -118,10 +121,11 @@ Tu sesión de Canvas y tu historial están aparte (`%LOCALAPPDATA%\Pandex` o
 |---|---|---|
 | *"Windows protegió tu PC"* al abrir `instalar.bat` | No desbloqueaste el ZIP antes de extraerlo. | **Más información → Ejecutar de todas formas**. Después desbloquea toda la carpeta con el comando de la fila siguiente. |
 | *Control inteligente de aplicaciones* bloquea Pandex | Lo mismo: los archivos traen la marca de "descargado de internet". | En PowerShell: `Get-ChildItem "ruta\de\pandex-main" -Recurse \| Unblock-File`. No desactives el Control inteligente de aplicaciones. |
-| *"No encontré Python 3.12 o más nuevo"* | Python no está instalado, o lo instalaste sin marcar **Add python.exe to PATH**. | Vuelve a abrir el instalador de Python → **Modify** (o instálalo de nuevo) y marca esa casilla. Luego repite `instalar.bat`. |
+| *"No encontré Python 3.12 o más nuevo"* | Python no está instalado, o lo instalaste sin marcar **Add python.exe to PATH**. | Responde **S** (o Enter) cuando `instalar.bat` ofrece bajar un Python solo para Pandex. Si prefieres el tuyo: abre el instalador de Python → **Modify** y marca esa casilla; luego repite `instalar.bat`. |
+| *"Lo descargado no coincide con su huella (SHA-256)"* | La descarga del Python portátil llegó cortada o alterada. Pandex no la usa. | Vuelve a abrir `instalar.bat` (o `./instalar.sh`). Si se repite, revisa tu conexión o abre un issue. |
 | La ventana negra se cierra sola o dice *"Algo falló"* | Casi siempre es el internet durante la descarga. | Vuelve a abrir `instalar.bat`: continúa desde donde quedó. |
 | *"Falta instalar Pandex: haz doble clic en instalar.bat"* | Abriste Pandex sin haberlo instalado, o borraste la carpeta `.venv`. | Doble clic en `instalar.bat`. |
-| El acceso directo no hace nada o dice que no encuentra el archivo | Moviste o renombraste la carpeta de Pandex. | Doble clic en `Pandex.pyw` y vuelve a crear el acceso directo (ver arriba). |
+| El acceso directo no hace nada o dice que no encuentra el archivo | Moviste o renombraste la carpeta de Pandex. | Doble clic en `instalar.bat` desde la carpeta nueva: rehace el entorno de Python y el acceso directo, sin tocar tu configuración. |
 | *"¡Aquí estoy! Ya estaba abierto."* | Pandex ya estaba abierto, quizás escondido. | No es un error. Solo puede haber un Rusty a la vez. |
 | *"Cerraste el navegador antes de terminar de iniciar sesión"* o *"Se acabó el tiempo…"* | Se cerró la ventana del login, o pasaron 5 minutos. | En el asistente, pulsa **Reintentar**. Si fue al sincronizar, vuelve a pulsar **Sincronizar Canvas**. |
 | *"No encontré Chrome"* (u otro navegador) | Elegiste un navegador que no está instalado. | En Configuración → Tareas → Sincronizar Canvas, elige «El que uso siempre» u otro navegador. |
@@ -131,6 +135,10 @@ Tu sesión de Canvas y tu historial están aparte (`%LOCALAPPDATA%\Pandex` o
 | *"N aún sin abrir en Canvas"* (🔒) | El docente programó esos archivos para más adelante. | Nada: Pandex los baja solo cuando se abran. |
 | *"N no se pudieron bajar"* | Un archivo dio error (internet, archivo dañado en Canvas). | Vuelve a sincronizar. Si se repite, mira el motivo en **Ver registro**. |
 | Al convertir: *"La conversión se cerró de golpe"* | Un archivo muy pesado o dañado. | Conviértelo solo, o déjalo fuera. El motivo está en **Ver registro**. |
+| Una tarea tarda demasiado o la lancé sin querer | Está esperando a Canvas, a que inicies sesión o a un archivo grande. | Clic derecho → **Cancelar «…»**. Lo que ya se guardó se queda; lo que faltaba se baja la próxima vez. |
+| *"Algo falló y lo anoté"* | Un error que Pandex no esperaba. Pandex sigue abierto. | Si se repite, abre **Ver registro** y pega el final en un issue (revisa antes que no tenga nada personal). |
+| *"Tu configuración estaba dañada"* | El archivo `config.json` quedó vacío o cortado (un corte de luz, el disco lleno). | Nada si dice que recuperó la copia. Si dice que empezó de cero, vuelve a pasar por **Configurar Canvas…**: tus archivos ya bajados no se vuelven a bajar. |
+| *"Pandex no pudo abrir"* (ventana al iniciar) | Faltan archivos o dependencias de la instalación. | Ejecuta `instalar.bat` (o `./instalar.sh`) otra vez: repara la instalación y no toca tu configuración. |
 | Rusty desapareció | Lo ocultaste, o quedó en otra pantalla que desconectaste. | Clic en el ícono de Pandex junto al reloj, o abre el acceso directo otra vez. |
 
 **¿Nada de esto?** Clic derecho en Rusty → **Ver registro**: ahí se explica cada decisión y cada error. Si aun así no lo entiendes, [abre un issue](https://github.com/frankrubio/pandex/issues/new/choose) y pega lo que dice el registro. Antes de pegarlo, borra cualquier dato personal.

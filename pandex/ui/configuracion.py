@@ -31,6 +31,7 @@ from PyQt6.QtWidgets import (
 )
 
 from .. import __version__, accesos, extras, personaje_nuevo, rutas
+from ..tareas import visible
 from . import iconos, logo, personajes, tema
 
 HORARIOS = (("manual", "Solo cuando lo pida"), ("diario", "Todos los días"),
@@ -152,7 +153,7 @@ class DialogoConfiguracion(QDialog):
     def __init__(self, config, tareas, parent=None, al_buscar_actualizaciones=None, al_desinstalar=None):
         super().__init__(parent)
         self.config = config
-        self.tareas = tareas
+        self.tareas = [t for t in tareas if visible(t, config.datos)]  # IU-19: el ejemplo, solo para quien programa
         self._al_buscar = al_buscar_actualizaciones
         self._al_desinstalar = al_desinstalar
         self.setWindowTitle("Configuración de Pandex")
@@ -463,6 +464,11 @@ class DialogoConfiguracion(QDialog):
         self.avisar_nuevas = QCheckBox("Avisarme cuando haya una versión nueva (revisa una vez al día)")
         self.avisar_nuevas.setChecked(bool(self.config.datos.get("buscar_actualizaciones", True)))
         interno.addWidget(self.avisar_nuevas)
+        self.programador = QCheckBox("Mostrar opciones para programadores")
+        self.programador.setToolTip("Agrega al menú el ejemplo «Saludar» y «Recargar tareas»,\n"
+                                    "útiles si creas tus propias tareas en tasks/.")
+        self.programador.setChecked(bool(self.config.datos.get("modo_programador", False)))
+        interno.addWidget(self.programador)
         caja.addWidget(tarjeta)
 
         caja.addSpacing(10)
@@ -587,8 +593,32 @@ class DialogoConfiguracion(QDialog):
                                    "No mueve ni borra nada: solo vuelve a apuntar a ella.")
         self.reconectar.clicked.connect(self._reconectar_carpeta)
         fila.addWidget(self.reconectar)
+        self.olvidar_sesion = QPushButton("Olvidar mi sesión…")
+        self.olvidar_sesion.setToolTip("Borra la sesión de Canvas que guarda el navegador de Pandex.\n"
+                                       "No toca tus cursos ni tu configuración: la próxima vez\n"
+                                       "inicias sesión otra vez.")
+        self.olvidar_sesion.clicked.connect(self._olvidar_sesion)
+        fila.addWidget(self.olvidar_sesion)
         fila.addStretch()
         return fila
+
+    def _olvidar_sesion(self):
+        """PRI-07: con confirmación; no hay nada que deshacer más allá de volver a iniciar sesión."""
+        from ..canvas import sesion
+
+        respuesta = QMessageBox.question(
+            self, "Olvidar mi sesión",
+            "¿Borro la sesión de Canvas que guarda Pandex?\n\nTus cursos, tu historial y tu configuración "
+            "no se tocan. La próxima vez que sincronices, inicias sesión otra vez.")
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        fallaron = sesion.olvidar()
+        if fallaron:
+            QMessageBox.warning(self, "Olvidar mi sesión",
+                                "No pude borrar todo: el navegador de Pandex sigue abierto. Ciérralo y vuelve a "
+                                "intentar.")
+        else:
+            QMessageBox.information(self, "Olvidar mi sesión", "Listo: Pandex ya no guarda tu sesión de Canvas.")
 
     def _reconectar_carpeta(self):
         from pathlib import Path
@@ -732,6 +762,7 @@ class DialogoConfiguracion(QDialog):
         m["siempre_encima"] = self.encima.isChecked()
         m["animar"] = self.animar.isChecked()
         self.config.datos["buscar_actualizaciones"] = self.avisar_nuevas.isChecked()
+        self.config.datos["modo_programador"] = self.programador.isChecked()
 
         for task_id, (activa, cron) in self.filas.items():
             opciones = self.config.tarea(task_id)

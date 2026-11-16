@@ -12,6 +12,11 @@ Hechos de Canvas que explican el diseño:
 import threading
 import time
 
+from .. import red
+from ..log import get_logger, ocultar
+
+log = get_logger("pandex.canvas")
+
 
 class CanvasError(RuntimeError):
     def __init__(self, mensaje, estado=None):
@@ -33,7 +38,9 @@ class Canvas:
 
     def __init__(self, base_url, cookies, user_agent):
         self.base = base_url.rstrip("/")
+        self._hosts = frozenset({red.host(self.base)})
         self._cookies = cookies
+        ocultar(*(c.get("value") for c in cookies))  # PRI-03: nunca al registro
         self._ua = user_agent
         self._local = threading.local()
         self.pedidos = 0  # cuántas veces se le preguntó a Canvas (para el registro de fases)
@@ -54,6 +61,12 @@ class Canvas:
     def _get(self, url, params=None, stream=False, timeout=(10, 60)):
         """GET con reintentos si Canvas pide calma (límite de peticiones)."""
         import requests  # se carga al sincronizar, no al abrir Pandex
+        try:  # PRI-04: solo a tu Canvas (las redirecciones de sus descargas las decide Canvas)
+            red.exigir(url, self._hosts, solo_https=False)
+        except red.ErrorRed as exc:
+            log.warning("%s", exc)
+            raise CanvasError("Canvas mandó a otra dirección y no la sigo. Si se repite, mira «Ver registro».") \
+                from exc
         for intento in range(4):
             with self._cuenta:
                 self.pedidos += 1
@@ -128,9 +141,14 @@ class Canvas:
         except CanvasError:
             return {}
 
-    def descargar(self, curso_id, file_id, destino_tmp, espera_html=False):
-        """Baja el archivo a ``destino_tmp`` y devuelve cuántos bytes escribió."""
+    def descargar(self, curso_id, file_id, destino_tmp, espera_html=False, parar=None):
+        """Baja el archivo a ``destino_tmp`` y devuelve cuántos bytes escribió.
+
+        ``parar()`` se consulta en cada trozo: si da True (el usuario canceló), lanza ``Cancelada``.
+        """
         import requests
+
+        from ..tareas import Cancelada
         url = f"{self.base}/courses/{curso_id}/files/{file_id}/download?download_frd=1"
         resp = self._get(url, stream=True, timeout=(10, 180))
         with resp:
@@ -145,6 +163,8 @@ class Canvas:
                     for trozo in resp.iter_content(1 << 16):
                         fh.write(trozo)
                         escritos += len(trozo)
+                        if parar is not None and parar():
+                            raise Cancelada()
             except requests.RequestException as exc:
                 raise SinConexion("Se cortó la conexión con Canvas") from exc
         if not escritos:

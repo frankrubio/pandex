@@ -1,0 +1,12 @@
+# Escáner de secretos de la CI (spec 004, PRI-09). Usa las reglas de gitleaks y solo exceptúa
+# los valores falsos que las pruebas de privacidad usan a propósito (tests/test_privacidad.py).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Valores falsos de las pruebas"
+regexes = [
+  '''SECRETO123abc''',
+  '''abc\.def-123''',
+  '''QWERTY99''',
+]

@@ -1,7 +1,7 @@
 """Desinstalar Pandex: deja la PC como estaba, salvo la carpeta de tus cursos (RES-07/08/09).
 
 Orden: despertador → arranque automático → accesos directos → OneDrive de Pandex → perfiles
-de navegador de snap → carpeta de datos → ``.venv``. Antes muestra la lista exacta y pide
+de navegador de snap → carpeta de datos → ``.venv`` y ``.python``. Antes muestra la lista exacta y pide
 confirmación; puede conservar tu ``config.json`` para reinstalar. Lo que no se pudo borrar
 se lista al final, con su ruta. La carpeta del proyecto se borra a mano (un programa no
 puede borrarse a sí mismo mientras corre): se explica cómo.
@@ -90,7 +90,8 @@ def plan(raiz=RAIZ, conservar_config=True, con_venv=True):
     if not conservar_config:
         pasos.append(Paso("Tu configuración (config.json)", [p for p in [Path(raiz) / CONFIG_FILE.name] if p.exists()]))
     if con_venv:
-        pasos.append(Paso("Entorno de Python de Pandex (.venv)", [p for p in [Path(raiz) / ".venv"] if p.exists()]))
+        pasos.append(Paso("Entorno de Python de Pandex (.venv y, si lo bajó el instalador, .python)",
+                          [p for p in (Path(raiz) / ".venv", Path(raiz) / ".python") if p.exists()]))
     return [p for p in pasos if p.rutas or p.accion]
 
 
@@ -171,6 +172,8 @@ def _cli(argumentos):
             print(f"      {ruta}")
     if not con_venv:
         print(f"  • Entorno de Python: {RAIZ / '.venv'}")
+        if (RAIZ / ".python").exists():
+            print(f"  • Python que bajó el instalador: {RAIZ / '.python'}")
     print()
     if not si and input(" ¿Desinstalar Pandex? [s/N] ").strip().lower() not in ("s", "si", "sí", "y", "yes"):
         print(" No toqué nada.")

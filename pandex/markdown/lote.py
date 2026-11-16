@@ -14,6 +14,7 @@ import traceback
 from collections import Counter
 from pathlib import Path
 
+from ..tareas import si_cancelaron
 from .archivos import (
     CON_OCR,
     MARCA,
@@ -93,6 +94,7 @@ def convertir(ctx):
 
         try:
             for i, archivo in enumerate(convertibles, start=1):
+                si_cancelaron(ctx)  # entre archivos (011, ROB-05); los .md ya escritos se quedan
                 ctx.progreso(i, len(convertibles))
                 carpeta = archivo.parent
                 if carpeta not in repetidos_por_carpeta:  # solo al elegir a mano

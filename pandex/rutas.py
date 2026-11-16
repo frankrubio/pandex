@@ -58,3 +58,25 @@ DATOS = _carpeta_de_datos()
 PERSONAJES_PROPIOS = DATOS / "personajes"
 # los drivers que baja Selenium para manejar tu navegador (no van a ~/.cache)
 NAVEGADORES = DATOS / "navegadores"
+
+
+def privado(ruta):
+    """En Linux, solo tú puedes leerlo: carpetas 0700, archivos 0600 (spec 004, PRI-06).
+    En Windows no hace nada: la carpeta de datos ya es solo tuya (``%LOCALAPPDATA%``)."""
+    if WINDOWS:
+        return ruta
+    try:
+        os.chmod(ruta, 0o700 if Path(ruta).is_dir() else 0o600)
+    except OSError:  # no es tuyo o no existe: no se insiste
+        pass
+    return ruta
+
+
+def carpeta_privada(carpeta):
+    """Crea ``carpeta`` (perfil del navegador…) solo para ti. Si está dentro de la carpeta de
+    datos, esa también queda privada."""
+    carpeta = Path(carpeta)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    if carpeta.is_relative_to(DATOS):
+        privado(DATOS)
+    return privado(carpeta)

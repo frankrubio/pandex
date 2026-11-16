@@ -23,14 +23,22 @@
   (comprobar rompiendo a propósito una línea en una rama de prueba).
 - **Cambio:** `.github/workflows/instaladores.yml`.
 - **Terminado cuando:** corre en Windows y Ubuntu, con y sin Markdown.
+- **Hecho en la rama:** el job corre los dos instaladores con `PANDEX_MARKDOWN=no` (Python del
+  sistema) y `=si` (Python portátil), comprueba que `instalar.sh` no deja nada nuevo en `~/.cache`
+  y abre Pandex con `main.py --test`. Falta verlo en verde en la CI (y la prueba de romper una línea
+  a propósito).
 
-## T006.3 · Python portátil en Linux viejo
+## T006.3 · Python portátil cuando no hay Python 3.12+ (Linux y Windows)
 
 - **Requisitos:** PLA-03
-- **Depende de:** T006.2; respuesta de Frank a la pregunta abierta 1
-- **Prueba primero:** job `instaladores` en `ubuntu-22.04` con el Python del sistema (3.10).
-- **Cambio:** `instalar.sh`, `.gitignore`, `docs/linux.md`.
-- **Terminado cuando:** el job pasa y no deja nada en `~/.cache`.
+- **Depende de:** T006.2; pregunta abierta 1 (resuelta: Python portátil, sí)
+- **Prueba primero:** `tests/test_instaladores.py` (huellas fijas y `python_portatil.sh` con un
+  `curl` falso: descarga, huella distinta, «no», equipo sin portátil, archivo sin Python) y el job
+  `instaladores` con `PANDEX_PYTHON=portatil`.
+- **Cambio:** `herramientas/python_portatil.{txt,sh,bat}`, `instalar.sh`, `instalar.bat`,
+  `.gitignore`, `actualizar.PROTEGIDOS`, desinstaladores, `medir_peso.py`, docs.
+- **Terminado cuando:** las pruebas pasan, el job pasa en los dos sistemas y no deja nada en
+  `~/.cache`.
 
 ## T006.4 · Mismo árbol en los dos sistemas
 

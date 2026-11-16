@@ -14,9 +14,12 @@ devuelven.
 | `pandex/tareas.py` | El contrato de los plug-ins: `descubrir()` y `TaskContext` (el `ctx`). |
 | `pandex/ejecutor.py` | `Ejecutor`: corre una tarea a la vez en un `QThread`. |
 | `pandex/programador.py` | `Programador`: dispara tareas con horario cron (APScheduler). |
-| `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
-| `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`). |
-| `pandex/log.py` | `logs/pandex.log`, rotativo. |
+| `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. Si el archivo está dañado, abre con la última copia buena (`DATOS/config-ultima-buena.json`) o con los valores de fábrica. |
+| `pandex/rutas.py` | Dónde vive cada cosa (proyecto y `%LOCALAPPDATA%\Pandex`); `privado()`: en Linux, carpetas 0700 y archivos 0600. |
+| `pandex/vuelta.py` | El punto de vuelta de la última actualización (`DATOS/actualizacion.json`): «Volver a la versión anterior» y la vuelta automática si la versión nueva no abre. Solo biblioteca estándar. |
+| `pandex/log.py` | `logs/pandex.log`, rotativo, con filtro que tapa cookies y tokens (`[oculto]`). |
+| `pandex/red.py` | Los únicos hosts a los que Pandex pide algo: tu Canvas y GitHub (spec 004, PRI-04). |
+| `pandex/errores.py` | Red de seguridad: un error que nadie atrapó (en la interfaz o en un hilo) va al registro y la mascota avisa; Pandex no se cierra (spec 011). |
 | `pandex/pendientes.py` | Qué tarea programada se perdió (PC apagada o suspendida) y hay que hacer ya. Sin Qt. |
 | `pandex/despertador.py` | Modo «a la hora»: temporizador de systemd (Linux) o tarea programada (Windows) que lanza `main.py --pendientes`. |
 | `pandex/extras.py` | Funciones opcionales (hoy, «Convertir a Markdown» = `requirements-markdown.txt`): instalar y quitar. |
@@ -31,7 +34,7 @@ devuelven.
 | `pandex/comprimir.py` | «Comprimir carpeta»: crea el `.zip` y, si hay Ghostscript, aligera los PDF (los originales no se tocan). |
 | `pandex/ui/` | `mascota.py` (la ventana, estática), `personajes.py` (el catálogo de `assets/personajes/`), `logo.py` (el logo y los íconos), `globo.py`, `tema.py` (colores, tipografía y la hoja de estilos claro/oscuro), `iconos.py` y los diálogos de configuración, informe, registro y actualización. |
 | `pandex/markdown/proceso.py` | Corre la conversión a Markdown en un proceso hijo (la memoria del conversor se libera al terminar). |
-| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara la versión con GitHub y actualiza con `git pull` o con el ZIP, con respaldo. Al arrancar aparta los archivos que dejaron versiones anteriores (`OBSOLETOS`), porque el ZIP solo agrega y reemplaza. |
+| `pandex/actualizar.py` | «Buscar actualizaciones…»: compara con la última versión publicada en GitHub (o `main` si no hay ninguna) y actualiza con git o con el ZIP comprobado con su SHA-256, con respaldo (spec 012). Al arrancar aparta los archivos que dejaron versiones anteriores (`OBSOLETOS`), porque el ZIP solo agrega y reemplaza. |
 | `pandex/canvas/` | Sincronizar Canvas → [sincronizar-canvas.md](sincronizar-canvas.md) |
 | `pandex/markdown/` | Convertir a Markdown → [convertir-markdown.md](convertir-markdown.md) |
 | `tasks/*.py` | Los plug-ins. Delgados: conectan una función de `pandex/` con el menú. |
@@ -64,7 +67,13 @@ Reglas del modelo de hilos:
   `preparar(ctx)`, que corre antes, en el hilo de la interfaz.
 - El reloj (APScheduler) corre en su propio hilo; su disparo se reenvía a la interfaz con una
   señal Qt encolada antes de llamar al ejecutor.
+- **Cancelar:** mientras corre una tarea, el menú ofrece «Cancelar «tarea»». `Ejecutor.cancelar()`
+  marca el `ctx`; la tarea lo ve en `ctx.comprobar_cancelacion()` (lanza `tareas.Cancelada`) y
+  cierra lo que abrió. «Salir» cancela, espera 5 s y cierra (spec 011).
 - Un error en `run` no tumba la app: se registra con su traceback y la mascota avisa.
+- Un error en cualquier otra parte (un clic, un reloj, otro hilo) tampoco: lo atiende
+  `pandex/errores.py`. Si Pandex no puede ni arrancar, `main.py` lo anota y muestra una ventana
+  que dice qué hacer.
 
 ## Primera ejecución
 
@@ -115,6 +124,7 @@ Se crea solo la primera vez. Las claves que no escribas toman su valor por defec
     "frases_click": ["¿Qué tal?", "..."]
   },
   "arrancar_con_windows": false,
+  "modo_programador": false,       // muestra «Saludar» y «Recargar tareas» en el menú
   "version_config": 4,             // para poner al día un config.json viejo al actualizar
   "tareas": {
     "<id de la tarea>": {
@@ -205,6 +215,11 @@ proporciones no):
 | Hilos | 2 (interfaz + APScheduler) | 1 (APScheduler solo si hay horarios) |
 | CPU, repintados y temporizadores en reposo | 0 % · 0 · 0 | 0 % · 0 · 0 |
 | Memoria que queda tras convertir a Markdown | +131 MB, hasta cerrar Pandex | +0,6 MB |
+
+Revisión de 2.7.0 (2026-11-16, otra máquina Linux, también `offscreen`): arranque de 50 a 340 ms,
+memoria en reposo 66 MB, 0,01 s de CPU en 30 s de reposo, Configuración abre en 51 a 92 ms con
+todas las tareas (IU-04, `test_configuracion_abre_rapido`). Todo dentro del presupuesto; no se
+midió con ventana real (`xcb`) ni en Windows.
 
 Qué se carga y cuándo:
 

@@ -1,7 +1,9 @@
 """Mide el peso de Pandex según la spec 002 y avisa si se pasa del límite (PES-01/02/03).
 
 Peso = la carpeta del proyecto (con ``.venv``) + la carpeta de datos sin ``personajes/``
-añadidos por ti. No cuenta: el Python del sistema, tu navegador ni tu carpeta de cursos.
+añadidos por ti. No cuenta: el Python del sistema, tu navegador ni tu carpeta de cursos. El
+Python portátil (``.python/``, lo baja el instalador si no tienes Python) hace las veces del Python
+del sistema: se informa aparte y no suma al total.
 
     python herramientas/medir_peso.py                 # total y los 15 paquetes más pesados
     python herramientas/medir_peso.py --limite 600    # sale con código 1 si se pasa
@@ -46,9 +48,10 @@ def medir(raiz=RAIZ, datos=None):
     from pandex.rutas import DATOS
 
     datos = Path(datos or DATOS)
-    venv = raiz / ".venv"
+    venv, portatil = raiz / ".venv", raiz / ".python"
     resultado = {
-        "proyecto_sin_venv": tamano(raiz, excluir={venv, raiz / ".git"}),
+        "proyecto_sin_venv": tamano(raiz, excluir={venv, portatil, raiz / ".git"}),
+        "python_portatil": tamano(portatil) if portatil.is_dir() else 0,
         "venv": tamano(venv) if venv.is_dir() else 0,
         "datos": tamano(datos, excluir={datos / "personajes"}) if datos.is_dir() else 0,
         "paquetes": {},
@@ -80,6 +83,8 @@ def main(argumentos=None):
     else:
         print(f"Pandex pesa {mb(r['total'])} MB: .venv {mb(r['venv'])} MB, proyecto {mb(r['proyecto_sin_venv'])} MB, "
               f"datos {mb(r['datos'])} MB")
+        if r.get("python_portatil"):
+            print(f"Aparte, el Python portátil (.python): {mb(r['python_portatil'])} MB")
         for nombre, peso in sorted(r["paquetes"].items(), key=lambda x: -x[1])[:15]:
             print(f"  {mb(peso):>4} MB  {nombre}")
     fallo = False

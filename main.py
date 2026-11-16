@@ -89,6 +89,66 @@ def escuchar(app):
     return servidor
 
 
+def _ventana_de_error(texto):
+    from PyQt6.QtWidgets import QMessageBox
+
+    QMessageBox.critical(None, "Pandex", texto)
+
+
+def _abrir_otra_vez():
+    """Abre Pandex en un proceso nuevo (tras volver a la versión anterior)."""
+    import subprocess
+
+    ejecutable = sys.executable
+    if sys.platform == "win32" and ejecutable.lower().endswith("python.exe"):
+        ejecutable = ejecutable[:-len("python.exe")] + "pythonw.exe"  # sin ventana de consola
+    raiz = os.path.dirname(os.path.abspath(__file__))
+    subprocess.Popen([ejecutable, os.path.join(raiz, "main.py")], cwd=raiz)
+
+
+def arranque_fallido(silencioso):
+    """Pandex no pudo abrir (se llama dentro del ``except``): lo anota y dice qué hacer (ROB-04).
+
+    Si fue justo después de actualizar, vuelve a la versión anterior y la abre (ACT-05).
+    Sin persona delante (``--test``, o lo abrió el sistema a la hora de una tarea) no abre
+    ventanas: solo lo anota. Devuelve el código de salida.
+    """
+    import traceback
+
+    detalle = traceback.format_exc()
+    try:
+        from pandex.log import get_logger
+
+        get_logger("pandex").error("Pandex no pudo arrancar:\n%s", detalle.rstrip())
+    except Exception:
+        pass
+    try:
+        from pandex import vuelta
+
+        if vuelta.si_no_abrio():
+            try:
+                from pandex.log import get_logger
+
+                get_logger("pandex").warning("la versión nueva no abrió: volví a la anterior")
+            except Exception:
+                pass
+            if not silencioso:
+                _abrir_otra_vez()
+            return 1
+    except Exception:  # no se pudo volver: queda el aviso de siempre
+        pass
+    if not silencioso:
+        instalador = "instalar.bat" if sys.platform == "win32" else "./instalar.sh"
+        try:
+            _ventana_de_error(
+                "Pandex no pudo abrir.\n\nVuelve a intentar. Si sigue igual, ejecuta "
+                f"{instalador} otra vez: repara la instalación y no toca tu configuración.\n\n"
+                "El motivo está en logs/pandex.log, dentro de la carpeta de Pandex.")
+        except Exception:
+            pass
+    return 1
+
+
 def main():
     pendientes = "--pendientes" in sys.argv
     if pendientes and not hay_pendientes():
@@ -117,14 +177,23 @@ def main():
     if avisar_al_que_ya_corre(b"pendientes" if pendientes else b"asomate"):
         return 0  # un solo panda: el que ya estaba se asoma (o hace lo pendiente)
 
-    from pandex.app import PandexApp
-    from pandex.ui import tema
+    try:
+        from pandex import errores
+        from pandex.app import PandexApp
+        from pandex.ui import tema
 
-    tema.aplicar(qapp)
-    app = PandexApp(qapp, salir_al_terminar=pendientes)
-    tema.seguir_al_sistema(qapp, app.tema_cambiado)
-    app.servidor = escuchar(app)
-    app.iniciar()
+        errores.instalar()  # desde aquí, un error que nadie atrapó ya no cierra Pandex (ROB-01)
+        tema.aplicar(qapp)
+        app = PandexApp(qapp, salir_al_terminar=pendientes)
+        errores.avisar_con(app.avisar_error)
+        tema.seguir_al_sistema(qapp, app.tema_cambiado)
+        app.servidor = escuchar(app)
+        app.iniciar()
+        from pandex import vuelta
+
+        vuelta.arranco()  # ACT-05: la versión nueva abrió bien
+    except Exception:
+        return arranque_fallido(silencioso=pendientes or "--test" in sys.argv)
     if "--test" in sys.argv:
         QTimer.singleShot(3000, app.salir)
     return qapp.exec()

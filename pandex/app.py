@@ -6,6 +6,8 @@ Flujo de una tarea::
                  ─► hilo: tarea.run(ctx) ─► resultado ─► globo + ventana de informe
 """
 
+import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -33,6 +35,7 @@ from .ui.visor_registro import VisorRegistro
 log = get_logger("pandex.app")
 
 PENDIENTES_CADA = 10 * 60 * 1000  # ms
+ESPERA_AL_SALIR = 5000  # ms: lo que se espera a una tarea cancelada antes de cerrar (ROB-06)
 SALIR_TRAS = 9000  # ms: lo justo para leer el último globo
 PROGRESO_CADA = 0.25  # s: el globo de avance se refresca como mucho 4 veces por segundo
 REVISAR_TRAS = 45_000          # ms tras abrir: la primera revisión no frena el arranque
@@ -42,6 +45,7 @@ ESTRENAR_TRAS = 20_000         # ms tras abrir una versión nueva: limpiar lo qu
 
 class PandexApp(QObject):
     _disparo_programado = pyqtSignal(str)
+    _error_inesperado = pyqtSignal(str)  # puede venir de cualquier hilo (pandex/errores.py)
 
     def __init__(self, qapp, salir_al_terminar=False):
         super().__init__()
@@ -58,6 +62,7 @@ class PandexApp(QObject):
         self.mascota = Mascota(self.config)
         self.mascota.menu_pedido.connect(self._abrir_menu)
         self.mascota.al_clic = self._clic_en_mascota
+        self._error_inesperado.connect(self._decir_error, Qt.ConnectionType.QueuedConnection)
 
         self.ejecutor = Ejecutor(self.config)
         self.ejecutor.iniciada.connect(self._tarea_iniciada)
@@ -74,6 +79,16 @@ class PandexApp(QObject):
         self._logo = None
         self.aplicar_logo()
         self._crear_bandeja()
+
+    # ---------- errores inesperados (ROB-01) ----------
+
+    def avisar_error(self, texto):
+        """Lo llama ``errores.atender`` desde el hilo que sea."""
+        self._error_inesperado.emit(texto)
+
+    def _decir_error(self, texto):
+        self.mascota.set_estado("error", 4)
+        self.mascota.decir(texto, tipo="error", segundos=10)
 
     # ---------- arranque ----------
 
@@ -95,7 +110,19 @@ class PandexApp(QObject):
         if self.salir_al_terminar:
             self.mascota.decir(f"¡{horas.saludo()}! Vengo a hacer lo que toca y me voy.")
             return
-        self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
+        from . import vuelta
+
+        devuelta = vuelta.aviso_pendiente()  # ACT-05: la versión nueva no abrió y volví sola
+        if devuelta:
+            self.mascota.decir(devuelta + " Si se repite, mira «Ver registro».", tipo="error", segundos=15)
+        elif self.config.recuperada == "copia":  # ROB-02: config.json estaba dañado
+            self.mascota.decir("Tu configuración estaba dañada. Recuperé la última copia buena; revisa que "
+                               "todo esté como lo dejaste.", tipo="error", segundos=15)
+        elif self.config.recuperada == "fabrica":
+            self.mascota.decir("Tu configuración estaba dañada y no tenía copia. Empecé de cero: vamos a "
+                               "configurar Canvas otra vez.", tipo="error", segundos=15)
+        else:
+            self.mascota.decir(f"¡{horas.saludo()}! Soy {nombre}. Clic derecho para ver lo que puedo hacer.")
         QTimer.singleShot(1500, self._primera_vez)
         QTimer.singleShot(ESTRENAR_TRAS, self._estrenar_version)
         # revisar actualizaciones: un disparo al rato de abrir y luego uno al día
@@ -261,16 +288,24 @@ class PandexApp(QObject):
             menu.addAction(titulo)
 
         if self._nueva:
-            nueva = accion(f"Actualizar a la versión {self._nueva['remota']}", "descargar", self.actualizar_ya,
-                           "Descarga, aplica y reinicia Pandex. Tu configuración no se toca.")
+            nueva = accion(f"Actualizar a la versión {self._nueva['remota']}…", "descargar", self.actualizar_ya,
+                           "Muestra qué trae y te pregunta antes de instalar. Tu configuración no se toca.")
             fuente = nueva.font()
             fuente.setBold(True)
             nueva.setFont(fuente)
             menu.addSeparator()
 
+        if self.ejecutor.ocupado:  # ROB-05: lo que está corriendo se puede cancelar
+            accion(f"Cancelar «{self.ejecutor.actual}»", "salir", self.ejecutor.cancelar,
+                   "Para la tarea. Lo que ya se guardó se queda.")
+            menu.addSeparator()
+
         seccion("Tareas")
+        programador = bool(self.config.datos.get("modo_programador"))
         for tarea in self.tareas:
             if not extras.disponible(tarea):  # función opcional no instalada: ni se muestra
+                continue
+            if not plugins.visible(tarea, self.config.datos):  # el ejemplo, solo para quien programa
                 continue
             accion(tarea.nombre, tarea.icono, lambda _c=False, t=tarea: self.ejecutor.ejecutar(t),
                    tarea.descripcion)
@@ -280,7 +315,8 @@ class PandexApp(QObject):
             menu.addAction(vacio)
 
         configurables = [t for t in self.tareas
-                         if callable(getattr(t, "configurar", None)) and extras.disponible(t)]
+                         if callable(getattr(t, "configurar", None)) and extras.disponible(t)
+                         and plugins.visible(t, self.config.datos)]
         for tarea in configurables:
             texto = getattr(tarea, "configurar_texto", None) or f"Configurar «{tarea.nombre}»…"
             accion(texto, "engranaje", lambda _c=False, t=tarea: self._configurar(t))
@@ -289,7 +325,8 @@ class PandexApp(QObject):
         seccion("Pandex")
         accion("Configuración…", "engranaje", self._abrir_configuracion)
         accion("Ver registro", "lista", self._abrir_registro)
-        accion("Recargar tareas", "recargar", self._recargar_tareas)
+        if programador:  # IU-19: a quien solo estudia no le sirve
+            accion("Recargar tareas", "recargar", self._recargar_tareas)
         accion("Buscar actualizaciones…", "descargar", self.buscar_actualizaciones)
         menu.addSeparator()
         if parent is None or self.mascota.isVisible():
@@ -359,6 +396,10 @@ class PandexApp(QObject):
         if cron:
             pendientes.marcar(task_id, cron)
         QTimer.singleShot(1000, self._ponerse_al_dia)  # ¿quedó otra pendiente?
+        if resultado.get("cancelada"):  # la cancelaste tú: no es un error
+            self.mascota.set_estado("idle")
+            self.mascota.decir(resultado["resumen"])
+            return
         ok = resultado["ok"]
         self.mascota.set_estado("feliz" if ok else "error", 4)
         resumen = resultado["resumen"] or ("Listo." if ok else "Algo falló.")
@@ -390,6 +431,8 @@ class PandexApp(QObject):
         if dlg.exec():
             self.mascota.recargar_apariencia()
             self.programador.montar(self.tareas)
+            self._menu_bandeja = self._construir_menu(parent=None)  # el modo programador cambia el menú
+            self.bandeja.setContextMenu(self._menu_bandeja)
             self.actualizar_despertador()
             self.aplicar_logo()
             self.bandeja.setToolTip(self.config.mascota.get("nombre", "Pandex"))
@@ -449,20 +492,20 @@ class PandexApp(QObject):
         self._menu_bandeja = self._construir_menu(parent=None)
         self.bandeja.setContextMenu(self._menu_bandeja)
         self.mascota.set_estado("feliz", 3)
-        self.mascota.decir(f"¡Hay una versión nueva ({info['remota']})! Haz clic en mí para "
-                           "instalarla.", tipo="exito", segundos=15)
-        self.bandeja.showMessage("Pandex", f"Versión {info['remota']} disponible. Clic aquí para "
-                                 "instalarla.", self._icono(), 10_000)
+        self.mascota.decir(f"¡Hay una versión nueva ({info['remota']})! Haz clic en mí para ver "
+                           "qué trae.", tipo="exito", segundos=15)
+        self.bandeja.showMessage("Pandex", f"Versión {info['remota']} disponible. Clic aquí para ver "
+                                 "qué trae.", self._icono(), 10_000)
 
     def _clic_en_mascota(self):
-        """Con una actualización pendiente, el clic en Rusty la instala."""
+        """Con una actualización pendiente, el clic en Rusty muestra qué trae (ACT-01)."""
         if not self._nueva or self.ejecutor.ocupado:
             return False
         self.actualizar_ya()
         return True
 
     def actualizar_ya(self):
-        """Un clic: descarga, aplica y reinicia, sin más preguntas."""
+        """Abre la ventana con las novedades: nada se instala hasta pulsar «Actualizar ahora» (ACT-01)."""
         if not self._nueva:
             self.buscar_actualizaciones()
             return
@@ -473,7 +516,7 @@ class PandexApp(QObject):
         if abierto:
             abierto.raise_()
             return
-        dlg = DialogoActualizacion(self.reiniciar, info=self._nueva, aplicar_ya=True)
+        dlg = DialogoActualizacion(self.reiniciar, info=self._nueva)
         self._dialogos.append(dlg)
         dlg.finished.connect(lambda _r, d=dlg: self._dialogos.remove(d))
         dlg.show()
@@ -497,7 +540,7 @@ class PandexApp(QObject):
     def salir(self):
         if self.ejecutor.ocupado:
             respuesta = QMessageBox.question(
-                None, "Salir", "Hay una tarea corriendo. ¿Salir igual?",
+                None, "Salir", "Hay una tarea corriendo. Si sales, la cancelo. ¿Salir igual?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
             )
@@ -510,4 +553,17 @@ class PandexApp(QObject):
         self.programador.detener()
         self.mascota.globo.ocultar_ya()
         self.bandeja.hide()
+        if self.ejecutor.ocupado:  # ROB-06: no se deja una tarea a medias
+            self.ejecutor.cancelar()
+            if not self.ejecutor.esperar(ESPERA_AL_SALIR):
+                log.warning("la tarea no alcanzó a terminar en %d s: cierro igual", ESPERA_AL_SALIR // 1000)
+                self._forzar_salida()
+                return
         self.qapp.quit()
+
+    def _forzar_salida(self):
+        """Con el hilo de una tarea aún vivo, una salida normal haría que Qt aborte el proceso
+        (un cierre con error). Se cierra el registro y se sale ya; el navegador sin ventana que
+        quede lo cierra Pandex la próxima vez (010, SES-08)."""
+        logging.shutdown()
+        os._exit(0)

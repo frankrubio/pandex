@@ -13,6 +13,10 @@ prompt-mascota-escritorio.md
 # --- Python --------------------------------------------------------------
 .venv/
 venv/
+# el Python portátil que baja el instalador si no tienes uno (PLA-03)
+.python/
+.python-nuevo/
+.python-descarga.tar.gz
 __pycache__/
 *.py[cod]
 .ruff_cache/
