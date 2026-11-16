@@ -216,6 +216,11 @@ proporciones no):
 | CPU, repintados y temporizadores en reposo | 0 % · 0 · 0 | 0 % · 0 · 0 |
 | Memoria que queda tras convertir a Markdown | +131 MB, hasta cerrar Pandex | +0,6 MB |
 
+Revisión de 2.7.0 (2026-11-16, otra máquina Linux, también `offscreen`): arranque de 50 a 340 ms,
+memoria en reposo 66 MB, 0,01 s de CPU en 30 s de reposo, Configuración abre en 51 a 92 ms con
+todas las tareas (IU-04, `test_configuracion_abre_rapido`). Todo dentro del presupuesto; no se
+midió con ventana real (`xcb`) ni en Windows.
+
 Qué se carga y cuándo:
 
 - **Al arrancar:** Qt, la mascota, el menú y las tareas (solo su parte liviana).

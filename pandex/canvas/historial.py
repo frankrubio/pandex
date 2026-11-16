@@ -24,6 +24,10 @@ LEGADO = DATOS / "registro_canvas.json"  # nombre de las primeras versiones
 REINTENTAR_LISTADO_DIAS = 30
 
 
+def _clave(ruta):
+    return os.path.normcase(os.path.normpath(str(ruta)))
+
+
 class Historial:
     VERSION = 1
 
@@ -41,6 +45,7 @@ class Historial:
         self.sin_listado = datos.get("sin_listado", {})
         self.omitidos = datos.get("omitidos", {})
         self.cambios = False
+        self._por_ruta = None  # ruta -> (id, tamaño); se arma la primera vez que hace falta
 
     # ---------- archivos en disco ----------
 
@@ -55,7 +60,16 @@ class Historial:
 
     def anotar(self, file_id, ruta, tamano=None):
         self.archivos[str(file_id)] = {"ruta": str(ruta), "tamano": tamano}
+        if self._por_ruta is not None:
+            self._por_ruta[_clave(ruta)] = (str(file_id), tamano)
         self.cambios = True
+
+    def de_ruta(self, ruta):
+        """``(id, tamaño)`` del archivo de Canvas anotado en esa ruta, o None (spec 013)."""
+        if self._por_ruta is None:
+            self._por_ruta = {_clave(e["ruta"]): (fid, e.get("tamano")) for fid, e in self.archivos.items()
+                              if isinstance(e, dict) and e.get("ruta")}
+        return self._por_ruta.get(_clave(ruta))
 
     # ---------- descarga inicial ----------
 

@@ -147,6 +147,33 @@ def metadatos(canvas, candidatos, historial=None):
     return metas
 
 
+def _version_nueva(c, previo, tamano, historial):
+    """¿El archivo con ese nombre que ya tienes es otra versión de este? (spec 013, CAM-01/03/04)
+
+    Solo si Pandex lo anotó con **otro id** y **otro tamaño**: un archivo tuyo que el historial
+    no conoce sigue contando como tuyo, y sin tamaños no se puede saber.
+    """
+    motivo, ruta = previo
+    if motivo != "mismo nombre":
+        return False
+    anotado = historial.de_ruta(ruta)
+    return bool(anotado and anotado[0] != str(c.file_id) and anotado[1] and tamano and anotado[1] != tamano)
+
+
+def _nombre_libre(destino, nombre, tamano, historial):
+    """``(nombre libre, None)`` con ``(v2)``, ``(v3)``… si hace falta; o ``(None, ruta)`` si una
+    versión que ya tienes pesa lo mismo. Nunca un nombre ocupado: sincronizar solo crea."""
+    base, ext = Path(nombre).stem, Path(nombre).suffix
+    candidato, n = destino / nombre, 1
+    while candidato.exists():
+        anotado = historial.de_ruta(candidato)
+        if anotado and anotado[1] and anotado[1] == tamano:
+            return None, candidato
+        n += 1
+        candidato = destino / f"{base} (v{n}){ext}"
+    return candidato.name, None
+
+
 class Sincronizacion:
     """Una corrida de la tarea. ``ejecutar()`` devuelve el resultado para Pandex."""
 
@@ -349,6 +376,9 @@ class Sincronizacion:
 
             previo = indice.buscar(nombre, meta.get("tamano"), self.dedupe_por_tamano,
                                    self._ajena(regla, carpeta))
+            version = bool(previo) and _version_nueva(c, previo, meta.get("tamano"), historial)
+            if version:
+                previo = None  # el docente la volvió a subir cambiada: se baja aparte (spec 013)
             if previo:
                 motivo, ruta = previo
                 self._res["ya"] += 1
@@ -364,6 +394,16 @@ class Sincronizacion:
             if ruta_vetada(destino, prohibidas):
                 self.ctx.log(f"ruta protegida, no escribo: {destino}", "warning")
                 continue
+            if version:
+                libre, igual = _nombre_libre(destino, nombre, meta.get("tamano"), historial)
+                if igual is not None:  # esa versión ya la tienes
+                    self._res["ya"] += 1
+                    historial.anotar(c.file_id, igual, meta.get("tamano"))
+                    continue
+                if libre != nombre:
+                    self.ctx.log(f"«{nombre}» cambió en Canvas: guardo la versión nueva como «{libre}» "
+                                 "(la anterior no se toca)")
+                nombre = libre
 
             # se reserva ya en el índice: si otro ítem de esta corrida trae el mismo
             # archivo (p. ej. teoría y lab), no se baja dos veces

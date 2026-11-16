@@ -69,6 +69,8 @@
 - **Prueba primero:** `test_configuracion_abre_rapido` (≤ 1 s en la CI, mediana de 3).
 - **Cambio:** solo si falla (cargar páginas al mostrarlas).
 - **Terminado cuando:** prueba en verde; medición real ≤ 300 ms anotada.
+- **Hecho en la rama:** la prueba pasa sin cambios (51 a 92 ms con `offscreen` en Linux, anotado en
+  `docs/arquitectura.md#rendimiento`). Falta la medición en la PC de referencia.
 
 ## T005.8 · Menú para estudiantes
 

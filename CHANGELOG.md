@@ -29,6 +29,9 @@ cuando buscas actualizaciones desde el menú.
 - **Instalar sin tener Python.** Si no tienes Python 3.12 o más nuevo, `instalar.bat` e
   `instalar.sh` ofrecen bajar uno solo para Pandex (dentro de su carpeta, en `.python`), con versión
   y huella SHA-256 fijas. Si moviste la carpeta, el instalador rehace el entorno de Python.
+- **Archivos corregidos.** Si el docente vuelve a subir un archivo con el mismo nombre y cambió,
+  Sincronizar baja la versión nueva al lado (`Clase 5 (v2).pdf`) sin tocar la anterior. Antes
+  creía que ya lo tenías y no la bajaba.
 - **Seguridad: Pillow 13.0.0.** La versión anterior (12.3.0) tenía fallas conocidas al abrir
   imágenes dañadas. Se instala sola al actualizar.
 

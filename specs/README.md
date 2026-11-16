@@ -40,6 +40,9 @@ se notan después, como errores. Una spec cierra esos huecos antes:
 | [008_estilo_de_carpetas](008_estilo_de_carpetas/spec.md) | Carpetas nuevas con `_` y sin tildes; o con el estilo que ya tienes |
 | [009_reconectar_carpeta](009_reconectar_carpeta/spec.md) | Si renombras o mueves tu carpeta de cursos, Pandex se vuelve a adaptar con un botón |
 | [010_inicio_de_sesion_chrome_edge](010_inicio_de_sesion_chrome_edge/spec.md) | Iniciar sesión en Chrome y Edge sin errores ni esperas de más |
+| [011_robustez](011_robustez/spec.md) | Un error inesperado o un `config.json` dañado no cierran Pandex; toda tarea se puede cancelar |
+| [012_actualizar_sin_miedo](012_actualizar_sin_miedo/spec.md) | Actualizar solo si confirmas, versiones publicadas con SHA-256 y volver a la anterior |
+| [013_archivos_que_cambian](013_archivos_que_cambian/spec.md) | Si el docente corrige un archivo y lo vuelve a subir, se baja la versión nueva sin tocar la anterior |
 
 Las páginas de `docs/` describen **cómo funciona hoy** Pandex. Las specs describen **lo que
 cambia**. Cuando una spec se termina, su comportamiento pasa a `docs/` y la spec queda

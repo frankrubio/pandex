@@ -124,6 +124,27 @@ class Interfaz(unittest.TestCase):
                     VisorRegistro()):
             self.assertFalse(dlg.grab().isNull())
 
+    def test_configuracion_abre_rapido(self):
+        """IU-04: con todas las tareas, Configuración se crea y se muestra en ≤ 1 s en la CI
+        (mediana de 3; en la PC de referencia el objetivo es ≤ 300 ms)."""
+        import statistics
+        import time
+
+        from pandex.tareas import descubrir
+        from pandex.ui.configuracion import DialogoConfiguracion
+
+        tareas = descubrir()
+        tiempos = []
+        for _ in range(3):
+            inicio = time.perf_counter()
+            dlg = DialogoConfiguracion(self.config, tareas)
+            dlg.show()
+            app.processEvents()
+            tiempos.append(time.perf_counter() - inicio)
+            dlg.close()
+            dlg.deleteLater()
+        self.assertLessEqual(statistics.median(tiempos), 1.0, f"tiempos: {tiempos}")
+
     def test_liberar_espacio_suma_lo_marcado(self):
         from pandex import limpieza
         from pandex.ui.limpieza import DialogoLiberar

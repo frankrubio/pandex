@@ -22,6 +22,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T011.1 | Errores inesperados y `config.json` dañado no cierran Pandex | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T011.2 | Cancelar una tarea y salir limpio | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T012.1 | Actualizar sin miedo: confirmar, versiones publicadas con SHA-256 y volver atrás | 012 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T013.1 | Bajar la versión corregida de un archivo sin tocar la anterior | 013 | — | en curso (claude/vibrant-volta-t1vhh9) |
 
 ## Prioridad 2 · Residuos y privacidad (riesgo bajo, valor alto)
 
@@ -74,7 +75,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T005.4 | Primera vez solo con la URL | 005 | — | libre |
 | T005.5 | Configuración sin JSON (Restablecer, Cancelar) | 005 | — | libre |
 | T005.6 | Leer las preferencias del sistema en un solo lugar | 005 | — | libre |
-| T005.7 | Configuración abre rápido | 005 | — | libre |
+| T005.7 | Configuración abre rápido | 005 | — | en curso (claude/vibrant-volta-t1vhh9; falta medir en la PC de referencia) |
 | T005.8 | Menú para estudiantes (Canvas primero, lo de programadores oculto, errores en español) | 005 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T004.4 | Copiar el registro anonimizado | 004 | — | libre |
 
@@ -108,6 +109,7 @@ Resumen de lo que bloquea o cambia el diseño. El detalle está en cada spec.
 | 003 | 1 | ¿El desinstalador borra la carpeta del proyecto? | No; explica cómo |
 | 003 | 3 | ¿Al actualizar se limpian las cachés que dejaron versiones anteriores (pip, Selenium, Playwright)? | **Respondida (31/10):** sí, con la lista y confirmación (ADR-0001, D4) |
 | 002 | 5 | ¿El presupuesto de memoria pasa a «memoria propia (USS) ≤ 40 MB»? Hoy: 74–88 MB de RSS, de los que ~80 % es Qt compartido | **Respondida (31/10):** no; sigue ≤ 80 MB de RSS. Bajarla es T002.7 |
-| 006 | 1 | ¿`uv` para Python portátil en Linux viejo? | Sí, todo dentro de la carpeta |
+| 006 | 1 | ¿`uv` para Python portátil en Linux viejo? | **Respondida (16/11):** Python portátil sí, en Linux y en Windows, todo dentro de la carpeta; se baja directo de python-build-standalone (los mismos Python que baja `uv`) con SHA-256 fijo |
 | 007 | 1 | ¿Tareas propias del usuario en `DATOS/tareas/`? | Sí, en una versión futura |
 | 008 | 1 | ¿La carpeta de curso siempre en `_` aunque el usuario las tenga con espacios? | Sí (ver spec 008) |
+| 013 | 1 | ¿Cómo se llama la versión nueva de un archivo corregido? | `Nombre (v2).ext` |
