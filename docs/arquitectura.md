@@ -12,6 +12,7 @@ devuelven.
 | `main.py` | Punto de entrada: instancia única, traducción de Qt al español, ícono. |
 | `pandex/app.py` | `PandexApp`: une mascota, menú, bandeja, ejecutor y reloj; abre el asistente la primera vez. |
 | `pandex/tareas.py` | El contrato de los plug-ins: `descubrir()` y `TaskContext` (el `ctx`). |
+| `pandex/plugins.py` | Manifiestos, paquetes y plugins personales separados de `config.json` y del repositorio. |
 | `pandex/ejecutor.py` | `Ejecutor`: corre una tarea a la vez en un `QThread`. |
 | `pandex/programador.py` | `Programador`: dispara tareas con horario cron (APScheduler). |
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. |
@@ -91,6 +92,8 @@ Para Canvas, "configurado" significa tener `destino` y al menos un curso en `cur
 | Historial de Canvas (qué archivo está dónde) | `%LOCALAPPDATA%\Pandex\historial_canvas.json` | no |
 | Diarios de reordenamiento (para deshacer) | `%LOCALAPPDATA%\Pandex\reordenamientos\` | no |
 | Descargas y conversiones a medio hacer | `%LOCALAPPDATA%\Pandex\descargas`, `md_tmp` | no |
+| Plugins personales | `DATOS/plugins_personales/<id>` | no |
+| Caché de plugins publicados | `DATOS/plugins_publicados/<id>` | no |
 
 La variable de entorno `PANDEX_DATOS` reemplaza `%LOCALAPPDATA%\Pandex` (las pruebas la usan
 para no tocar nunca los datos reales).

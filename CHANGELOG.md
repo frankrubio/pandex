@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.6.8
+
+- **Plugins personales preparados para seguir al actualizar o desinstalar Pandex.**
+  Se agregó la base segura de manifiestos y paquetes, rutas fuera del repositorio y conservación
+  de plugins personales.
+
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
