@@ -6,7 +6,9 @@
 - **Hecho:** `tests/test_principios.py` (clase `Privacidad`). Si alguna vez falla, **no** se
   relaja la prueba: se saca el archivo del repositorio y se revisa el historial de git.
 
-## T004.2 · Filtro de secretos en el registro
+## T004.2 · Filtro de secretos en el registro ✅
+
+- **Hecho:** `tests/test_privacidad.py::Registro`. `log.ocultar()` recibe los valores de las cookies (en `cliente.Canvas` y en el atajo de sesión); el filtro también tapa `Authorization`, `Cookie`, `verifier=`, `access_token=` y los tokens de rclone.
 
 - **Requisitos:** PRI-03
 - **Depende de:** —
@@ -19,7 +21,9 @@
   cookies obtenidas en el filtro.
 - **Terminado cuando:** pruebas en verde.
 
-## T004.3 · Solo hosts permitidos
+## T004.3 · Solo hosts permitidos ✅
+
+- **Hecho:** `pandex/red.py`; `tests/test_privacidad.py::Red`. Las descargas siguen la redirección de Canvas (PRI-04 aclarado).
 
 - **Requisitos:** PRI-04
 - **Depende de:** —
@@ -39,7 +43,9 @@
   `.github/ISSUE_TEMPLATE/error.yml` menciona el botón.
 - **Terminado cuando:** pruebas en verde.
 
-## T004.5 · Permisos privados en Linux
+## T004.5 · Permisos privados en Linux ✅
+
+- **Hecho:** `rutas.privado()` y `rutas.carpeta_privada()`: perfiles del navegador y la carpeta de datos 0700, `rclone.conf` y `sesion_canvas.json` 0600; `tests/test_privacidad.py::Permisos`.
 
 - **Requisitos:** PRI-06
 - **Depende de:** —
@@ -47,7 +53,9 @@
 - **Cambio:** `rutas.privado()`; llamadas en `sesion.py`, `onedrive.py`.
 - **Terminado cuando:** prueba en verde en Ubuntu.
 
-## T004.6 · Olvidar mi sesión
+## T004.6 · Olvidar mi sesión ✅
+
+- **Hecho:** `sesion.olvidar()` y el botón en Configuración → Tareas → Sincronizar Canvas (pide confirmación); `tests/test_privacidad.py::OlvidarSesion`.
 
 - **Requisitos:** PRI-07
 - **Depende de:** —
@@ -56,7 +64,9 @@
 - **Cambio:** `sesion.olvidar()` + entrada en Configuración → Canvas.
 - **Terminado cuando:** prueba en verde.
 
-## T004.7 · Claves de config documentadas
+## T004.7 · Claves de config documentadas ✅
+
+- **Hecho:** `test_claves_de_config_documentadas` (claves de `config.DEFAULTS`); la tabla está en `docs/privacidad.md`.
 
 - **Requisitos:** PRI-08
 - **Depende de:** —
@@ -67,6 +77,8 @@
 - **Terminado cuando:** prueba en verde.
 
 ## T004.8 · Escáner de secretos en la CI
+
+- **Hecho:** job `secretos` (gitleaks 8.30.1, acción fijada por SHA) y `.gitleaks.toml`. Falta ver que falle con un token falso en un PR de prueba: no se pudo correr gitleaks en este entorno.
 
 - **Requisitos:** PRI-09
 - **Depende de:** —

@@ -190,5 +190,342 @@ class Obsoletos(unittest.TestCase):
         self.assertEqual(actualizar.limpiar_obsoletos(raiz), 0, "la segunda vez no hay nada")
 
 
+# ---------- spec 012: actualizar sin miedo ----------
+
+API = actualizar.URL_PUBLICADA
+DESCARGAS = f"https://github.com/{actualizar.REPO}/releases/download/v9.0.0/"
+
+
+def _zip_de(carpeta, archivos):
+    """Un ZIP como el que publica la CI (``git archive --prefix=pandex-9.0.0/``)."""
+    import io
+
+    datos = io.BytesIO()
+    with zipfile.ZipFile(datos, "w") as z:
+        for nombre, texto in archivos.items():
+            z.writestr(f"{carpeta}/{nombre}", texto)
+    return datos.getvalue()
+
+
+def _red_falsa(respuestas):
+    """``_abrir`` simulado: ``respuestas[url]`` son bytes, o None para un 404."""
+    import io
+
+    pedidos = []
+
+    def abrir(url, timeout=10, si_falta=False):
+        pedidos.append(url)
+        if url not in respuestas:
+            raise AssertionError(f"pedido inesperado: {url}")
+        cuerpo = respuestas[url]
+        if cuerpo is None:
+            if si_falta:
+                return None
+            raise actualizar.ErrorActualizacion("404")
+        return io.BytesIO(cuerpo)
+
+    return abrir, pedidos
+
+
+class _ConRaiz(unittest.TestCase):
+    """Una carpeta de Pandex 1.0.0 de mentira y un ZIP 9.0.0 que cambia, agrega y deja igual."""
+
+    def setUp(self):
+        from pandex import vuelta
+
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.raiz = self.tmp / "pandex"
+        for relativa, texto in {"main.py": "viejo", "pandex/app.py": "viejo", "pandex/igual.py": "igual",
+                                "requirements.txt": "a==1\n", "config.json": '{"mio": true}',
+                                "tasks/mi_tarea.py": "mía"}.items():
+            (self.raiz / relativa).parent.mkdir(parents=True, exist_ok=True)
+            # newline="\n": en Windows sería CRLF y requirements.txt no sería igual al del ZIP
+            (self.raiz / relativa).write_text(texto, encoding="utf-8", newline="\n")
+        self.archivos = {"main.py": "nuevo", "pandex/app.py": "nuevo", "pandex/igual.py": "igual",
+                         "pandex/nuevo.py": "nuevo", "pandex/__init__.py": '__version__ = "9.0.0"\n',
+                         "requirements.txt": "a==1\n"}
+        self.zip = _zip_de("pandex-9.0.0", self.archivos)
+        self.addCleanup(lambda: vuelta.ARCHIVO.unlink(missing_ok=True))
+        vuelta.ARCHIVO.unlink(missing_ok=True)
+
+    def _texto(self, relativa):
+        return (self.raiz / relativa).read_text(encoding="utf-8")
+
+    def _publicada(self, sha=None):
+        import hashlib
+
+        sha = sha or hashlib.sha256(self.zip).hexdigest()
+        return {DESCARGAS + "pandex-9.0.0.zip": self.zip,
+                DESCARGAS + "pandex-9.0.0.zip.sha256": f"{sha}  pandex-9.0.0.zip\n".encode()}
+
+    def _aplicar_zip(self):
+        archivo = self.tmp / "pandex-9.0.0.zip"
+        archivo.write_bytes(self.zip)
+        return actualizar.aplicar(self.raiz, zip_local=archivo)
+
+    def _info(self, sha256=True):
+        return {"local": "1.0.0", "remota": "9.0.0", "hay_nueva": True, "novedades": "", "etiqueta": "v9.0.0",
+                "zip": DESCARGAS + "pandex-9.0.0.zip",
+                "sha256": DESCARGAS + "pandex-9.0.0.zip.sha256" if sha256 else None}
+
+
+class Confirmar(unittest.TestCase):
+    """ACT-01: el clic en la mascota abre la ventana; no instala."""
+
+    def test_el_clic_en_la_mascota_no_instala(self):
+        from unittest import mock
+
+        from pandex import app as modulo
+
+        app = mock.MagicMock()
+        app._nueva = {"local": "1.0.0", "remota": "9.0.0", "hay_nueva": True, "novedades": ""}
+        app._dialogos = []
+        app.ejecutor.ocupado = False
+        app.actualizar_ya = lambda: modulo.PandexApp.actualizar_ya(app)
+        with mock.patch.object(modulo, "DialogoActualizacion") as dialogo, \
+                mock.patch.object(actualizar, "aplicar") as aplicar:
+            self.assertTrue(modulo.PandexApp._clic_en_mascota(app))
+        self.assertFalse(dialogo.call_args.kwargs.get("aplicar_ya", False), "sin confirmar no instala")
+        aplicar.assert_not_called()
+
+
+class Publicadas(_ConRaiz):
+    """ACT-02: la versión publicada, con su SHA-256."""
+
+    def test_buscar_prefiere_la_version_publicada(self):
+        from unittest import mock
+
+        cuerpo = json.dumps({"tag_name": "v9.0.0", "body": "## 9.0.0\n\n- algo",
+                             "assets": [{"name": "pandex-9.0.0.zip",
+                                         "browser_download_url": DESCARGAS + "pandex-9.0.0.zip"},
+                                        {"name": "pandex-9.0.0.zip.sha256",
+                                         "browser_download_url": DESCARGAS + "pandex-9.0.0.zip.sha256"}]})
+        abrir, pedidos = _red_falsa({API: cuerpo.encode()})
+        with mock.patch.object(actualizar, "_abrir", abrir):
+            info = actualizar.buscar()
+        self.assertEqual((info["remota"], info["etiqueta"], info["hay_nueva"]), ("9.0.0", "v9.0.0", True))
+        self.assertEqual(info["zip"], DESCARGAS + "pandex-9.0.0.zip")
+        self.assertEqual(info["sha256"], DESCARGAS + "pandex-9.0.0.zip.sha256")
+        self.assertIn("- algo", info["novedades"])
+        self.assertEqual(pedidos, [API], "no lee main si hay versión publicada")
+
+    def test_sin_versiones_publicadas_usa_main(self):
+        from unittest import mock
+
+        abrir, _pedidos = _red_falsa({API: None, actualizar.URL_VERSION: b'__version__ = "9.0.0"\n',
+                                     actualizar.URL_NOVEDADES: b"## 9.0.0\n\n- algo\n"})
+        with mock.patch.object(actualizar, "_abrir", abrir):
+            info = actualizar.buscar()
+        self.assertEqual(info["remota"], "9.0.0")
+        self.assertNotIn("etiqueta", info)
+
+    def test_con_su_sha256_se_aplica(self):
+        from unittest import mock
+
+        abrir, _ = _red_falsa(self._publicada())
+        with mock.patch.object(actualizar, "_abrir", abrir), mock.patch.object(actualizar, "modo", return_value="zip"):
+            r = actualizar.aplicar(self.raiz, info=self._info())
+        self.assertEqual(r["modo"], "zip")
+        self.assertEqual(self._texto("main.py"), "nuevo")
+        self.assertEqual(self._texto("config.json"), '{"mio": true}')
+
+    def test_un_sha256_que_no_coincide_no_toca_nada(self):
+        from unittest import mock
+
+        abrir, _ = _red_falsa(self._publicada(sha="0" * 64))
+        with mock.patch.object(actualizar, "_abrir", abrir), mock.patch.object(actualizar, "modo", return_value="zip"):
+            with self.assertRaises(actualizar.ErrorActualizacion) as error:
+                actualizar.aplicar(self.raiz, info=self._info())
+        self.assertIn("no coincide", str(error.exception))
+        self.assertEqual(self._texto("main.py"), "viejo")
+        self.assertFalse((self.raiz / "pandex" / "nuevo.py").exists())
+
+    def test_sin_sha256_no_se_instala(self):
+        from unittest import mock
+
+        abrir, _ = _red_falsa(self._publicada())
+        with mock.patch.object(actualizar, "_abrir", abrir), mock.patch.object(actualizar, "modo", return_value="zip"):
+            with self.assertRaises(actualizar.ErrorActualizacion):
+                actualizar.aplicar(self.raiz, info=self._info(sha256=False))
+        self.assertEqual(self._texto("main.py"), "viejo")
+
+
+class PuntoDeVuelta(_ConRaiz):
+    """ACT-03 y ACT-04: guardar el punto de vuelta y volver a la versión anterior."""
+
+    def test_zip_guarda_el_punto(self):
+        from pandex import vuelta
+
+        self._aplicar_zip()
+        punto = vuelta.leer()
+        self.assertEqual((punto["modo"], punto["desde"], punto["hacia"], punto["estado"]),
+                         ("zip", actualizar.version_local(), "9.0.0", "probando"))
+        self.assertIn("pandex/nuevo.py", punto["agregados"])
+        self.assertNotIn("pandex/igual.py", punto["agregados"])
+        self.assertEqual((Path(punto["respaldo"]) / "main.py").read_text(encoding="utf-8"), "viejo")
+
+    def test_el_limite_no_borra_lo_que_usa_volver(self):
+        """RES-04 no se lleva el respaldo ni lo apartado que necesita «Volver a la versión anterior»."""
+        import os
+        import time
+
+        from pandex import limpieza, vuelta
+
+        respaldos = actualizar.DATOS / "respaldos"
+        futuro = time.time() + 3600
+        for i, nombre in enumerate(("8.0.0-20990101-000000", "deshecho-prueba", "obsoletos-prueba")):
+            (respaldos / nombre).mkdir(parents=True, exist_ok=True)
+            self.addCleanup(shutil.rmtree, respaldos / nombre, True)
+            os.utime(respaldos / nombre, (futuro + i, futuro + i))  # más nuevos que el de esta prueba
+        self._aplicar_zip()
+        respaldo = Path(vuelta.leer()["respaldo"])
+        self.addCleanup(shutil.rmtree, respaldo, True)
+        self.assertTrue((respaldo / "main.py").is_file(), "el límite al actualizar")
+        obsoletos = respaldos / "obsoletos-9.0.0"
+        obsoletos.mkdir(exist_ok=True)
+        self.addCleanup(shutil.rmtree, obsoletos, True)
+        os.utime(obsoletos, (1, 1))  # el más viejo de todos
+        limpieza.limpiar_propio()
+        self.assertTrue((respaldo / "main.py").is_file(), "el límite al arrancar")
+        self.assertTrue(obsoletos.is_dir(), "lo apartado por la versión nueva")
+
+    def test_dos_actualizaciones_en_el_mismo_segundo_no_comparten_respaldo(self):
+        import os
+        import time
+        from datetime import datetime
+        from unittest import mock
+
+        from pandex import vuelta
+
+        ocupado = actualizar.DATOS / "respaldos" / f"{actualizar.version_local()}-20260102-030405"
+        ocupado.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(shutil.rmtree, ocupado, True)
+        (ocupado / "main.py").write_text("de otra actualización", encoding="utf-8")
+        os.utime(ocupado, (time.time() + 3600,) * 2)
+        reloj = mock.Mock(now=mock.Mock(return_value=datetime(2026, 1, 2, 3, 4, 5)))
+        with mock.patch.object(actualizar, "datetime", reloj):
+            self._aplicar_zip()
+        respaldo = Path(vuelta.leer()["respaldo"])
+        self.addCleanup(shutil.rmtree, respaldo, True)
+        self.assertNotEqual(respaldo, ocupado)
+        self.assertEqual((ocupado / "main.py").read_text(encoding="utf-8"), "de otra actualización")
+        self.assertEqual((respaldo / "main.py").read_text(encoding="utf-8"), "viejo")
+
+    def test_volver_con_zip(self):
+        from pandex import vuelta
+
+        antes = set((actualizar.DATOS / "respaldos").glob("deshecho-*"))
+        self._aplicar_zip()
+        obsoleto = actualizar.DATOS / "respaldos" / "obsoletos-9.0.0" / "pandex" / "quitado.py"
+        obsoleto.parent.mkdir(parents=True, exist_ok=True)
+        obsoleto.write_text("lo usaba la anterior", encoding="utf-8")
+        self.addCleanup(shutil.rmtree, obsoleto.parent.parent, ignore_errors=True)
+        punto = vuelta.volver(self.raiz)
+        self.assertEqual(punto["hacia"], "9.0.0")
+        self.assertEqual(self._texto("main.py"), "viejo")
+        self.assertEqual(self._texto("pandex/app.py"), "viejo")
+        self.assertFalse((self.raiz / "pandex" / "nuevo.py").exists())
+        self.assertEqual(self._texto("pandex/quitado.py"), "lo usaba la anterior")
+        self.assertEqual(self._texto("config.json"), '{"mio": true}')
+        self.assertEqual(self._texto("tasks/mi_tarea.py"), "mía")
+        nuevos = set((actualizar.DATOS / "respaldos").glob("deshecho-*")) - antes
+        self.assertEqual(len(nuevos), 1)
+        self.assertTrue((nuevos.pop() / "pandex" / "nuevo.py").is_file(), "lo agregado se aparta, no se borra")
+        self.assertIsNone(vuelta.leer(), "ya no hay a dónde volver")
+
+    def _git(self, carpeta, *args):
+        import subprocess
+
+        r = subprocess.run(["git", "-C", str(carpeta), *args], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def _repo_con_dos_versiones(self):
+        """Un remoto con la 1.0.0 y la 9.0.0 (etiqueta v9.0.0), y un clon en la 1.0.0."""
+        import shutil as sh
+
+        if not sh.which("git"):
+            self.skipTest("sin git")
+        trabajo = self.tmp / "trabajo"
+        trabajo.mkdir()
+        self._git(trabajo, "init", "-q", "-b", "main")
+        self._git(trabajo, "config", "user.email", "prueba@ejemplo.edu")
+        self._git(trabajo, "config", "user.name", "Prueba")
+        (trabajo / "main.py").write_text("viejo", encoding="utf-8")
+        (trabajo / "requirements.txt").write_text("a==1\n", encoding="utf-8")
+        self._git(trabajo, "add", ".")
+        self._git(trabajo, "commit", "-qm", "1.0.0")
+        anterior = self._git(trabajo, "rev-parse", "HEAD")
+        (trabajo / "main.py").write_text("nuevo", encoding="utf-8")
+        self._git(trabajo, "commit", "-qam", "9.0.0")
+        self._git(trabajo, "tag", "v9.0.0")
+        remoto = self.tmp / "remoto.git"
+        self._git(self.tmp, "clone", "-q", "--bare", str(trabajo), str(remoto))
+        clon = self.tmp / "clon"
+        self._git(self.tmp, "clone", "-q", str(remoto), str(clon))
+        self._git(clon, "reset", "-q", "--hard", anterior)
+        return clon, anterior
+
+    def test_git_guarda_el_commit_y_vuelve(self):
+        from pandex import vuelta
+
+        clon, anterior = self._repo_con_dos_versiones()
+        actualizar.aplicar(clon, info={"etiqueta": "v9.0.0", "remota": "9.0.0"})
+        self.assertEqual((clon / "main.py").read_text(encoding="utf-8"), "nuevo")
+        punto = vuelta.leer()
+        self.assertEqual((punto["modo"], punto["commit"]), ("git", anterior))
+        vuelta.volver(clon)
+        self.assertEqual(self._git(clon, "rev-parse", "HEAD"), anterior)
+        self.assertEqual((clon / "main.py").read_text(encoding="utf-8"), "viejo")
+
+    def test_volver_con_git_no_pisa_tus_cambios(self):
+        from pandex import vuelta
+
+        clon, _anterior = self._repo_con_dos_versiones()
+        actualizar.aplicar(clon, info={"etiqueta": "v9.0.0", "remota": "9.0.0"})
+        (clon / "main.py").write_text("mío", encoding="utf-8")
+        with self.assertRaises(vuelta.ErrorVuelta):
+            vuelta.volver(clon)
+        self.assertEqual((clon / "main.py").read_text(encoding="utf-8"), "mío")
+
+
+class VueltaAutomatica(_ConRaiz):
+    """ACT-05: si la versión nueva no abre, vuelve sola y lo dice una vez."""
+
+    def test_si_la_nueva_no_abre_vuelve_sola(self):
+        from pandex import vuelta
+
+        self._aplicar_zip()
+        self.assertTrue(vuelta.si_no_abrio(self.raiz))
+        self.assertEqual(self._texto("main.py"), "viejo")
+        aviso = vuelta.aviso_pendiente()
+        self.assertEqual(aviso, f"La versión 9.0.0 no abrió; volví a la {actualizar.version_local()}.")
+        self.assertIsNone(vuelta.aviso_pendiente(), "se dice una sola vez")
+
+    def test_si_abrio_bien_no_vuelve(self):
+        from pandex import vuelta
+
+        self._aplicar_zip()
+        vuelta.arranco()
+        self.assertEqual(vuelta.leer()["estado"], "ok")
+        self.assertFalse(vuelta.si_no_abrio(self.raiz), "un fallo después de abrir bien no es de la versión")
+        self.assertEqual(self._texto("main.py"), "nuevo")
+
+    def test_main_vuelve_y_abre_otra_vez(self):
+        from unittest import mock
+
+        import main
+        from pandex import vuelta
+
+        with mock.patch.object(vuelta, "si_no_abrio", return_value=True), \
+                mock.patch.object(main, "_abrir_otra_vez") as abrir, mock.patch.object(main, "_ventana_de_error"):
+            try:
+                raise RuntimeError("la versión nueva está rota")
+            except RuntimeError:
+                main.arranque_fallido(silencioso=False)
+        abrir.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

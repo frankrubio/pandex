@@ -1,6 +1,7 @@
 """El núcleo: configuración y descubrimiento de tareas (plug-ins)."""
 
 import json
+import os
 import shutil
 import tempfile
 import unittest
@@ -55,6 +56,67 @@ class Descubrir(unittest.TestCase):
         self.assertEqual([t.id for t in encontradas], ["buena"])
         self.assertEqual(encontradas[0].nombre, "buena", "sin nombre, se usa el id")
 
+
+
+class Ganchos(unittest.TestCase):
+    """ROB-07 (007, EXT-08): un error en un gancho de una tarea no tumba la app."""
+
+    @classmethod
+    def setUpClass(cls):
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from PyQt6.QtWidgets import QApplication
+
+        cls.qapp = QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        self.carpeta = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.carpeta, True)
+        self.config = Config(self.carpeta / "config.json")
+
+    @staticmethod
+    def _tarea(**ganchos):
+        def falla(*_a):
+            raise RuntimeError("gancho roto")
+
+        atributos = {"id": "rota", "nombre": "Rota", "run": lambda self, ctx: {"ok": True}}
+        atributos.update({nombre: (lambda self, *a: falla()) for nombre in ganchos})
+        return type("Task", (), atributos)()
+
+    def test_error_en_preparar(self):
+        from pandex.ejecutor import Ejecutor
+
+        ejecutor, dichos = Ejecutor(self.config), []
+        ejecutor.decir.connect(dichos.append)
+        with self.assertLogs("pandex.ejecutor", level="ERROR"):
+            self.assertFalse(ejecutor.ejecutar(self._tarea(preparar=True)))
+        self.assertFalse(ejecutor.ocupado)
+        self.assertIn("No pude abrir «Rota»", dichos[0])
+
+    def _app(self):
+        from types import SimpleNamespace
+        from unittest import mock
+
+        return SimpleNamespace(config=self.config, mascota=mock.Mock(), programador=mock.Mock(),
+                               ejecutor=SimpleNamespace(ocupado=False, ejecutar=mock.Mock()),
+                               actualizar_despertador=mock.Mock(), _configurar=mock.Mock())
+
+    def test_error_en_configurar(self):
+        from pandex.app import PandexApp
+
+        app = self._app()
+        with self.assertLogs("pandex.app", level="ERROR"):
+            PandexApp._configurar(app, self._tarea(configurar=True))
+        self.assertIn("No pude abrir la configuración", app.mascota.decir.call_args.args[0])
+        app.ejecutor.ejecutar.assert_not_called()
+
+    def test_error_en_necesita_configurar(self):
+        from pandex.app import PandexApp
+
+        app = self._app()
+        app.tareas = [self._tarea(necesita_configurar=True)]
+        with self.assertLogs("pandex.app", level="ERROR"):
+            PandexApp._primera_vez(app)
+        app._configurar.assert_not_called()
 
 
 class Horas(unittest.TestCase):

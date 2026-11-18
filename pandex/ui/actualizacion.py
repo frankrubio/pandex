@@ -1,7 +1,8 @@
 """Ventana «Buscar actualizaciones»: consulta GitHub y, si quieres, actualiza Pandex.
 
 La consulta y la copia corren en un hilo aparte: la mascota y la ventana responden
-mientras tanto. Nada se descarga hasta que pulsas «Actualizar ahora».
+mientras tanto. Nada se descarga hasta que pulsas «Actualizar ahora». Si hay un punto de vuelta,
+ofrece «Volver a la versión anterior» (spec 012).
 """
 
 from PyQt6.QtCore import Qt, QThread, QTimer, QUrl, pyqtSignal
@@ -10,13 +11,14 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QProgressBar,
     QPushButton,
     QTextBrowser,
     QVBoxLayout,
 )
 
-from .. import actualizar
+from .. import actualizar, vuelta
 from ..log import get_logger
 from . import tema
 
@@ -41,26 +43,25 @@ class _Hilo(QThread):
     def run(self):
         try:
             self.listo.emit(self._funcion(self.aviso.emit))
-        except actualizar.ErrorActualizacion as exc:
+        except (actualizar.ErrorActualizacion, vuelta.ErrorVuelta) as exc:
             self.fallo.emit(str(exc))
-        except Exception as exc:  # que nunca tumbe la app
+        except Exception:  # que nunca tumbe la app; el detalle va al registro (IU-20)
             log.exception("la actualización falló")
-            self.fallo.emit(f"Algo salió mal: {exc}")
+            self.fallo.emit("Algo salió mal y no terminé. Vuelve a intentar; si se repite, mira «Ver registro».")
 
 
 class DialogoActualizacion(QDialog):
     """``reiniciar`` es la función de la app que cierra Pandex y lo vuelve a abrir.
 
-    Con ``info`` (lo que devolvió ``actualizar.buscar()``) no vuelve a consultar
-    GitHub; con ``aplicar_ya`` además actualiza enseguida y reinicia solo: es el
-    «un clic» cuando Rusty avisa que hay una versión nueva.
+    Con ``info`` (lo que devolvió ``actualizar.buscar()``) no vuelve a consultar GitHub. Nada se
+    instala hasta pulsar «Actualizar ahora»; después reinicia solo (spec 012, ACT-01).
     """
 
-    def __init__(self, reiniciar, parent=None, info=None, aplicar_ya=False):
+    def __init__(self, reiniciar, parent=None, info=None):
         super().__init__(parent)
         self._reiniciar = reiniciar
         self._hilo = None
-        self._aplicar_ya = aplicar_ya
+        self._info = info
         self.setWindowTitle("Actualizar Pandex")
         self.setMinimumWidth(460)
 
@@ -91,6 +92,11 @@ class DialogoActualizacion(QDialog):
         pagina = QPushButton("Ver en GitHub")
         pagina.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(actualizar.URL_PAGINA)))
         botones.addWidget(pagina)
+        self.volver = QPushButton("Volver a la versión anterior…")
+        self.volver.setToolTip("Deshace la última actualización. Tu configuración y tus cursos no se tocan.")
+        self.volver.clicked.connect(self._volver)
+        self.volver.setVisible(vuelta.hay_punto())
+        botones.addWidget(self.volver)
         botones.addStretch()
         botones.addWidget(self.cerrar)
         botones.addWidget(self.principal)
@@ -110,8 +116,6 @@ class DialogoActualizacion(QDialog):
         else:
             self.barra.hide()
             self._al_buscar(info)
-            if aplicar_ya and info.get("hay_nueva"):
-                self._actualizar()
 
     def showEvent(self, evento):
         super().showEvent(evento)
@@ -128,6 +132,7 @@ class DialogoActualizacion(QDialog):
         self._hilo.start()
 
     def _al_buscar(self, info):
+        self._info = info
         self.barra.hide()
         if not info["hay_nueva"]:
             self.titulo.setText("Estás al día")
@@ -150,8 +155,10 @@ class DialogoActualizacion(QDialog):
     def _actualizar(self):
         self.principal.setEnabled(False)
         self.cerrar.setEnabled(False)
+        self.volver.setEnabled(False)
         self.titulo.setText("Actualizando…")
-        self._correr(lambda aviso: actualizar.aplicar(avisar=aviso), self._al_actualizar)
+        info = self._info
+        self._correr(lambda aviso: actualizar.aplicar(avisar=aviso, info=info), self._al_actualizar)
 
     def _al_actualizar(self, resultado):
         self.barra.hide()
@@ -165,9 +172,39 @@ class DialogoActualizacion(QDialog):
         self.principal.setText("Reiniciar Pandex")
         self.principal.setEnabled(True)
         self.principal.clicked.connect(self._reiniciar_ya)
-        if self._aplicar_ya:  # un clic: no hace falta un segundo clic para reiniciar
-            self.titulo.setText("¡Listo! Reiniciando…")
-            QTimer.singleShot(1500, self._reiniciar_ya)
+        # ya confirmaste: reinicia solo, y así se comprueba que la versión nueva abre (ACT-05)
+        self.titulo.setText("¡Listo! Reiniciando…")
+        QTimer.singleShot(1500, self._reiniciar_ya)
+
+    def _volver(self):
+        """ACT-04: con confirmación; aparta lo nuevo, no lo borra."""
+        punto = vuelta.leer() or {}
+        respuesta = QMessageBox.question(
+            self, "Volver a la versión anterior",
+            f"¿Vuelvo a la versión {punto.get('desde', 'anterior')}?\n\nTu configuración, tus cursos y tus "
+            "tareas no se tocan. Lo que trajo la actualización queda apartado en la carpeta de datos.")
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        self.principal.setEnabled(False)
+        self.volver.setEnabled(False)
+        self.cerrar.setEnabled(False)
+        self.titulo.setText("Volviendo a la versión anterior…")
+        self._correr(lambda _aviso: vuelta.volver(), self._al_volver)
+
+    def _al_volver(self, punto):
+        self.barra.hide()
+        self.cerrar.setEnabled(True)
+        self.volver.hide()
+        self.titulo.setText(f"Volviste a la versión {punto.get('desde', 'anterior')}")
+        self.detalle.setText("Reinicia Pandex para usarla.")
+        try:
+            self.principal.clicked.disconnect()
+        except TypeError:  # aún no tenía nada conectado
+            pass
+        self.principal.setText("Reiniciar Pandex")
+        self.principal.setEnabled(True)
+        self.principal.show()
+        self.principal.clicked.connect(self._reiniciar_ya)
 
     def _reiniciar_ya(self):
         self.accept()
@@ -177,6 +214,7 @@ class DialogoActualizacion(QDialog):
         self.barra.hide()
         self.cerrar.setEnabled(True)
         self.principal.setEnabled(True)
+        self.volver.setEnabled(True)
         self.titulo.setText("No se pudo completar")
         self.detalle.setText(f"<span style='color:{tema.hex_('error')}'>{mensaje}</span>")
 

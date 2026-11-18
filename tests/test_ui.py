@@ -124,6 +124,27 @@ class Interfaz(unittest.TestCase):
                     VisorRegistro()):
             self.assertFalse(dlg.grab().isNull())
 
+    def test_configuracion_abre_rapido(self):
+        """IU-04: con todas las tareas, Configuración se crea y se muestra en ≤ 1 s en la CI
+        (mediana de 3; en la PC de referencia el objetivo es ≤ 300 ms)."""
+        import statistics
+        import time
+
+        from pandex.tareas import descubrir
+        from pandex.ui.configuracion import DialogoConfiguracion
+
+        tareas = descubrir()
+        tiempos = []
+        for _ in range(3):
+            inicio = time.perf_counter()
+            dlg = DialogoConfiguracion(self.config, tareas)
+            dlg.show()
+            app.processEvents()
+            tiempos.append(time.perf_counter() - inicio)
+            dlg.close()
+            dlg.deleteLater()
+        self.assertLessEqual(statistics.median(tiempos), 1.0, f"tiempos: {tiempos}")
+
     def test_liberar_espacio_suma_lo_marcado(self):
         from pandex import limpieza
         from pandex.ui.limpieza import DialogoLiberar
@@ -237,24 +258,35 @@ class Interfaz(unittest.TestCase):
             dlg.reconectar.click()
         self.assertEqual(tarea["destino"], "/ya/no/existe")
 
-    def test_actualizar_con_un_clic_aplica_y_reinicia_solo(self):
+    def test_actualizar_pide_confirmar_y_luego_reinicia(self):
+        """ACT-01: nada se instala hasta pulsar «Actualizar ahora»; después reinicia solo."""
         from PyQt6.QtCore import QEventLoop, QTimer
 
         from pandex import actualizar
         from pandex.ui.actualizacion import DialogoActualizacion
 
         original = actualizar.aplicar
-        actualizar.aplicar = lambda avisar=None, **_k: {"modo": "zip", "archivos": 3, "respaldo": None}
+        aplicados = []
+        actualizar.aplicar = lambda avisar=None, **k: aplicados.append(k) or {"modo": "zip", "archivos": 3,
+                                                                              "respaldo": None}
         reinicios = []
+
+        def esperar(ms):
+            espera = QEventLoop()
+            QTimer.singleShot(ms, espera.quit)
+            espera.exec()
+
         try:
             info = {"local": "2.1.0", "remota": "2.2.0", "hay_nueva": True, "novedades": "## 2.2.0"}
-            dlg = DialogoActualizacion(lambda: reinicios.append(1), info=info, aplicar_ya=True)
-            espera = QEventLoop()
-            QTimer.singleShot(2500, espera.quit)
-            espera.exec()
+            dlg = DialogoActualizacion(lambda: reinicios.append(1), info=info)
+            esperar(300)
+            self.assertEqual((aplicados, reinicios), ([], []), "sin confirmar no instala")
+            dlg.principal.click()
+            esperar(2500)
         finally:
             actualizar.aplicar = original
-        self.assertEqual(reinicios, [1], "sin un segundo clic: aplica y reinicia solo")
+        self.assertEqual(aplicados, [{"info": info}], "instala lo que mostró la ventana")
+        self.assertEqual(reinicios, [1], "confirmado: aplica y reinicia solo")
         dlg.deleteLater()
 
     def test_globo_de_progreso_no_se_reanima(self):

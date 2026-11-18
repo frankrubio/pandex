@@ -11,7 +11,7 @@ funciona y siguiendo las convenciones del proyecto.
 ## Qué existe hoy
 
 - Contrato de plug-ins: un archivo en `tasks/` con una clase `Task` (`pandex/tareas.py`,
-  `docs/crear-tareas.md`). Aparece en el menú con **Recargar tareas**.
+  `docs/crear-tareas.md`). Aparece en el menú con **Recargar tareas** (modo programador, spec 005 IU-19).
 - Un archivo roto se salta con un aviso: no tumba la app.
 - `requiere = "markdown"` oculta la tarea si su función opcional no está instalada.
 - Las tareas son delgadas (23–50 líneas); la lógica vive en `pandex/`.

@@ -16,6 +16,7 @@ from pathlib import Path
 
 from ..log import get_logger
 from ..rutas import DATOS
+from ..tareas import Cancelada, fue_cancelada, si_cancelaron
 from . import navegador as _navegador
 from .cliente import CanvasError
 
@@ -78,17 +79,19 @@ def _donde(url):
     return f"{partes.hostname or '?'}{partes.path.split(';', 1)[0][:80]}"  # sin ``;jsessionid=…``
 
 
-def _esperar_sesion(contexto, page, base, segundos, paso_ms, quieto=None):
+def _esperar_sesion(contexto, page, base, segundos, paso_ms, quieto=None, ctx=None):
     """Pregunta a la API si ya estás dentro mientras la página hace sus redirecciones.
 
     Mirar la URL una sola vez no sirve: si el SSO va a medio camino, parece que
     la sesión caducó cuando en realidad está entrando. Con ``quieto``, si la página no cambia de
     dirección en esos segundos, está esperando que inicies sesión: no tiene sentido seguir. Si el
     navegador no deja leer la dirección (pasa en plena redirección), el conteo vuelve a empezar.
+    Con ``ctx``, cada vuelta mira si cancelaste la tarea (011, ROB-05).
     """
     ahora = time.monotonic()
     limite, url, desde = ahora + segundos, None, ahora
     while time.monotonic() < limite:
+        si_cancelaron(ctx)
         if _sesion_valida(contexto, base):
             return True
         page.wait_for_timeout(paso_ms)  # si cerraste la ventana, esto lanza error
@@ -139,6 +142,37 @@ def olvidar_atajo():
         log.warning("no pude borrar la sesión guardada: %s", exc)
 
 
+def olvidar():
+    """«Olvidar mi sesión» (spec 004, PRI-07): borra los perfiles de navegador de Pandex y el atajo
+    de sesión. No toca tus cursos, tu historial ni ``config.json``: la próxima vez inicias sesión
+    otra vez. Devuelve lo que no se pudo borrar (un navegador que sigue abierto)."""
+    import shutil
+
+    carpetas = set(_navegador.PERFILES.values())
+    for nombre in _navegador.PERFILES:
+        try:
+            carpetas.add(_navegador.perfil(nombre))  # el de snap, en Linux
+        except OSError:
+            pass
+    fallaron = []
+    for carpeta in sorted(carpetas):
+        if not carpeta.exists():
+            continue
+        try:
+            shutil.rmtree(carpeta)
+        except OSError as exc:
+            log.warning("no pude borrar %s: %s", carpeta.name, exc)
+            fallaron.append(carpeta)
+    for archivo in (ATAJO, _navegador.USADO):
+        try:
+            archivo.unlink(missing_ok=True)
+        except OSError as exc:
+            log.warning("no pude borrar %s: %s", archivo.name, exc)
+            fallaron.append(archivo)
+    log.info("sesión olvidada (%s)", "completa" if not fallaron else f"faltaron {len(fallaron)}")
+    return fallaron
+
+
 def intentar_atajo(base):
     """``(cookies, user_agent)`` si la sesión guardada sigue valiendo; si no, None.
 
@@ -156,6 +190,9 @@ def intentar_atajo(base):
     if guardado != base.rstrip("/") or not cookies:
         olvidar_atajo()
         return None
+    from ..log import ocultar
+
+    ocultar(*(c.get("value") for c in cookies if isinstance(c, dict)))  # PRI-03
     import requests
 
     try:
@@ -209,7 +246,7 @@ def iniciar_sesion(ctx, base, usar_chrome=True, espera_login=300, invisible_prim
             page, ua = _pagina(contexto)
             page.goto(base, wait_until="domcontentloaded", timeout=60000)
             try:
-                dentro = _esperar_sesion(contexto, page, base, espera_login, 2000)
+                dentro = _esperar_sesion(contexto, page, base, espera_login, 2000, ctx=ctx)
             except errores as exc:
                 raise CanvasError("Cerraste el navegador antes de terminar de iniciar sesión.") from exc
             if not dentro:
@@ -247,7 +284,7 @@ def _intento_sin_ventana(ctx, base, navegador, abrir, errores):
         try:
             page, ua = _pagina(contexto)
             page.goto(base, wait_until="domcontentloaded", timeout=60000)
-            if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500, quieto=QUIETO):
+            if _esperar_sesion(contexto, page, base, ESPERA_SSO, 500, quieto=QUIETO, ctx=ctx):
                 ctx.log("sesión renovada sin abrir ventanas")
                 ULTIMO["modo"] = "navegador"
                 _navegador.recordar(navegador)
@@ -322,16 +359,19 @@ def _entrar_en_ventana_normal(ctx, base, navegador, abrir, errores, espera_login
     ventana = _navegador.abrir_ventana_normal(navegador, base)
     limite = espera + espera_login
     while ventana.poll() is None or _navegador.en_uso(navegador, carpeta):
-        if time.monotonic() > limite:
+        vencio = time.monotonic() > limite
+        if vencio or fue_cancelada(ctx):
             if ventana.poll() is None:
                 ventana.terminate()
+            if not vencio:
+                raise Cancelada()  # cancelaste la tarea: la ventana se cierra (011, ROB-05)
             raise CanvasError("Se acabó el tiempo para iniciar sesión en Canvas.")
         time.sleep(0.5)
     contexto = abrir(True)
     try:
         page, ua = _pagina(contexto)
         page.goto(base, wait_until="domcontentloaded", timeout=60000)
-        if not _esperar_sesion(contexto, page, base, ESPERA_SSO, 500):
+        if not _esperar_sesion(contexto, page, base, ESPERA_SSO, 500, ctx=ctx):
             raise CanvasError("No pude confirmar tu sesión. Inicia sesión y cierra la ventana solo "
                               "cuando veas tu Canvas.")
         ctx.log("sesión iniciada en ventana normal, queda guardada en el perfil")

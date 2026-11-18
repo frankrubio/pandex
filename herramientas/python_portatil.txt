@@ -1,0 +1,8 @@
+# Python portátil que bajan instalar.sh e instalar.bat solo si no tienes Python 3.12 o más nuevo
+# (spec 006, PLA-03). Queda en .python/, dentro de la carpeta de Pandex.
+# Origen: python-build-standalone (los mismos Python que descarga uv), versión 20261026.
+# Para cambiar de versión: copia las huellas de su archivo SHA256SUMS, nunca las calcules tú.
+# sistema  sha256  url
+linux-x86_64 df15fe60d3ff55bf9dcf25824b5572756bb8816ff93865a273d3301d7066a8b7 https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18%2B20261026-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+linux-aarch64 578d9da1983463ffb0c8c98ab0da2f18177f44069328eb0af847860c1eb05c3e https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18%2B20261026-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz
+windows-x86_64 7369f7a35f261222a6ac8b3a87c1c88eeebee8af945d85346202591a64038dd3 https://github.com/astral-sh/python-build-standalone/releases/download/20261026/cpython-3.13.18%2B20261026-x86_64-pc-windows-msvc-install_only_stripped.tar.gz

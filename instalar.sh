@@ -19,23 +19,29 @@ echo
 echo " ===  Instalando Pandex  ==="
 echo
 
-# 1. Python 3.12 o más nuevo
+# 1. Python 3.12 o más nuevo. Si no hay, uno solo para Pandex dentro de esta carpeta (.python,
+#    PLA-03); si ya lo bajaste antes, se sigue usando. PANDEX_PYTHON=portatil: el portátil sin preguntar.
 PY=""
-for c in python3.14 python3.13 python3.12 python3; do
-    if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)'; then
-        PY="$c"; break
-    fi
-done
+if [ -x .python/bin/python3 ]; then
+    PY=.python/bin/python3
+elif [ "${PANDEX_PYTHON:-}" != portatil ]; then
+    for c in python3.14 python3.13 python3.12 python3; do
+        if command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)'; then
+            PY="$c"; break
+        fi
+    done
+fi
 if [ -z "$PY" ]; then
-    echo " No encontré Python 3.12 o más nuevo."
-    echo " Debian/Ubuntu: sudo apt install python3 python3-venv   (Fedora: sudo dnf install python3)"
-    fallo
+    [ "${PANDEX_PYTHON:-}" = portatil ] || echo " No encontré Python 3.12 o más nuevo."
+    bash herramientas/python_portatil.sh || fallo
+    PY=.python/bin/python3
 fi
 
-# 2. Entorno virtual propio, para no tocar el Python del sistema
-if [ ! -x .venv/bin/python ]; then
+# 2. Entorno virtual propio, para no tocar el Python del sistema. Si no funciona (por ejemplo,
+#    moviste la carpeta), se rehace.
+if ! .venv/bin/python -c "" >/dev/null 2>&1; then
     echo " Creando el entorno virtual..."
-    "$PY" -m venv .venv || { echo " Falta el módulo venv. Debian/Ubuntu: sudo apt install python3-venv"; fallo; }
+    "$PY" -m venv --clear .venv || { echo " Falta el módulo venv. Debian/Ubuntu: sudo apt install python3-venv"; fallo; }
 fi
 
 # 3. Dependencias (lo básico: mascota, tareas y Canvas)

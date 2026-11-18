@@ -75,20 +75,23 @@ def _borrar(ruta):
 # ---------- lo de Pandex: se limpia solo ----------
 
 
-def sobrantes(carpeta, patron, quedan):
-    """Lo que sobra en ``carpeta`` (coincide con ``patron``) dejando los ``quedan`` más nuevos."""
+def sobrantes(carpeta, patron, quedan, salvo=()):
+    """Lo que sobra en ``carpeta`` (coincide con ``patron``) dejando los ``quedan`` más nuevos.
+
+    Lo de ``salvo`` nunca sobra ni cuenta en el límite."""
     carpeta = Path(carpeta)
     if not carpeta.is_dir():
         return []
-    todos = [p for p in carpeta.iterdir() if fnmatch.fnmatch(p.name, patron)]
+    salvo = {Path(s) for s in salvo}
+    todos = [p for p in carpeta.iterdir() if fnmatch.fnmatch(p.name, patron) and p not in salvo]
     todos.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return todos[quedan:]
 
 
-def limitar(carpeta, patron, quedan):
+def limitar(carpeta, patron, quedan, salvo=()):
     """Borra lo que sobra (RES-04/RES-05). Devuelve los bytes liberados."""
     liberado = 0
-    for viejo in sobrantes(carpeta, patron, quedan):
+    for viejo in sobrantes(carpeta, patron, quedan, salvo):
         peso = tamano(viejo)
         try:
             _borrar(viejo)
@@ -100,7 +103,9 @@ def limitar(carpeta, patron, quedan):
 
 def limpiar_propio():
     """Respaldos y copias de configuración de más. Devuelve los bytes liberados."""
-    return (limitar(DATOS / "respaldos", "*", RESPALDOS_QUE_QUEDAN)
+    from . import vuelta
+
+    return (limitar(DATOS / "respaldos", "*", RESPALDOS_QUE_QUEDAN, salvo=vuelta.necesarios())
             + limitar(DATOS, "config-canvas-anterior-*.json", COPIAS_DE_CONFIG_QUE_QUEDAN))
 
 

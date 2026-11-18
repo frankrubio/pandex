@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .. import horas, onedrive
 from ..rutas import DATOS
+from ..tareas import Cancelada, fue_cancelada, si_cancelaron
 from . import nombres, sesion
 from .cliente import Canvas, CanvasError, SinConexion
 from .destinos import (
@@ -146,6 +147,33 @@ def metadatos(canvas, candidatos, historial=None):
     return metas
 
 
+def _version_nueva(c, previo, tamano, historial):
+    """¿El archivo con ese nombre que ya tienes es otra versión de este? (spec 013, CAM-01/03/04)
+
+    Solo si Pandex lo anotó con **otro id** y **otro tamaño**: un archivo tuyo que el historial
+    no conoce sigue contando como tuyo, y sin tamaños no se puede saber.
+    """
+    motivo, ruta = previo
+    if motivo != "mismo nombre":
+        return False
+    anotado = historial.de_ruta(ruta)
+    return bool(anotado and anotado[0] != str(c.file_id) and anotado[1] and tamano and anotado[1] != tamano)
+
+
+def _nombre_libre(destino, nombre, tamano, historial):
+    """``(nombre libre, None)`` con ``(v2)``, ``(v3)``… si hace falta; o ``(None, ruta)`` si una
+    versión que ya tienes pesa lo mismo. Nunca un nombre ocupado: sincronizar solo crea."""
+    base, ext = Path(nombre).stem, Path(nombre).suffix
+    candidato, n = destino / nombre, 1
+    while candidato.exists():
+        anotado = historial.de_ruta(candidato)
+        if anotado and anotado[1] and anotado[1] == tamano:
+            return None, candidato
+        n += 1
+        candidato = destino / f"{base} (v{n}){ext}"
+    return candidato.name, None
+
+
 class Sincronizacion:
     """Una corrida de la tarea. ``ejecutar()`` devuelve el resultado para Pandex."""
 
@@ -232,6 +260,7 @@ class Sincronizacion:
             candidatos = self._candidatos(canvas, parejas)
             candidatos = self._aplicar_descarga_inicial(candidatos, historial)
             self._fase("módulos", t, canvas)
+            si_cancelaron(ctx)  # entre fases: cancelar no espera a que termine todo (ROB-05)
 
             # ---- 3. qué no conocemos todavía, y sus datos (en paralelo)
             t = time.monotonic()
@@ -239,6 +268,7 @@ class Sincronizacion:
             self._res["ya"] += len(candidatos) - len(desconocidos)
             metas = metadatos(canvas, desconocidos, historial)
             self._fase("consultas", t, canvas)
+            si_cancelaron(ctx)
 
             # ---- 4. decidir: ¿ya lo tienes? ¿dónde va? (en orden, contra tu disco)
             t = time.monotonic()
@@ -346,6 +376,9 @@ class Sincronizacion:
 
             previo = indice.buscar(nombre, meta.get("tamano"), self.dedupe_por_tamano,
                                    self._ajena(regla, carpeta))
+            version = bool(previo) and _version_nueva(c, previo, meta.get("tamano"), historial)
+            if version:
+                previo = None  # el docente la volvió a subir cambiada: se baja aparte (spec 013)
             if previo:
                 motivo, ruta = previo
                 self._res["ya"] += 1
@@ -361,6 +394,16 @@ class Sincronizacion:
             if ruta_vetada(destino, prohibidas):
                 self.ctx.log(f"ruta protegida, no escribo: {destino}", "warning")
                 continue
+            if version:
+                libre, igual = _nombre_libre(destino, nombre, meta.get("tamano"), historial)
+                if igual is not None:  # esa versión ya la tienes
+                    self._res["ya"] += 1
+                    historial.anotar(c.file_id, igual, meta.get("tamano"))
+                    continue
+                if libre != nombre:
+                    self.ctx.log(f"«{nombre}» cambió en Canvas: guardo la versión nueva como «{libre}» "
+                                 "(la anterior no se toca)")
+                nombre = libre
 
             # se reserva ya en el índice: si otro ítem de esta corrida trae el mismo
             # archivo (p. ej. teoría y lab), no se baja dos veces
@@ -381,25 +424,32 @@ class Sincronizacion:
             return
         self.ctx.decir(f"Encontré {len(descargas)} archivo(s) nuevo(s). Bajando…")
 
+        def cancelada():
+            return fue_cancelada(self.ctx)
+
         def bajar(d):
             tmp = TEMPORAL / f"{d.candidato.file_id}.part"
             es_html = d.nombre.lower().endswith((".html", ".htm"))
             try:
+                if cancelada():
+                    raise Cancelada()
                 escritos = canvas.descargar(d.candidato.curso["id"], d.candidato.file_id,
-                                            tmp, espera_html=es_html)
+                                            tmp, espera_html=es_html, parar=cancelada)
                 if d.tamano and escritos != d.tamano:
                     raise CanvasError(f"llegó incompleto: {escritos} de {d.tamano} bytes")
                 return tmp, escritos, None
-            except (CanvasError, OSError) as exc:
-                tmp.unlink(missing_ok=True)
+            except (CanvasError, OSError, Cancelada) as exc:
+                tmp.unlink(missing_ok=True)  # nada a medias, tampoco al cancelar
                 return tmp, 0, exc
 
         with ThreadPoolExecutor(min(HILOS_DESCARGA, len(descargas))) as ex:
             futuros = {ex.submit(bajar, d): d for d in descargas}
             for hechos, futuro in enumerate(as_completed(futuros), start=1):
                 d = futuros[futuro]
-                self.ctx.progreso(hechos, len(descargas))
                 tmp, escritos, error = futuro.result()
+                if isinstance(error, Cancelada):
+                    continue  # no llegó entero y su .part ya se borró; lo que sí llegó se guarda
+                self.ctx.progreso(hechos, len(descargas))
                 if error is not None:
                     if getattr(error, "estado", None) == 403:
                         # Canvas lo muestra pero no deja bajarlo todavía: no es una falla
@@ -412,6 +462,8 @@ class Sincronizacion:
                     self.ctx.log(f"falló la descarga de «{d.nombre}»: {error}", "error")
                     continue
                 self._mover(d, tmp, escritos, historial)
+        if cancelada():  # ROB-05: las que no habían empezado ya no bajan
+            raise Cancelada()
 
     def _mover(self, d, tmp, escritos, historial):
         """Un solo hilo mueve a la carpeta final, y solo si el destino sigue libre."""

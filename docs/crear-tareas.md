@@ -4,6 +4,9 @@ Una función nueva para Pandex es **un archivo `.py` en `tasks/`** con una clase
 Pandex lo encuentra al arrancar (o con **Recargar tareas** en el menú), lo agrega al menú y,
 si tiene horario, lo programa. No hay que tocar nada más.
 
+«Recargar tareas» y el ejemplo «Saludar» (`tasks/ejemplo_saludo.py`) solo se ven si activas
+**Mostrar opciones para programadores** en Configuración → Comportamiento.
+
 ## La tarea mínima
 
 ```python
@@ -15,6 +18,8 @@ class Task:
     schedule = None                     # None = solo manual; "0 8 * * 1-5" = 8:00 a. m. de lunes a viernes
     icono = "hola"                      # opcional: sincronizar, documento, hola, canvas, lista… (pandex/ui/iconos.py)
     programable = True                  # opcional: False si no tiene sentido darle un horario
+    orden = 100                         # opcional: su puesto en el menú (menor va antes; Canvas es 1)
+    solo_programador = False            # opcional: True la oculta salvo en modo programador
 
     def run(self, ctx):
         ctx.decir("¡Hola!")
@@ -34,6 +39,9 @@ class Task:
 | `ctx.guardar()` | Guarda en `config.json` lo que cambiaste en `ctx.params`. |
 | `ctx.config` | Todo `config.json`, por si lo necesitas. |
 | `ctx.entrada` | Lo que devolvió `preparar(ctx)` o `configurar(ctx)`; si no, `None`. |
+| `ctx.comprobar_cancelacion()` | Lanza `Cancelada` si el usuario eligió **Cancelar** en el menú. Llámala en cada vuelta de tu bucle; Pandex atrapa el error y dice «Cancelé…». |
+| `ctx.cancelada` | `True` si se pidió cancelar, por si prefieres salir tú del bucle. |
+| `ctx.al_cancelar(f)` | `f()` se llama al cancelar: para cerrar ya algo que no puede esperar (un proceso que lanzaste). |
 
 ## Qué devuelve `run(ctx)`
 
@@ -49,7 +57,19 @@ return {
 }
 ```
 
-Si `run` lanza una excepción, Pandex la registra con su traceback y avisa: nunca se cae.
+Si `run` lanza una excepción, Pandex la registra con su traceback y el globo dice «No pude terminar
+«tu tarea». Vuelve a intentar; si se repite, mira «Ver registro».»: nunca se cae ni muestra el error
+técnico. Para un fallo que esperas (sin red, falta un archivo), devuelve tú `ok: False` con un
+`resumen` que diga qué hacer.
+
+Una tarea que tarda debe dejarse cancelar. Basta una línea en su bucle:
+
+```python
+    def run(self, ctx):
+        for archivo in archivos:
+            ctx.comprobar_cancelacion()   # si cancelaron, sale aquí; lo ya hecho se queda
+            procesar(archivo)
+```
 
 ## Preguntar algo antes: `preparar(ctx)`
 

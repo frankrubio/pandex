@@ -286,3 +286,63 @@ class ConfiguracionDelAsistente(ConCarpetaTemporal):
         r, _ = self.sincronizar(self.params)
         self.assertEqual([p.name for p in self.raiz.rglob("*.pdf")], ["Clase 3.pdf"],
                          "después solo baja lo que se publique")
+
+
+class ArchivosQueCambian(ConCarpetaTemporal):
+    """Spec 013: el docente vuelve a subir un archivo con el mismo nombre (Canvas le da otro id)."""
+
+    def setUp(self):
+        super().setUp()
+        self.raiz = self.tmp / "Cursos"
+        self.sem = self.raiz / "Calculo" / "Sem 6" / "Material de clase"
+        self.raiz.mkdir()
+        CanvasFalso.reiniciar(
+            cursos=[{"id": 3, "name": "Cálculo (CC6101) - Teoría 4"}],
+            modulos={3: [modulo("Semana 6", ("sub", "Material de clase"), ("file", "Clase 6.pdf", 501))]},
+            archivos={501: ("Clase 6.pdf", 9000)},
+        )
+        self.params = {"canvas_url": "https://canvas.ejemplo.edu", "destino": str(self.raiz),
+                       "calendario": CALENDARIO, "secciones": SECCIONES,
+                       "cursos": [{"codigo": "CC6101", "carpeta": "Calculo", "alias": "Cálculo"}]}
+
+    def reemplazar(self, nuevo_id, tamano):
+        """Como en Canvas: el archivo viejo desaparece del módulo y el nuevo ocupa su lugar."""
+        CanvasFalso.modulos_[3] = [modulo("Semana 6", ("sub", "Material de clase"),
+                                          ("file", "Clase 6.pdf", nuevo_id))]
+        CanvasFalso.archivos[nuevo_id] = ("Clase 6.pdf", tamano)
+
+    def test_version_corregida_se_baja_aparte(self):
+        self.sincronizar(self.params)
+        original = self.sem / "Clase 6.pdf"
+        self.assertEqual(original.stat().st_size, 9000)
+        original.write_bytes(b"mis notas" * 1200)  # la anotaste: igual no se toca
+        self.reemplazar(502, 9500)
+        r, ctx = self.sincronizar(self.params)
+        self.assertEqual((self.sem / "Clase 6 (v2).pdf").stat().st_size, 9500)
+        self.assertEqual(original.read_bytes(), b"mis notas" * 1200, "la anterior queda intacta")
+        self.assertTrue(r["resumen"].startswith("✓ 1 nuevo(s)"), r["resumen"])
+        self.assertIn("Clase 6 (v2).pdf", r["informe"])
+        self.assertTrue(any("versión nueva" in m for _n, m in ctx.registro), ctx.registro)
+        self.assertEqual(CanvasFalso.llamadas["archivo"], 1, "solo la consulta de siempre")
+
+        self.reemplazar(503, 9900)  # otra corrección: v3, nunca pisa
+        self.sincronizar(self.params)
+        self.assertEqual((self.sem / "Clase 6 (v3).pdf").stat().st_size, 9900)
+        self.assertEqual((self.sem / "Clase 6 (v2).pdf").stat().st_size, 9500)
+        r, _ = self.sincronizar(self.params)
+        self.assertTrue(r["resumen"].startswith("✓ Todo al día"), r["resumen"])
+
+    def test_mismo_tamano_no_se_baja_otra_vez(self):
+        self.sincronizar(self.params)
+        self.reemplazar(502, 9000)
+        r, _ = self.sincronizar(self.params)
+        self.assertEqual(sorted(p.name for p in self.sem.iterdir()), ["Clase 6.pdf"])
+        self.assertTrue(r["resumen"].startswith("✓ Todo al día"), r["resumen"])
+        self.assertEqual(CanvasFalso.llamadas["descargar"], 0)
+
+    def test_lo_que_tenias_de_antes_no_se_duplica(self):
+        self.sem.mkdir(parents=True)
+        (self.sem / "Clase 6.pdf").write_bytes(b"x" * 1234)  # tuyo, Pandex nunca lo anotó
+        self.reemplazar(502, 9500)
+        self.sincronizar(self.params)
+        self.assertEqual(sorted(p.name for p in self.sem.iterdir()), ["Clase 6.pdf"])

@@ -81,6 +81,12 @@ Para no saltar de más:
 Cada decisión queda en el registro con su motivo y la ruta del archivo que ya tenías:
 `ya lo tenías (mismo nombre) · Programación · Clase 3.pdf → …\Sem 3\Teoría\Clase 3.pdf`.
 
+**¿Y si el docente corrige un archivo y lo vuelve a subir con el mismo nombre?** Canvas le da
+otro id. Si Pandex había bajado el anterior y el nuevo **pesa distinto**, baja el nuevo al lado
+como `Clase 3 (v2).pdf` (luego `v3`…) y no toca el anterior, aunque lo hayas anotado. Si pesa lo
+mismo, es la misma versión y no baja nada. Un archivo con ese nombre que ya tenías antes de usar
+Pandex sigue contando como tuyo (spec 013).
+
 ## El historial
 
 `%LOCALAPPDATA%\Pandex\historial_canvas.json` recuerda, por cada archivo de Canvas (su id),

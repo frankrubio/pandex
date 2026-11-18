@@ -9,6 +9,38 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.7.0
+
+- **Pandex ya no se cierra solo por un error.** Si algo falla donde nadie lo esperaba, queda en el
+  registro y la mascota avisa: «Algo falló y lo anoté». Antes desaparecía sin decir nada.
+- **Abre aunque `config.json` se dañe.** Si el archivo quedó vacío o cortado (un corte de luz, el
+  disco lleno), Pandex recupera la última copia buena y te lo dice. Si no puede ni arrancar,
+  muestra una ventana que dice qué hacer.
+- **Cancelar una tarea.** Mientras Pandex trabaja, el menú ofrece «Cancelar»: para la sincronización,
+  cierra la ventana de inicio de sesión o detiene la conversión. Lo que ya se guardó se queda.
+  «Salir» ya no deja una tarea a medias ni un navegador abierto.
+- **Menú más claro.** «Sincronizar Canvas» va primero. El ejemplo «Saludar» y «Recargar tareas» solo
+  aparecen si activas «Mostrar opciones para programadores» (Configuración → Comportamiento).
+- **Errores que dicen qué hacer.** Si una tarea falla por algo imprevisto, el globo ya no muestra el
+  error técnico en inglés: dice «No pude terminar…» y te indica qué hacer.
+- **Olvidar mi sesión.** En Configuración → Tareas → Sincronizar Canvas, un botón borra la sesión de
+  Canvas que guarda Pandex (pide confirmación; no toca tus cursos ni tu configuración).
+- **Más privacidad.** El registro ya no puede guardar cookies ni tokens (los cambia por `[oculto]`).
+  Pandex solo pide datos a tu Canvas y a GitHub. En Linux, tu sesión y tu cuenta de OneDrive solo las
+  puede leer tu usuario.
+- **Actualizar sin miedo.** El clic en la mascota ya no instala de golpe: muestra qué trae la versión
+  nueva y espera a que pulses «Actualizar ahora». Pandex instala solo versiones publicadas y comprueba
+  su huella (SHA-256). Si no te convence, «Volver a la versión anterior…»; si no llega a abrir, vuelve
+  sola y te lo dice. La limpieza automática de respaldos ya no borra lo que hace falta para volver.
+- **Instalar sin tener Python.** Si no tienes Python 3.12 o más nuevo, `instalar.bat` e
+  `instalar.sh` ofrecen bajar uno solo para Pandex (dentro de su carpeta, en `.python`), con versión
+  y huella SHA-256 fijas. Si moviste la carpeta, el instalador rehace el entorno de Python.
+- **Archivos corregidos.** Si el docente vuelve a subir un archivo con el mismo nombre y cambió,
+  Sincronizar baja la versión nueva al lado (`Clase 5 (v2).pdf`) sin tocar la anterior. Antes
+  creía que ya lo tenías y no la bajaba.
+- **Seguridad: Pillow 13.0.0.** La versión anterior (12.3.0) tenía fallas conocidas al abrir
+  imágenes dañadas. Se instala sola al actualizar.
+
 ## 2.6.7
 
 - **Sin internet, Pandex lo dice enseguida.** Ya no abre la ventana para iniciar sesión cuando el

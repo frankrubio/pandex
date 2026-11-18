@@ -10,6 +10,7 @@ from pandex.canvas.sincronizar import Sincronizacion, esta_configurado
 class Task:
     id = "sync_canvas"
     nombre = "Sincronizar Canvas"
+    orden = 1  # la función principal: primera en el menú
     icono = "sincronizar"
     descripcion = "Baja el material nuevo de Canvas y lo ordena en tu carpeta"
     schedule = None  # el asistente puede poner uno (p. ej. todos los días a las 7:00 p. m.)
