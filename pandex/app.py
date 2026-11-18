@@ -17,7 +17,9 @@ from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import QMenu, QMessageBox, QSystemTrayIcon
 
 from . import accesos, actualizar, despertador, extras, horas, onedrive, pendientes
+from . import plugins as extension_loader
 from . import tareas as plugins
+from .rutas import PLUGINS_PERSONALES
 from .config import Config
 from .ejecutor import Ejecutor
 from .log import get_logger
@@ -54,6 +56,9 @@ class PandexApp(QObject):
         self.salir_al_terminar = salir_al_terminar
         self.config = Config()
         self.tareas = plugins.descubrir()
+        personales = extension_loader.descubrir_personales(PLUGINS_PERSONALES)
+        ids = {t.id for t in self.tareas}
+        self.tareas.extend(t for t in personales if t.id not in ids)
         self._dialogos = []
         self._ultimo_progreso = 0.0
         self.servidor = None  # canal de instancia única (lo pone main.py)
@@ -417,6 +422,9 @@ class PandexApp(QObject):
 
     def _recargar_tareas(self):
         self.tareas = plugins.descubrir()
+        personales = extension_loader.descubrir_personales(PLUGINS_PERSONALES)
+        ids = {t.id for t in self.tareas}
+        self.tareas.extend(t for t in personales if t.id not in ids)
         self.programador.montar(self.tareas)
         self._menu_bandeja = self._construir_menu(parent=None)
         self.bandeja.setContextMenu(self._menu_bandeja)

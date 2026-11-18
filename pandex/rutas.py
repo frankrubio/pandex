@@ -56,6 +56,10 @@ def _ultimo_uso(carpeta):
 DATOS = _carpeta_de_datos()
 # los personajes que añades tú (Configuración → Apariencia → Añadir personaje)
 PERSONAJES_PROPIOS = DATOS / "personajes"
+# plug-ins tuyos: viven fuera de la carpeta del proyecto y siguen al desinstalar
+PLUGINS_PERSONALES = DATOS / "plugins_personales"
+# caché de plug-ins publicados: nunca se descomprime en el repositorio
+PLUGINS_PUBLICADOS = DATOS / "plugins_publicados"
 # los drivers que baja Selenium para manejar tu navegador (no van a ~/.cache)
 NAVEGADORES = DATOS / "navegadores"
 

@@ -7,9 +7,22 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from pandex import actualizar, extras, limpieza, paquetes
+from pandex import actualizar, desinstalar, extras, limpieza, paquetes
 
 RAIZ = Path(__file__).resolve().parent.parent
+
+
+class DesinstalarConPluginsPersonales(unittest.TestCase):
+    def test_conserva_plugins_personales_por_defecto(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            datos = Path(tmp) / "DATOS"
+            personal = datos / "plugins_personales" / "depa"
+            personal.mkdir(parents=True)
+            (personal / "manifest.json").write_text("{}", encoding="utf-8")
+            pasos = desinstalar.plan(datos=datos)
+            rutas_borrado = {r.resolve() for paso in pasos for r in paso.rutas}
+            self.assertFalse(personal.resolve() in rutas_borrado)
+            self.assertTrue(datos.exists())
 
 
 class PipSinCache(unittest.TestCase):

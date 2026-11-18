@@ -1,6 +1,7 @@
 """Ventana «Configuración»: apariencia de la mascota, comportamiento y horario de cada tarea."""
 
 import re
+import shutil
 
 from PyQt6.QtCore import QLocale, QSize, Qt, QTime, QUrl
 from PyQt6.QtGui import QDesktopServices, QPainter
@@ -30,7 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, accesos, extras, personaje_nuevo, rutas
+from .. import __version__, accesos, extras, personaje_nuevo, plugins, rutas
 from ..tareas import visible
 from . import iconos, logo, personajes, tema
 
@@ -168,6 +169,7 @@ class DialogoConfiguracion(QDialog):
             ("Apariencia", "mostrar", self._pagina_apariencia()),
             ("Comportamiento", "engranaje", self._pagina_comportamiento()),
             ("Tareas", "tarea", self._pagina_tareas()),
+            ("Extensiones", "tarea", self._pagina_extensiones()),
             ("Acerca de", "hola", self._pagina_acerca()),
         ]
         if not rutas.WINDOWS:  # en Windows ya lo hace la app de OneDrive
@@ -226,6 +228,133 @@ class DialogoConfiguracion(QDialog):
         tema.preparar_dialogo(self)
 
     # ---------- páginas ----------
+
+    def _pagina_extensiones(self):
+        pagina = QWidget()
+        caja = QVBoxLayout(pagina)
+        caja.setContentsMargins(0, 0, 0, 0)
+        caja.addLayout(_titulo("Extensiones", "Plugins personales separados del repositorio y de sus actualizaciones."))
+
+        buscar = QLineEdit()
+        buscar.setPlaceholderText("Buscar extensión")
+        buscar.setClearButtonEnabled(True)
+        caja.addWidget(buscar)
+
+        contenido = QHBoxLayout()
+        self.extensiones_lista = QListWidget()
+        self.extensiones_lista.setMinimumWidth(220)
+        contenido.addWidget(self.extensiones_lista, 2)
+
+        derecha = QFrame()
+        derecha.setProperty("rol", "tarjeta")
+        detalle_caja = QVBoxLayout(derecha)
+        detalle_caja.setContentsMargins(14, 14, 14, 14)
+        self.extension_detalle = QLabel("Selecciona una extensión.")
+        self.extension_detalle.setWordWrap(True)
+        detalle_caja.addWidget(self.extension_detalle)
+        detalle_caja.addStretch()
+
+        botones = QHBoxLayout()
+        self.extension_instalar = QPushButton("Instalar ZIP")
+        self.extension_instalar.setProperty("rol", "primario")
+        self.extension_eliminar = QPushButton("Eliminar")
+        self.extension_eliminar.setEnabled(False)
+        botones.addWidget(self.extension_instalar)
+        botones.addWidget(self.extension_eliminar)
+        detalle_caja.addLayout(botones)
+        contenido.addWidget(derecha, 3)
+        caja.addLayout(contenido, 1)
+
+        buscar.textChanged.connect(self._filtrar_extensiones)
+        self.extensiones_lista.currentItemChanged.connect(self._mostrar_extension)
+        self.extension_instalar.clicked.connect(self._instalar_extension)
+        self.extension_eliminar.clicked.connect(self._eliminar_extension)
+        self._refrescar_extensiones()
+        return pagina
+
+    def _refrescar_extensiones(self):
+        self.extensiones_lista.clear()
+        carpeta = rutas.PLUGINS_PERSONALES
+        carpeta.mkdir(parents=True, exist_ok=True)
+        encontrados = []
+        for directorio in sorted(p for p in carpeta.iterdir() if p.is_dir()):
+            try:
+                encontrados.append(plugins.leer_manifest(directorio))
+            except plugins.ErrorManifest:
+                continue
+        if not encontrados:
+            item = QListWidgetItem("No tienes extensiones personales")
+            item.setData(Qt.ItemDataRole.UserRole, None)
+            item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
+            self.extensiones_lista.addItem(item)
+            self.extension_detalle.setText("Instala un paquete ZIP o vuelve después. "
+                                           "Tus plugins personales se conservan al actualizar Pandex.")
+            return
+        for manifest in encontrados:
+            item = QListWidgetItem(f"{manifest['nombre']} · {manifest['version']}")
+            item.setData(Qt.ItemDataRole.UserRole, manifest)
+            self.extensiones_lista.addItem(item)
+
+    def _filtrar_extensiones(self, texto):
+        texto = texto.strip().lower()
+        for i in range(self.extensiones_lista.count()):
+            item = self.extensiones_lista.item(i)
+            manifest = item.data(Qt.ItemDataRole.UserRole)
+            visible = not manifest or texto in (
+                manifest["nombre"] + " " + manifest["id"] + " " + manifest.get("descripcion", "")
+            ).lower()
+            item.setHidden(not visible)
+
+    def _mostrar_extension(self, item, _anterior):
+        manifest = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        if not manifest:
+            self.extension_detalle.setText("Selecciona una extensión.")
+            self.extension_eliminar.setEnabled(False)
+            return
+        permisos = ", ".join(manifest["permisos"]) if manifest["permisos"] else "Ninguno"
+        descripcion = manifest.get("descripcion") or "Sin descripción."
+        self.extension_detalle.setText(
+            f"{manifest['nombre']} · {manifest['version']}\n\n"
+            f"{descripcion}\n\nLicencia: {manifest['licencia']}\nPermisos: {permisos}"
+        )
+        self.extension_eliminar.setEnabled(True)
+
+    def _instalar_extension(self):
+        ruta, _ = QFileDialog.getOpenFileName(self, "Instalar plugin personal", "", "Plugin ZIP (*.zip)")
+        if not ruta:
+            return
+        try:
+            manifest = plugins.revisar_personal(ruta)
+            permisos = ", ".join(manifest["permisos"]) if manifest["permisos"] else "ninguno"
+            respuesta = QMessageBox.question(
+                self,
+                "Permisos del plugin",
+                f"{manifest['nombre']} pide: {permisos}\n\n¿Instalar este plugin personal?",
+            )
+            if respuesta != QMessageBox.StandardButton.Yes:
+                return
+            plugins.instalar_personal(ruta, rutas.PLUGINS_PERSONALES)
+            self._refrescar_extensiones()
+            QMessageBox.information(self, "Plugin instalado", f"Instalado «{manifest['nombre']}».")
+        except (plugins.ErrorPaquete, plugins.ErrorManifest) as exc:
+            QMessageBox.warning(self, "No pude instalar", str(exc))
+
+    def _eliminar_extension(self):
+        item = self.extensiones_lista.currentItem()
+        manifest = item.data(Qt.ItemDataRole.UserRole) if item is not None else None
+        if not manifest:
+            return
+        respuesta = QMessageBox.question(
+            self,
+            "Eliminar plugin personal",
+            f"¿Eliminar «{manifest['nombre']}» y su estado local?\nEsta acción no se puede deshacer.",
+        )
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        destino = rutas.PLUGINS_PERSONALES / manifest["id"]
+        shutil.rmtree(destino, ignore_errors=True)
+        self._refrescar_extensiones()
+        QMessageBox.information(self, "Plugin eliminado", f"Eliminé «{manifest['nombre']}».")
 
     def _pagina_apariencia(self):
         m = self.config.mascota
@@ -785,4 +914,3 @@ class DialogoConfiguracion(QDialog):
 
         self.config.guardar()
         self.accept()
-

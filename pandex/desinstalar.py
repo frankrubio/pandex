@@ -54,10 +54,12 @@ def _perfiles_snap():
     return sorted((Path.home() / "snap").glob("*/common/pandex-perfil"))
 
 
-def plan(raiz=RAIZ, conservar_config=True, con_venv=True):
+def plan(raiz=RAIZ, conservar_config=True, con_venv=True, borrar_personales=False, datos=None):
     """La lista de pasos, con las rutas que existen de verdad (nada se borra todavía)."""
     from . import despertador, onedrive
 
+    if datos is None:
+        datos = DATOS
     anotadas = [Path(d["ruta"]) for d in inventario.todo()]
     pasos = []
 
@@ -85,8 +87,21 @@ def plan(raiz=RAIZ, conservar_config=True, con_venv=True):
     pasos.append(Paso("Perfil del navegador de Pandex (fuera de la carpeta de datos)",
                       sorted(p for p in perfiles if p.exists())))
 
+    borrables = []
+    if datos.exists():
+        personal = (datos / "plugins_personales").resolve()
+        if borrar_personales:
+            borrables.append(personal)
+        else:
+            if personal.is_dir():
+                borrables.extend(
+                    ruta for ruta in sorted(datos.iterdir())
+                    if ruta.resolve() != personal
+                )
+            else:
+                borrables.append(datos)
     pasos.append(Paso("Datos de Pandex: sesión del navegador, historial de Canvas, respaldos",
-                      [DATOS] if DATOS.exists() else []))
+                      borrables))
     if not conservar_config:
         pasos.append(Paso("Tu configuración (config.json)", [p for p in [Path(raiz) / CONFIG_FILE.name] if p.exists()]))
     if con_venv:
@@ -160,10 +175,11 @@ def _cli(argumentos):
     si = "--si" in argumentos
     con_venv = "--sin-venv" not in argumentos
     conservar = "--borrar-config" not in argumentos
+    borrar_personales = "--borrar-plugins-personales" in argumentos
     if not si and Path(RAIZ / CONFIG_FILE.name).exists() and "--borrar-config" not in argumentos:
         respuesta = input(" ¿Conservar tu configuración (config.json) para reinstalar después? [S/n] ")
         conservar = respuesta.strip().lower() not in ("n", "no")
-    pasos = plan(RAIZ, conservar, con_venv)
+    pasos = plan(RAIZ, conservar, con_venv, borrar_personales)
     print()
     print(" Esto es lo que se va a quitar (tu carpeta de cursos no se toca):")
     for paso in pasos:
