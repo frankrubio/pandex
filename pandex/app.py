@@ -55,6 +55,7 @@ class PandexApp(QObject):
         # lo abrió el sistema a la hora de una tarea: la hace y se cierra (modo «a la hora»)
         self.salir_al_terminar = salir_al_terminar
         self.config = Config()
+        extension_loader.sembrar_conectores(PLUGINS_PERSONALES)
         self.tareas = plugins.descubrir()
         personales = extension_loader.descubrir_personales(PLUGINS_PERSONALES)
         ids = {t.id for t in self.tareas}
@@ -421,6 +422,7 @@ class PandexApp(QObject):
             dlg.activateWindow()
 
     def _recargar_tareas(self):
+        extension_loader.sembrar_conectores(PLUGINS_PERSONALES)
         self.tareas = plugins.descubrir()
         personales = extension_loader.descubrir_personales(PLUGINS_PERSONALES)
         ids = {t.id for t in self.tareas}

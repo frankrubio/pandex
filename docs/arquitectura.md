@@ -13,6 +13,9 @@ devuelven.
 | `pandex/app.py` | `PandexApp`: une mascota, menú, bandeja, ejecutor y reloj; abre el asistente la primera vez. |
 | `pandex/tareas.py` | El contrato de los plug-ins: `descubrir()` y `TaskContext` (el `ctx`). |
 | `pandex/plugins.py` | Manifiestos, paquetes y plugins personales separados de `config.json` y del repositorio. |
+| `pandex/credenciales.py` | Credenciales en el almacén seguro del sistema, nunca en Git ni `config.json`. |
+| `pandex/ia.py` | Adaptadores locales y remotos de IA con argumentos separados y endpoints permitidos. |
+| `pandex/calendar_google.py` | OAuth PKCE y API oficial de Google Calendar con acciones confirmadas. |
 | `pandex/ejecutor.py` | `Ejecutor`: corre una tarea a la vez en un `QThread`. |
 | `pandex/programador.py` | `Programador`: dispara tareas con horario cron (APScheduler). |
 | `pandex/config.py` | `Config`: `config.json` con valores por defecto y guardado atómico. Si el archivo está dañado, abre con la última copia buena (`DATOS/config-ultima-buena.json`) o con los valores de fábrica. |

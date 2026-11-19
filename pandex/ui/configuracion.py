@@ -3,7 +3,7 @@
 import re
 import shutil
 
-from PyQt6.QtCore import QLocale, QSize, Qt, QTime, QUrl
+from PyQt6.QtCore import QLocale, QSize, Qt, QTime, QUrl, QThread, pyqtSignal
 from PyQt6.QtGui import QDesktopServices, QPainter
 from PyQt6.QtWidgets import (
     QApplication,
@@ -31,7 +31,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from .. import __version__, accesos, extras, personaje_nuevo, plugins, rutas
+from .. import __version__, accesos, calendar_google, credenciales, extras, ia, personaje_nuevo, plugins, rutas
 from ..tareas import visible
 from . import iconos, logo, personajes, tema
 
@@ -59,6 +59,28 @@ def armar_horario(tipo, hora, texto=""):
     if tipo == "cron":
         return texto.strip() or None
     return None
+
+
+class TrabajadorConexion(QThread):
+    terminado = pyqtSignal(bool, str)
+
+    def __init__(self, funcion, *args):
+        super().__init__()
+        self.funcion = funcion
+        self.args = args
+
+    def run(self):
+        try:
+            resultado = self.funcion(*self.args)
+            if isinstance(resultado, list):
+                texto = f"Encontré {len(resultado)} evento(s)."
+            elif isinstance(resultado, dict):
+                texto = resultado.get("summary") or "Operación completada."
+            else:
+                texto = "Conexión completada."
+            self.terminado.emit(True, texto)
+        except Exception as exc:
+            self.terminado.emit(False, str(exc))
 
 
 class Horario(QWidget):
@@ -169,6 +191,7 @@ class DialogoConfiguracion(QDialog):
             ("Apariencia", "mostrar", self._pagina_apariencia()),
             ("Comportamiento", "engranaje", self._pagina_comportamiento()),
             ("Tareas", "tarea", self._pagina_tareas()),
+            ("Conexiones", "tarea", self._pagina_conexiones()),
             ("Extensiones", "tarea", self._pagina_extensiones()),
             ("Acerca de", "hola", self._pagina_acerca()),
         ]
@@ -228,6 +251,217 @@ class DialogoConfiguracion(QDialog):
         tema.preparar_dialogo(self)
 
     # ---------- páginas ----------
+
+    def _pagina_conexiones(self):
+        pagina = QWidget()
+        caja = QVBoxLayout(pagina)
+        caja.setContentsMargins(0, 0, 0, 0)
+        caja.addLayout(_titulo("Conexiones", "Conecta una IA y Google Calendar con permisos visibles."))
+
+        ia_tarjeta = _tarjeta()
+        ia_layout = QVBoxLayout(ia_tarjeta)
+        ia_layout.addWidget(QLabel("Inteligencia artificial"))
+        estado_ia = ia.leer_estado(rutas.PLUGINS_PERSONALES / "ia")
+
+        self.ia_tipo = QComboBox()
+        self.ia_tipo.addItem("OpenCode", "opencode")
+        self.ia_tipo.addItem("Antigravity", "antigravity")
+        self.ia_tipo.addItem("API compatible", "compatible")
+        tipo_actual = estado_ia.get("proveedor", "opencode")
+        self.ia_tipo.setCurrentIndex(max(0, self.ia_tipo.findData(tipo_actual)))
+        ia_layout.addWidget(QLabel("Proveedor"))
+        ia_layout.addWidget(self.ia_tipo)
+
+        self.ia_ejecutable = QLineEdit(estado_ia.get("ejecutable", ""))
+        self.ia_ejecutable.setPlaceholderText("Ejecutable: opencode o antigravity")
+        ia_layout.addWidget(QLabel("Ejecutable local"))
+        ia_layout.addWidget(self.ia_ejecutable)
+
+        self.ia_endpoint = QLineEdit(estado_ia.get("endpoint", ""))
+        self.ia_endpoint.setPlaceholderText("https://api.ejemplo/v1/chat/completions")
+        ia_layout.addWidget(QLabel("Endpoint compatible"))
+        ia_layout.addWidget(self.ia_endpoint)
+
+        self.ia_modelo = QLineEdit(estado_ia.get("model", ""))
+        self.ia_modelo.setPlaceholderText("Modelo")
+        ia_layout.addWidget(QLabel("Modelo"))
+        ia_layout.addWidget(self.ia_modelo)
+
+        self.ia_clave = QLineEdit()
+        self.ia_clave.setEchoMode(QLineEdit.EchoMode.Password)
+        self.ia_clave.setPlaceholderText("Clave API, se guarda en el almacén seguro")
+        ia_layout.addWidget(QLabel("Clave"))
+        ia_layout.addWidget(self.ia_clave)
+
+        ia_botones = QHBoxLayout()
+        probar_ia = QPushButton("Guardar y probar")
+        probar_ia.setProperty("rol", "primario")
+        probar_ia.clicked.connect(self._guardar_y_probar_ia)
+        desconectar_ia = QPushButton("Desconectar")
+        desconectar_ia.clicked.connect(self._desconectar_ia)
+        ia_botones.addWidget(probar_ia)
+        ia_botones.addWidget(desconectar_ia)
+        ia_layout.addLayout(ia_botones)
+        caja.addWidget(ia_tarjeta)
+
+        calendario_tarjeta = _tarjeta()
+        calendario_layout = QVBoxLayout(calendario_tarjeta)
+        calendario_layout.addWidget(QLabel("Google Calendar"))
+        self.google_cliente = QLineEdit()
+        self.google_cliente.setPlaceholderText("ID de cliente OAuth de Google")
+        calendario_layout.addWidget(QLabel("ID de cliente"))
+        calendario_layout.addWidget(self.google_cliente)
+
+        cal_botones = QHBoxLayout()
+        conectar_google = QPushButton("Conectar Google")
+        consultar_google = QPushButton("Consultar")
+        desconectar_google = QPushButton("Desconectar")
+        conectar_google.clicked.connect(self._conectar_google)
+        consultar_google.clicked.connect(self._consultar_google)
+        desconectar_google.clicked.connect(self._desconectar_google)
+        cal_botones.addWidget(conectar_google)
+        cal_botones.addWidget(consultar_google)
+        cal_botones.addWidget(desconectar_google)
+        calendario_layout.addLayout(cal_botones)
+
+        form_evento = QFormLayout()
+        self.cal_titulo = QLineEdit()
+        self.cal_inicio = QLineEdit()
+        self.cal_inicio.setPlaceholderText("2026-11-20T10:00:00-05:00")
+        self.cal_fin = QLineEdit()
+        self.cal_fin.setPlaceholderText("2026-11-20T11:00:00-05:00")
+        self.cal_id = QLineEdit()
+        form_evento.addRow("Título", self.cal_titulo)
+        form_evento.addRow("Inicio", self.cal_inicio)
+        form_evento.addRow("Fin", self.cal_fin)
+        form_evento.addRow("ID al actualizar", self.cal_id)
+        calendario_layout.addLayout(form_evento)
+
+        accion_cal = QHBoxLayout()
+        crear_cal = QPushButton("Crear evento")
+        actualizar_cal = QPushButton("Actualizar")
+        crear_cal.clicked.connect(self._crear_evento_google)
+        actualizar_cal.clicked.connect(self._actualizar_evento_google)
+        accion_cal.addWidget(crear_cal)
+        accion_cal.addWidget(actualizar_cal)
+        calendario_layout.addLayout(accion_cal)
+
+        self.cal_estado = QLabel("Google Calendar no está conectado.")
+        self.cal_estado.setWordWrap(True)
+        calendario_layout.addWidget(self.cal_estado)
+        caja.addWidget(calendario_tarjeta)
+        caja.addStretch()
+        return pagina
+
+    def _guardar_y_probar_ia(self):
+        tipo = self.ia_tipo.currentData()
+        ejecutable = self.ia_ejecutable.text().strip() or tipo
+        endpoint = self.ia_endpoint.text().strip()
+        modelo = self.ia_modelo.text().strip()
+        carpeta = rutas.PLUGINS_PERSONALES / "ia"
+        ia.guardar_estado(carpeta, tipo, ejecutable, endpoint, modelo)
+        if tipo == "compatible":
+            clave = self.ia_clave.text().strip()
+            if clave:
+                try:
+                    credenciales.guardar("ia.compatible.key", clave)
+                except credenciales.ErrorCredencial as exc:
+                    QMessageBox.warning(self, "No pude guardar la clave", str(exc))
+                    return
+            clave = credenciales.leer("ia.compatible.key")
+            if not endpoint or not clave:
+                QMessageBox.warning(self, "Falta información", "Indica el endpoint y la clave API.")
+                return
+            adaptador = ia.AdaptadorCompatible(endpoint, clave, modelo)
+        else:
+            adaptador = ia.AdaptadorLocal(tipo, ejecutable)
+        trabajador = TrabajadorConexion(adaptador.responder, "Responde solo: listo")
+        trabajador.terminado.connect(lambda ok, texto: QMessageBox.information(
+            self, "IA", texto if ok else f"No pude conectar: {texto}"
+        ))
+        self._trabajador_conexion = trabajador
+        trabajador.start()
+
+    def _desconectar_ia(self):
+        ia.guardar_estado(rutas.PLUGINS_PERSONALES / "ia", "opencode", "opencode")
+        try:
+            credenciales.borrar("ia.compatible.key")
+        except Exception:
+            pass
+        QMessageBox.information(self, "IA desconectada", "Quité la configuración local.")
+
+    def _conectar_google(self):
+        cliente = self.google_cliente.text().strip()
+        if not cliente:
+            QMessageBox.warning(self, "Falta el ID", "Escribe el ID de cliente OAuth de Google.")
+            return
+        trabajador = TrabajadorConexion(calendar_google.conectar, cliente)
+        trabajador.terminado.connect(lambda ok, texto: self._resultado_google(ok, texto))
+        self._trabajador_conexion = trabajador
+        trabajador.start()
+
+    def _resultado_google(self, ok, texto):
+        if ok:
+            self.cal_estado.setText("Google Calendar conectado.")
+        else:
+            self.cal_estado.setText(f"No pude conectar: {texto}")
+
+    def _consultar_google(self):
+        trabajador = TrabajadorConexion(calendar_google.consultar_eventos)
+        trabajador.terminado.connect(lambda ok, texto: self._resultado_google(ok, texto))
+        self._trabajador_conexion = trabajador
+        trabajador.start()
+
+    def _desconectar_google(self):
+        calendar_google.revocar()
+        self.cal_estado.setText("Google Calendar desconectado.")
+
+    def _evento_desde_formulario(self):
+        titulo = self.cal_titulo.text().strip()
+        inicio = self.cal_inicio.text().strip()
+        fin = self.cal_fin.text().strip()
+        if not titulo or not inicio or not fin:
+            QMessageBox.warning(self, "Faltan datos", "Indica título, inicio y fin del evento.")
+            return None
+        return {
+            "summary": titulo,
+            "start": {"dateTime": inicio},
+            "end": {"dateTime": fin},
+        }
+
+    def _crear_evento_google(self):
+        payload = self._evento_desde_formulario()
+        if payload is None:
+            return
+        respuesta = QMessageBox.question(
+            self,
+            "Crear evento",
+            f"Se creará «{payload['summary']}».\n¿Autorizar esta acción?",
+        )
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        trabajador = TrabajadorConexion(calendar_google.crear_evento_google, payload)
+        trabajador.terminado.connect(lambda ok, texto: self._resultado_google(ok, texto))
+        self._trabajador_conexion = trabajador
+        trabajador.start()
+
+    def _actualizar_evento_google(self):
+        evento_id = self.cal_id.text().strip()
+        payload = self._evento_desde_formulario()
+        if not evento_id or payload is None:
+            QMessageBox.warning(self, "Faltan datos", "Indica el ID del evento y sus datos.")
+            return
+        respuesta = QMessageBox.question(
+            self,
+            "Actualizar evento",
+            f"Se actualizará «{payload['summary']}».\n¿Autorizar esta acción?",
+        )
+        if respuesta != QMessageBox.StandardButton.Yes:
+            return
+        trabajador = TrabajadorConexion(calendar_google.actualizar_evento_google, evento_id, payload)
+        trabajador.terminado.connect(lambda ok, texto: self._resultado_google(ok, texto))
+        self._trabajador_conexion = trabajador
+        trabajador.start()
 
     def _pagina_extensiones(self):
         pagina = QWidget()

@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.7.1
+
+- **Conexiones de IA y Google Calendar.** Se añadió una página de Conexiones con adaptadores
+  locales para OpenCode y Antigravity, proveedores compatibles aprobados, OAuth PKCE para
+  Google Calendar y confirmación antes de crear o actualizar eventos.
+
 ## 2.6.8
 
 - **Plugins personales preparados para seguir al actualizar o desinstalar Pandex.**
