@@ -178,3 +178,77 @@ def descubrir_personales(carpeta):
         except Exception as exc:
             log.error("no pude cargar el plugin personal %s: %s", directorio.name, exc)
     return encontradas
+
+
+def sembrar_conectores(carpeta):
+    """Crea los plugins personales de Calendar e IA sin guardar credenciales en Git."""
+    carpeta = Path(carpeta)
+    carpeta.mkdir(parents=True, exist_ok=True)
+    contenidos = {
+        "calendar_google": (
+            {
+                "id": "calendar_google",
+                "nombre": "Google Calendar",
+                "version": "1.0.0",
+                "entrada": "calendar_google.py",
+                "descripcion": "Consulta Google Calendar y crea eventos solo con autorización.",
+                "licencia": "MIT",
+                "permisos": ["red.google", "calendario.leer", "calendario.escribir", "almacenamiento.plugin"],
+            },
+            "from pandex.calendar_google import consultar_eventos\n\n"
+            "class Task:\n"
+            "    id = 'calendar_google'\n"
+            "    nombre = 'Google Calendar'\n"
+            "    descripcion = 'Consulta eventos de Google Calendar.'\n"
+            "    schedule = '*/30 * * * *'\n"
+            "    def run(self, ctx):\n"
+            "        try:\n"
+            "            eventos = consultar_eventos()\n"
+            "            return {'ok': True, 'resumen': f'Encontré {len(eventos)} evento(s).'}\n"
+            "        except Exception as exc:\n"
+            "            return {'ok': False, 'resumen': str(exc)}\n",
+        ),
+        "ia": (
+            {
+                "id": "ia",
+                "nombre": "Conectar una IA",
+                "version": "1.0.0",
+                "entrada": "ia.py",
+                "descripcion": "Delega tareas a OpenCode, Antigravity u otra IA local.",
+                "licencia": "MIT",
+                "permisos": ["red.proveedor_ia", "ia.delegar", "almacenamiento.plugin"],
+            },
+            "from PyQt6.QtWidgets import QInputDialog\n"
+            "from pandex.ia import AdaptadorLocal\n\n"
+            "class Task:\n"
+            "    id = 'ia'\n"
+            "    nombre = 'Delegar a una IA'\n"
+            "    descripcion = 'Envía una tarea a la IA conectada.'\n"
+            "    def preparar(self, ctx):\n"
+            "        texto, ok = QInputDialog.getText(None, 'Delegar tarea', '¿Qué quieres que haga la IA?')\n"
+            "        return texto if ok and texto.strip() else None\n"
+            "    def run(self, ctx):\n"
+            "        from pathlib import Path\n"
+            "        from pandex import ia\n"
+            "        from pandex.rutas import PLUGINS_PERSONALES\n"
+            "        estado = ia.leer_estado(Path(PLUGINS_PERSONALES) / 'ia')\n"
+            "        proveedor = estado.get('proveedor', 'opencode')\n"
+            "        ejecutable = estado.get('ejecutable', proveedor)\n"
+            "        resultado = AdaptadorLocal(proveedor, ejecutable).responder(ctx.entrada)\n"
+            "        if not resultado.ok:\n"
+            "            return {'ok': False, 'resumen': resultado.error}\n"
+            "        return {'ok': True, 'resumen': 'La IA respondió.', 'informe': resultado.texto}\n",
+        ),
+    }
+    sembrados = []
+    for id_plugin, (manifest, entrada) in contenidos.items():
+        destino = carpeta / id_plugin
+        destino.mkdir(parents=True, exist_ok=True)
+        if not (destino / "manifest.json").exists():
+            (destino / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        if not (destino / "calendar_google.py").exists() and id_plugin == "calendar_google":
+            (destino / "calendar_google.py").write_text(entrada, encoding="utf-8")
+        if not (destino / "ia.py").exists() and id_plugin == "ia":
+            (destino / "ia.py").write_text(entrada, encoding="utf-8")
+        sembrados.append(destino)
+    return sembrados

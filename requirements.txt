@@ -9,6 +9,7 @@ APScheduler==3.11.3
 # Sincronizar Canvas: tu navegador (Firefox, Chrome o Edge) solo para iniciar sesión, y la API de Canvas
 selenium==4.51.0
 requests==2.34.2
+keyring==25.10.0
 
 # Personajes propios e íconos
 pillow==13.0.0

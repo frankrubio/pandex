@@ -23,6 +23,8 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T011.2 | Cancelar una tarea y salir limpio | 011 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T012.1 | Actualizar sin miedo: confirmar, versiones publicadas con SHA-256 y volver atrás | 012 | — | en curso (claude/vibrant-volta-t1vhh9) |
 | T013.1 | Bajar la versión corregida de un archivo sin tocar la anterior | 013 | — | en curso (claude/vibrant-volta-t1vhh9) |
+| T014.1 | Conectar IA local o compatible sin secretos ni shell | 014 | T007.1 | libre |
+| T014.2 | Conectar Google Calendar con OAuth y confirmación | 014 | T014.1 | libre |
 
 ## Prioridad 2 · Residuos y privacidad (riesgo bajo, valor alto)
 

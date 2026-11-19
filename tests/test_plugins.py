@@ -103,6 +103,15 @@ class Manifiestos(unittest.TestCase):
             self.assertEqual(destino, personal / "depa")
             self.assertTrue((destino / "manifest.json").is_file())
 
+    def test_sembrar_conectores_crea_plugins_fuera_del_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            personal = Path(tmp) / "plugins_personales"
+            sembrados = plugins.sembrar_conectores(personal)
+            self.assertEqual({p.name for p in sembrados}, {"calendar_google", "ia"})
+            for carpeta in sembrados:
+                plugins.leer_manifest(carpeta)
+            self.assertTrue(all(rutas.RAIZ.resolve() not in p.resolve().parents for p in sembrados))
+
 
 if __name__ == "__main__":
     unittest.main()

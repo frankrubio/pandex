@@ -29,6 +29,9 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 | Personajes que añadiste | `personajes/` (carpeta de datos) | mostrarlos |
 | Plugins personales y su estado local | `plugins_personales/` (carpeta de datos) | mantener tus extensiones al actualizar |
 | Caché de plugins publicados | `plugins_publicados/` (carpeta de datos) | instalar sin modificar el repositorio |
+| Configuración local de IA | `plugins_personales/ia/estado.json` | proveedor, ejecutable, endpoint y modelo; sin clave |
+| Clave de IA compatible | almacén seguro del sistema | autenticar el proveedor elegido |
+| Refresh token de Google Calendar | almacén seguro del sistema | renovar el acceso sin contraseña |
 | Respaldos de actualizaciones | `respaldos/` (carpeta de datos) | volver atrás si algo sale mal |
 | Punto de vuelta de la última actualización (versiones y archivos, nada tuyo) | `actualizacion.json` (carpeta de datos) | «Volver a la versión anterior» |
 | Registro de eventos | `logs/pandex.log` (carpeta de Pandex, máx. ~4 MB) | entender qué pasó |
