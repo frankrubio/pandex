@@ -92,6 +92,7 @@ Estados: `libre` · `en curso (rama)` · `hecha` · `bloqueada (motivo)`
 | T009.1 | Reconectar la carpeta de cursos desde Configuración | 009 | — | hecha |
 | T010.1 | Iniciar sesión sin trabas en Chrome y Edge | 010 | — | hecha |
 | T010.2 | Correcciones de la revisión de código del inicio de sesión | 010 | T010.1 | hecha |
+| T014.1 | Adaptar Pandex a nombres en inglés (`Semester`, `Week`, `Course`, `Lecture`, `Laboratory`…) | 014 | — | hecha |
 
 ## Preguntas abiertas para Frank
 

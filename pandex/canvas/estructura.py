@@ -49,12 +49,17 @@ def items_de_modulos(modulos):
 # --------------------------------------------------------------------------
 
 
+_TIPOS_TEORIA = {"teoria", "teo", "teor", "theory", "theo", "lecture", "lectures", "lec"}
+_TIPOS_LAB = {"laboratorio", "laboratorios", "labo", "laboratory", "laboratories", "lab", "labs"}
+
+
 def emparejar_cursos(cursos, reglas):
     """Asocia cada curso de la configuración con su curso real de Canvas.
 
     Una regla nombra su curso por ``canvas_id`` (lo que escribe el asistente) o
     por ``codigo`` + ``tipo`` (cómodo para escribir a mano: el código aparece en
-    el nombre del curso, y ``tipo`` distingue ``"teoria"`` de ``"laboratorio"``).
+    el nombre del curso, y ``tipo`` distingue ``"teoria"``/``"theory"``/``"lecture"``
+    de ``"laboratorio"``/``"laboratory"``/``"lab"``).
     """
     parejas = []
     for regla in reglas:
@@ -62,13 +67,15 @@ def emparejar_cursos(cursos, reglas):
             parejas += [(regla, c) for c in cursos if c.get("id") == regla["canvas_id"]]
             continue
         codigo = normalizar(regla.get("codigo", ""))
-        tipo = (regla.get("tipo") or "").lower()
+        tipo = normalizar(regla.get("tipo") or "")
+        es_tipo_lab = tipo in _TIPOS_LAB
+        es_tipo_teo = tipo in _TIPOS_TEORIA
         for curso in cursos:
             crudo = f"{curso.get('name', '')} {curso.get('course_code', '')}"
             if not codigo or codigo not in normalizar(crudo):
                 continue
             lab = es_laboratorio(crudo)
-            if (tipo == "laboratorio" and not lab) or (tipo == "teoria" and lab):
+            if (es_tipo_lab and not lab) or (es_tipo_teo and lab):
                 continue
             parejas.append((regla, curso))
     return parejas
@@ -79,15 +86,18 @@ def alias_curso(regla, curso):
     if regla.get("alias"):
         return regla["alias"]
     nombre = nombre_corto(curso.get("name") or regla.get("codigo", "curso"))
-    return nombre + (" (lab)" if (regla.get("tipo") or "") == "laboratorio" else "")
+    return nombre + (" (lab)" if normalizar(regla.get("tipo") or "") in _TIPOS_LAB else "")
 
 
 # --------------------------------------------------------------------------
 # análisis para el asistente
 # --------------------------------------------------------------------------
 
-# lo que distingue a dos cursos-pareja: «Teoría 1», «Teo. 1», «Laboratorio 14», «Lab. 11»
-_MITAD = re.compile(r"\b(teor[ií]a|teo|laboratorio|lab)\b\.?\s*\d*", re.IGNORECASE)
+# lo que distingue a dos cursos-pareja: «Teoría 1», «Lecture 1», «Laboratory 14», «Lab. 11»
+_MITAD = re.compile(
+    r"(?<![a-z])(teor[ií]a|teo|theory|theo|lectures?|lec|laboratorio|laboratory|labs?)(?![a-z])\.?\s*\d*",
+    re.IGNORECASE,
+)
 
 
 def nombre_corto(nombre):

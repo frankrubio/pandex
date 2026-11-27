@@ -26,8 +26,8 @@ from datetime import datetime
 from pathlib import Path
 
 from ..rutas import DATOS
-from .destinos import carpeta_destino, ruta_vetada
-from .nombres import limpiar_nombre, nombre_destino, normalizar, palabras
+from .destinos import carpeta_destino, clave_carpeta, ruta_vetada
+from .nombres import limpiar_nombre, nombre_destino, normalizar, numero_de_semana, palabras
 
 DIARIOS = DATOS / "reordenamientos"
 MARCA_MD = "<!-- Pandex:"  # primera línea de los .md que genera «Convertir a Markdown»
@@ -36,7 +36,12 @@ MARCA_MD = "<!-- Pandex:"  # primera línea de los .md que genera «Convertir a 
 # 1. emparejar tus carpetas con los cursos
 # --------------------------------------------------------------------------
 
-_VACIAS = {"de", "del", "la", "las", "el", "los", "y", "e", "a", "en", "para", "por", "al", "con"}
+_VACIAS = {
+    "de", "del", "la", "las", "el", "los", "y", "e", "a", "en", "para", "por", "al", "con",
+    "of", "the", "and", "to", "in", "for", "with", "an", "on", "at", "by", "from",
+    "course", "curso", "semester", "semestre", "ciclo", "term", "quarter",
+    "fall", "spring", "summer", "winter",
+}
 
 
 def _fichas(texto):
@@ -103,10 +108,16 @@ def emparejar_carpetas(nombres, carpetas, minimo=0.5):
 # 2. tus convenciones
 # --------------------------------------------------------------------------
 
-PREFIJOS_SEMANA = {"sem", "semana", "s", "week", "w"}
-TEORIA = {"teoria", "teo", "theory", "teorico", "teorica"}
-LAB = {"lab", "labs", "laboratorio", "laboratorios", "practica", "practicas"}
+PREFIJOS_SEMANA = {"sem", "semana", "s", "week", "wk", "w"}
+TEORIA = {"teoria", "teo", "teor", "teorico", "teorica", "theory", "theo", "lecture", "lectures", "lec"}
+LAB = {"lab", "labs", "labo", "laboratorio", "laboratorios", "laboratory", "laboratories",
+       "practica", "practicas", "practice", "practical"}
 _RE_CARPETA_SEMANA = re.compile(r"^(?P<pre>\D*?)(?P<num>\d{1,2})$")
+_RE_WEEK_EN = re.compile(r"(?<![a-z])(?:week|wk)[\s._-]*\d{1,2}(?!\d)", re.IGNORECASE)
+_RE_SEM_ES = re.compile(r"(?<![a-z])sem(?:ana)?[\s._-]*\d{1,2}(?!\d)", re.IGNORECASE)
+_RE_LECTURE = re.compile(r"(?<![a-z])(?:lectures?|lec)(?![a-z])", re.IGNORECASE)
+_RE_THEORY = re.compile(r"(?<![a-z])(?:theory|theo)(?![a-z])", re.IGNORECASE)
+_RE_TEORIA_ES = re.compile(r"(?<![a-z])(?:teor[ií]a|teo)(?![a-z])", re.IGNORECASE)
 
 
 @dataclass
@@ -118,6 +129,9 @@ class Convenciones:
     alias_lab: list = field(default_factory=list)
     secciones: list = field(default_factory=list)  # nombres de carpetas de sección que ya usas
     detectada: bool = False  # True si salió de tus carpetas y no de los valores de fábrica
+    semana_detectada: bool = False
+    teoria_detectada: bool = False
+    lab_detectada: bool = False
 
     def describir(self):
         ejemplo = self.formato_semana.format(n=3)
@@ -168,7 +182,12 @@ def detectar_convenciones(carpetas_curso):
                     mirar_secciones(hijo)
             mirar_secciones(semana)
 
-    conv = Convenciones(detectada=bool(formatos or teorias or labs or secciones))
+    conv = Convenciones(
+        detectada=bool(formatos or teorias or labs or secciones),
+        semana_detectada=bool(formatos),
+        teoria_detectada=bool(teorias),
+        lab_detectada=bool(labs),
+    )
     if formatos:
         conv.formato_semana = formatos.most_common(1)[0][0]
     if teorias:
@@ -181,11 +200,52 @@ def detectar_convenciones(carpetas_curso):
     return conv
 
 
+def convenciones_de_canvas(resumenes, modulos):
+    """Propone ``Week {n}`` y ``Lecture``/``Theory`` si los cursos y módulos de Canvas están en inglés.
+
+    Deja ``detectada=False`` porque sale de Canvas, no de carpetas previas del usuario (EST-05).
+    """
+    conv = Convenciones()
+    en_sem = es_sem = lec = theo = teo_es = 0
+    for r in resumenes:
+        nombre = r.nombre
+        if not r.es_lab:
+            if _RE_LECTURE.search(nombre):
+                lec += 1
+            elif _RE_THEORY.search(nombre):
+                theo += 1
+            elif _RE_TEORIA_ES.search(nombre):
+                teo_es += 1
+        for mod in modulos.get(r.curso["id"], []):
+            titulo = mod.get("name") or ""
+            if numero_de_semana(titulo) is None:
+                continue
+            if _RE_WEEK_EN.search(titulo):
+                en_sem += 1
+            elif _RE_SEM_ES.search(titulo):
+                es_sem += 1
+
+    if en_sem > es_sem:
+        conv.formato_semana = "Week {n}"
+    if lec > teo_es and lec >= theo:
+        conv.teoria = "Lecture"
+    elif theo > teo_es:
+        conv.teoria = "Theory"
+    elif en_sem > es_sem and not teo_es:
+        conv.teoria = "Theory"
+    return conv
+
+
 def _misma_seccion(a, b):
-    """«Material de clase» y «Material de clases» son la misma sección."""
+    """«Material de clase» y «Material de clases» (o «Class Material», «Activity»/«Activities») son la misma."""
+    ca, cb = clave_carpeta(a), clave_carpeta(b)
+    if ca and ca == cb:
+        return True
     na, nb = normalizar(a), normalizar(b)
     corto, largo = sorted((na, nb), key=len)
-    return bool(corto) and largo.startswith(corto) and len(largo) - len(corto) <= 2
+    if bool(corto) and largo.startswith(corto) and len(largo) - len(corto) <= 2:
+        return True
+    return corto.endswith("y") and largo == corto[:-1] + "ies"
 
 
 def mapa_secciones(subencabezados, existentes=()):
