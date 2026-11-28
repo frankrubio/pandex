@@ -23,6 +23,7 @@ PERSONALES = (
     re.compile(r"(^|/)historial_canvas\.json$"),
     re.compile(r"(^|/)registro_canvas\.json$"),
     re.compile(r"(^|/)sesion_canvas\.json$"),
+    re.compile(r"(^|/)sesion_drive\.json$"),
     re.compile(r"(^|/)inventario\.json$"),
     re.compile(r"(^|/)onedrive\.json$"),
     re.compile(r"(^|/)rclone\.conf$"),

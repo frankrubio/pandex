@@ -10,6 +10,7 @@ Los programas que Pandex abre (tu navegador, rclone, pip) están en ``docs/priva
 from urllib.parse import urlsplit
 
 GITHUB = frozenset({"raw.githubusercontent.com", "codeload.github.com", "github.com", "api.github.com"})
+GOOGLE_DRIVE = frozenset({"drive.google.com", "docs.google.com", "drive.usercontent.google.com"})
 
 
 class ErrorRed(RuntimeError):

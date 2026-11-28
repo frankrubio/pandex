@@ -21,8 +21,8 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 | Copia de tu configuración (`config-ultima-buena.json`) y, si alguna vez se dañó, hasta 3 copias del archivo dañado (`config-danado-*.json`) | carpeta de datos | abrir Pandex aunque `config.json` se dañe |
 | Fecha de la última búsqueda de actualizaciones | `config.json` (`ultima_busqueda`) | buscar una vez al día como máximo |
 | Qué archivo de Canvas está en qué ruta de tu PC | `historial_canvas.json` (carpeta de datos) | no volver a bajar lo que ya tienes |
-| Sesión guardada (`sesion_canvas.json`: solo las cookies de tu Canvas, permisos solo para tu usuario) | carpeta de datos | no abrir el navegador cada vez; se borra sola si Canvas la rechaza y al desinstalar |
-| Sesión del navegador (cookies) | `browser-profile/` o `browser-profile-firefox/` (carpeta de datos) | entrar a Canvas sin escribir la contraseña |
+| Sesión guardada (`sesion_canvas.json` y, si un curso enlaza a Drive, `sesion_drive.json`: solo las cookies necesarias, permisos solo para tu usuario) | carpeta de datos | no abrir el navegador cada vez; se borra sola si caduca y al desinstalar |
+| Sesión del navegador (cookies) | `browser-profile/` o `browser-profile-firefox/` (carpeta de datos) | entrar a Canvas y a Google Drive institucional sin escribir la contraseña |
 | Cuentas de OneDrive (el nombre que les pusiste) y su acceso | `onedrive.json`, `rclone.conf` (carpeta de datos) | montar tu OneDrive en Linux |
 | Cuándo corrió cada tarea | `ultimas_ejecuciones.json` (carpeta de datos) | ponerse al día si la PC estuvo apagada |
 | Movimientos de un reordenamiento | `reordenamientos/` (carpeta de datos) | poder deshacerlo |
@@ -35,7 +35,7 @@ que hace Pandex, es un error: repórtalo (ver [SECURITY.md](../SECURITY.md)).
 
 **Carpeta de datos:** `%LOCALAPPDATA%\Pandex` en Windows, `~/.local/share/Pandex` en Linux.
 En Linux, la carpeta de datos y los perfiles del navegador son solo para tu usuario (`0700`), y
-`sesion_canvas.json` y `rclone.conf` también (`0600`). En Windows, `%LOCALAPPDATA%` ya es solo tuyo.
+`sesion_canvas.json`, `sesion_drive.json` y `rclone.conf` también (`0600`). En Windows, `%LOCALAPPDATA%` ya es solo tuyo.
 
 ### Las claves de `config.json`
 
@@ -60,6 +60,7 @@ El registro incluye nombres de cursos y de archivos, y rutas de tu PC. Por eso:
 | Destino | Cuándo | Qué envía |
 |---|---|---|
 | Tu Canvas (la dirección que escribiste) | al configurar y sincronizar | pedidos de lectura de la API con tu sesión, y descargas (Canvas las redirige a su almacenamiento de archivos; esa redirección la decide Canvas) |
+| Google Drive (`drive.google.com`, `docs.google.com`, `drive.usercontent.google.com`) | solo cuando un módulo o página de tu curso enlaza a un archivo de Google Drive | descarga el archivo enlazado (con tu sesión institucional si el enlace es exclusivo de tu universidad) |
 | GitHub (`api.github.com`, `github.com`, `raw.githubusercontent.com`, `codeload.github.com`) | al buscar actualizaciones (una vez al día como máximo; se puede apagar) | nada tuyo: lee la última versión publicada y sus novedades, y descarga su ZIP y su SHA-256 (GitHub los sirve desde `release-assets.githubusercontent.com`) |
 | PyPI (`pypi.org`, `files.pythonhosted.org`) | al instalar o actualizar Pandex o una función opcional | nada tuyo: descarga paquetes |
 | GitHub (`github.com`, que sirve el archivo desde `release-assets.githubusercontent.com`) | solo al instalar, si no tienes Python 3.12 o más nuevo y aceptas bajar uno | nada tuyo: descarga Python (python-build-standalone) y lo comprueba con la huella fija de `herramientas/python_portatil.txt` |
@@ -70,7 +71,7 @@ Pandex rechaza cualquier pedido propio a otro host (`pandex/red.py`, spec 004, P
 
 | Programa | Con quién | Cuándo |
 |---|---|---|
-| Tu navegador (Firefox, Chrome o Edge: el que elijas) con el perfil de Pandex | Canvas y el inicio de sesión de tu universidad | al iniciar sesión |
+| Tu navegador (Firefox, Chrome o Edge: el que elijas) con el perfil de Pandex | Canvas, el inicio de sesión de tu universidad y Google Drive | al iniciar sesión o cambiar a tu cuenta institucional |
 | Selenium Manager (Linux) | GitHub, para bajar `geckodriver` (~3 MB) | la primera vez que inicias sesión |
 | rclone (Linux) | Microsoft | si conectas OneDrive |
 
@@ -80,9 +81,9 @@ instala ni los carga: decide el tipo de archivo por la extensión (spec 004, PRI
 
 ## Borrar tus datos
 
-- **Solo la sesión de Canvas:** Configuración → Tareas → Sincronizar Canvas → **Olvidar mi
-  sesión**. Borra los perfiles del navegador de Pandex (también el de Firefox snap) y
-  `sesion_canvas.json`; no toca tus cursos, tu historial ni `config.json`. La próxima vez inicias
+- **Solo la sesión de Canvas y Google Drive:** Configuración → Tareas → Sincronizar Canvas → **Olvidar mi
+  sesión**. Borra los perfiles del navegador de Pandex (también el de Firefox snap),
+  `sesion_canvas.json` y `sesion_drive.json`; no toca tus cursos, tu historial ni `config.json`. La próxima vez inicias
   sesión otra vez.
 - **Todo lo de Pandex:** cierra Pandex y borra la carpeta de datos y `config.json`. Tus cursos
   descargados no se tocan.

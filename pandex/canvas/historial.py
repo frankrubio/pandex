@@ -49,26 +49,61 @@ class Historial:
 
     # ---------- archivos en disco ----------
 
-    def conocido(self, file_id):
-        """La ruta donde está ese archivo, si sigue existiendo; si no, None."""
+    def _rutas_de(self, entrada):
+        if not isinstance(entrada, dict):
+            return []
+        vistas, salida = set(), []
+        for r in [*(entrada.get("rutas") or []), entrada.get("ruta")]:
+            if r and _clave(r) not in vistas:
+                vistas.add(_clave(r))
+                salida.append(Path(r))
+        return salida
+
+    def conocido(self, file_id, destino=None):
+        """La ruta donde está ese archivo, si sigue existiendo (en ``destino`` si se indica); si no, None."""
         entrada = self.archivos.get(str(file_id))
-        if entrada:
-            ruta = Path(entrada["ruta"])
+        if not entrada:
+            return None
+        clave_destino = _clave(destino) if destino is not None else None
+        for ruta in self._rutas_de(entrada):
+            if clave_destino is not None and _clave(ruta.parent) != clave_destino:
+                continue
             if ruta.exists():
                 return ruta
         return None
 
+    def meta_conocida(self, file_id):
+        """``{"nombre", "tamano"}`` si el historial ya conoce este archivo (p. ej. de otra semana), o None."""
+        entrada = self.archivos.get(str(file_id))
+        if not isinstance(entrada, dict) or not entrada.get("tamano"):
+            return None
+        rutas = self._rutas_de(entrada)
+        nombre = entrada.get("nombre") or (rutas[0].name if rutas else "")
+        return {"nombre": nombre, "tamano": entrada["tamano"]} if nombre else None
+
     def anotar(self, file_id, ruta, tamano=None):
-        self.archivos[str(file_id)] = {"ruta": str(ruta), "tamano": tamano}
+        fid = str(file_id)
+        ruta = Path(ruta)
+        previa = self.archivos.get(fid)
+        existentes = [str(r) for r in self._rutas_de(previa) if _clave(r) != _clave(ruta)]
+        existentes.append(str(ruta))
+        self.archivos[fid] = {
+            "ruta": str(ruta),
+            "rutas": existentes,
+            "nombre": ruta.name,
+            "tamano": tamano,
+        }
         if self._por_ruta is not None:
-            self._por_ruta[_clave(ruta)] = (str(file_id), tamano)
+            self._por_ruta[_clave(ruta)] = (fid, tamano)
         self.cambios = True
 
     def de_ruta(self, ruta):
         """``(id, tamaño)`` del archivo de Canvas anotado en esa ruta, o None (spec 013)."""
         if self._por_ruta is None:
-            self._por_ruta = {_clave(e["ruta"]): (fid, e.get("tamano")) for fid, e in self.archivos.items()
-                              if isinstance(e, dict) and e.get("ruta")}
+            self._por_ruta = {}
+            for fid, e in self.archivos.items():
+                for r in self._rutas_de(e):
+                    self._por_ruta[_clave(r)] = (fid, e.get("tamano"))
         return self._por_ruta.get(_clave(ruta))
 
     # ---------- descarga inicial ----------

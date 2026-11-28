@@ -10,38 +10,94 @@ Muchas universidades dan teoría y laboratorio como **dos cursos** de Canvas
 se reconocen como pareja para que compartan una carpeta.
 """
 
+import html
 import re
 from collections import Counter
 from dataclasses import dataclass, field
 
-from .nombres import es_laboratorio, limpiar_nombre, normalizar, numero_de_semana
+from . import drive
+from .destinos import es_material_adicional
+from .nombres import es_laboratorio, es_teoria, limpiar_nombre, normalizar, numero_de_semana
+
+_RE_ARCHIVO_CANVAS = re.compile(r"(?:/courses/\d+)?/files/(\d+)(?=/|\?|$)", re.IGNORECASE)
+_RE_ENLACE_HTML = re.compile(r'<a\b[^>]*?\bhref=["\']([^"\']+)["\'][^>]*>(.*?)</a>', re.IGNORECASE | re.DOTALL)
+_RE_ETIQUETAS = re.compile(r"<[^>]+>")
 
 
 @dataclass
 class Item:
-    """Un archivo dentro de un módulo de Canvas."""
+    """Un archivo dentro de un módulo de Canvas (o enlazado en Google Drive)."""
 
     modulo: str     # nombre del módulo ("Semana 3")
     seccion: str    # subencabezado vigente, o None si el archivo va antes de todos
     titulo: str     # como lo muestra el módulo
-    file_id: int
+    file_id: int | str
     bloqueado: bool = False  # el docente lo publicó pero aún no te deja abrirlo
     abre: str = None         # cuándo se abre (ISO), si Canvas lo dice
+    url_externa: str = None  # enlace a Google Drive, si viene de ExternalUrl o de una página
+
+
+def _id_archivo_canvas(url):
+    m = _RE_ARCHIVO_CANVAS.search(str(url or ""))
+    return int(m.group(1)) if m else None
+
+
+def _texto_enlace(fragmento, respaldo=""):
+    limpio = html.unescape(_RE_ETIQUETAS.sub(" ", fragmento or "")).strip()
+    limpio = " ".join(limpio.split())
+    return limpio or (respaldo or "").strip()
+
+
+def enlaces_de_html(cuerpo_html, titulo_respaldo=""):
+    """Extrae ``[(titulo, file_id, url_externa)]`` de los enlaces a Canvas o Google Drive en un HTML."""
+    salida = []
+    for href, contenido in _RE_ENLACE_HTML.findall(cuerpo_html or ""):
+        url = html.unescape(href).strip()
+        titulo = _texto_enlace(contenido, titulo_respaldo)
+        info_drive = drive.extraer_drive(url)
+        if info_drive:
+            salida.append((titulo, f"drive_{info_drive['id']}", info_drive["url"]))
+            continue
+        fid = _id_archivo_canvas(url)
+        if fid:
+            salida.append((titulo, fid, None))
+    return salida
 
 
 def items_de_modulos(modulos):
     """Aplana los módulos de un curso en sus archivos (``Item``), en orden."""
     for modulo in modulos:
+        nombre_mod = modulo.get("name") or ""
         seccion = None
         for item in modulo.get("items") or []:
             tipo = item.get("type")
+            titulo = (item.get("title") or "").strip()
+            detalles = item.get("content_details") or {}
+            bloqueado = bool(detalles.get("locked_for_user"))
+            abre = detalles.get("unlock_at")
             if tipo == "SubHeader":
-                seccion = item.get("title") or ""
-            elif tipo == "File" and item.get("content_id"):
-                detalles = item.get("content_details") or {}
-                yield Item(modulo.get("name") or "", seccion,
-                           (item.get("title") or "").strip(), item["content_id"],
-                           bool(detalles.get("locked_for_user")), detalles.get("unlock_at"))
+                seccion = titulo
+            elif tipo == "File":
+                fid = item.get("content_id") or _id_archivo_canvas(item.get("url") or item.get("html_url"))
+                if fid:
+                    yield Item(nombre_mod, seccion, titulo, int(fid), bloqueado, abre)
+            elif tipo in ("ExternalUrl", "ExternalTool"):
+                url = (item.get("external_url") or item.get("url") or "").strip()
+                info_drive = drive.extraer_drive(url)
+                if info_drive:
+                    yield Item(nombre_mod, seccion, titulo, f"drive_{info_drive['id']}",
+                               bloqueado, abre, info_drive["url"])
+                    continue
+                fid = _id_archivo_canvas(url)
+                if fid:
+                    yield Item(nombre_mod, seccion, titulo, fid, bloqueado, abre)
+            elif tipo in ("Page", "Assignment"):
+                cuerpo = item.get("body") or item.get("description") or ""
+                if not cuerpo:
+                    continue
+                seccion_item = titulo if (es_material_adicional(titulo) or not seccion) else seccion
+                for t_enlace, fid, url_ext in enlaces_de_html(cuerpo, titulo):
+                    yield Item(nombre_mod, seccion_item, t_enlace, fid, bloqueado, abre, url_ext)
 
 
 # --------------------------------------------------------------------------
@@ -75,7 +131,9 @@ def emparejar_cursos(cursos, reglas):
             if not codigo or codigo not in normalizar(crudo):
                 continue
             lab = es_laboratorio(crudo)
-            if (es_tipo_lab and not lab) or (es_tipo_teo and lab):
+            teo = es_teoria(crudo)
+            combinado = lab and teo
+            if (es_tipo_lab and not lab) or (es_tipo_teo and lab and not combinado):
                 continue
             parejas.append((regla, curso))
     return parejas
@@ -93,9 +151,10 @@ def alias_curso(regla, curso):
 # análisis para el asistente
 # --------------------------------------------------------------------------
 
-# lo que distingue a dos cursos-pareja: «Teoría 1», «Lecture 1», «Laboratory 14», «Lab. 11»
+# lo que distingue a dos cursos-pareja: «Teoría 1», «Laboratorio 1.01», «Lab. 11»
 _MITAD = re.compile(
-    r"(?<![a-z])(teor[ií]a|teo|theory|theo|lectures?|lec|laboratorio|laboratory|labs?)(?![a-z])\.?\s*\d*",
+    r"(?<![a-z])(teor[ií]a|teo|theory|theo|lectures?|lec|laboratorio|laboratory|labs?)(?![a-z])"
+    r"\.?\s*\d*(?:[.-]\d+)*[a-z]?(?![a-z0-9])",
     re.IGNORECASE,
 )
 

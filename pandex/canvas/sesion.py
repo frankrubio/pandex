@@ -136,10 +136,13 @@ def guardar_atajo(base, cookies, user_agent):
 
 
 def olvidar_atajo():
+    from . import drive
+
     try:
         ATAJO.unlink(missing_ok=True)
     except OSError as exc:
         log.warning("no pude borrar la sesión guardada: %s", exc)
+    drive.olvidar_atajo_drive()
 
 
 def olvidar():
@@ -147,6 +150,8 @@ def olvidar():
     de sesión. No toca tus cursos, tu historial ni ``config.json``: la próxima vez inicias sesión
     otra vez. Devuelve lo que no se pudo borrar (un navegador que sigue abierto)."""
     import shutil
+
+    from . import drive
 
     carpetas = set(_navegador.PERFILES.values())
     for nombre in _navegador.PERFILES:
@@ -163,7 +168,7 @@ def olvidar():
         except OSError as exc:
             log.warning("no pude borrar %s: %s", carpeta.name, exc)
             fallaron.append(carpeta)
-    for archivo in (ATAJO, _navegador.USADO):
+    for archivo in (ATAJO, drive.ATAJO_DRIVE, _navegador.USADO):
         try:
             archivo.unlink(missing_ok=True)
         except OSError as exc:

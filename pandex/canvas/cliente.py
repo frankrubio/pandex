@@ -114,11 +114,35 @@ class Canvas:
         modulos = self.api(f"/courses/{curso_id}/modules",
                            {"include[]": ["items", "content_details"], "per_page": 100})
         for modulo in modulos:
-            # con muchos ítems Canvas no los incluye: hay que pedirlos aparte
-            if "items" not in modulo and modulo.get("items_url"):
+            # con muchos ítems Canvas no los incluye todos en línea (suele truncar en 10): hay que pedirlos aparte
+            items = modulo.get("items")
+            esperados = int(modulo.get("items_count") or 0)
+            if (items is None or len(items) < esperados) and modulo.get("items_url"):
                 modulo["items"] = self.api(modulo["items_url"],
                                            {"include[]": "content_details", "per_page": 100})
         return modulos
+
+    def pagina(self, curso_id, page_url):
+        """El cuerpo HTML de una página de Canvas, o ``""`` si está bloqueada o no existe."""
+        from urllib.parse import quote
+
+        try:
+            datos = self.api(f"/courses/{curso_id}/pages/{quote(str(page_url), safe='')}")
+            return (datos.get("body") or "") if isinstance(datos, dict) else ""
+        except SinConexion:
+            raise
+        except CanvasError:
+            return ""
+
+    def tarea_canvas(self, curso_id, assignment_id):
+        """La descripción HTML de una tarea (Assignment) de Canvas, o ``""``."""
+        try:
+            datos = self.api(f"/courses/{curso_id}/assignments/{assignment_id}")
+            return (datos.get("description") or "") if isinstance(datos, dict) else ""
+        except SinConexion:
+            raise
+        except CanvasError:
+            return ""
 
     def archivos_del_curso(self, curso_id):
         """``{file_id: meta}`` en una llamada, o None si Canvas no deja ver el listado."""

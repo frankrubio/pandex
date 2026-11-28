@@ -3,6 +3,26 @@
 Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
 cuando buscas actualizaciones desde el menú.
 
+## 2.8.0
+
+- **Descargas completas en cursos como Programación I.** Pandex ahora pide todos los ítems de un
+  módulo aunque Canvas corte la lista en los primeros 10, baja los archivos que tienen el mismo
+  nombre genérico en distintas semanas (`Ejercicios.pdf`, `Guia.pdf`, `main.py`…) cuando su tamaño
+  cambia, extrae los archivos publicados dentro de páginas (`Page`), tareas (`Assignment`) o
+  enlaces del módulo y empareja secciones con decimales (`Laboratorio 1.01`).
+- **Elegir si bajar archivos repetidos cada semana.** En el asistente de Canvas y en Configuración
+  → Tareas → Sincronizar Canvas puedes elegir entre «Descargar solo una vez» o «Descargar siempre
+  (en cada semana)» para los archivos que el docente repite todas las semanas (como el PDF de la AP
+  en Fundamentos del Cálculo).
+- **Material adicional.** Reconoce y descarga los subencabezados y módulos de «Material adicional» y
+  «Material complementario» en cualquier modo de configuración, y los incluye como material de
+  estudio al convertir a Markdown.
+- **Descargas desde Google Drive (con cuenta institucional).** Si un módulo o página enlaza a un
+  archivo, documento, presentación u hoja de cálculo de Google Drive, Pandex lo descarga. Si el
+  enlace pide tu cuenta de la universidad y la predeterminada del navegador es tu cuenta personal,
+  prueba las demás cuentas de tu perfil y, si hace falta, abre el navegador para que cambies a tu
+  cuenta institucional.
+
 ## 2.7.1
 
 - **Adaptado a nombres en inglés (`Semester`, `Week`, `Course`, `Lecture`, `Theory`, `Laboratory`…).**

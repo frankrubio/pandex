@@ -110,6 +110,7 @@ class Estado:
         self.inicial = "todo"
         self.desde = 1
         self.horario = None
+        self.repetidos_cada_semana = bool(params.get("repetidos_cada_semana", False))
 
     @property
     def elegidos(self):
@@ -671,6 +672,11 @@ class PaginaDescarga(QWizardPage):
         grupo = QButtonGroup(self)
         for b in (self.todo, self.desde, self.nada):
             grupo.addButton(b)
+        self.repetidos = QComboBox()
+        self.repetidos.addItem("Descargar solo una vez", False)
+        self.repetidos.addItem("Descargar siempre (en cada semana)", True)
+        self.repetidos.setToolTip("Si un docente publica el mismo archivo todas las semanas (p. ej. la guía de AP),\n"
+                                  "elige si guardarlo solo en la primera semana o en cada semana.")
         self.programar = QCheckBox("Revisar Canvas automáticamente todos los días a las")
         self.hora = QTimeEdit(QTime(19, 0))
         self.hora.setLocale(QLocale(QLocale.Language.Spanish, QLocale.Country.Peru))
@@ -681,6 +687,10 @@ class PaginaDescarga(QWizardPage):
         fila_desde.addWidget(self.semana)
         fila_desde.addWidget(QLabel("en adelante"))
         fila_desde.addStretch()
+        fila_repetidos = QHBoxLayout()
+        fila_repetidos.addWidget(QLabel("Archivos repetidos cada semana:"))
+        fila_repetidos.addWidget(self.repetidos)
+        fila_repetidos.addStretch()
         fila_hora = QHBoxLayout()
         fila_hora.addWidget(self.programar)
         fila_hora.addWidget(self.hora)
@@ -689,7 +699,9 @@ class PaginaDescarga(QWizardPage):
         caja.addWidget(self.todo)
         caja.addLayout(fila_desde)
         caja.addWidget(self.nada)
-        caja.addSpacing(14)
+        caja.addSpacing(10)
+        caja.addLayout(fila_repetidos)
+        caja.addSpacing(10)
         caja.addLayout(fila_hora)
         caja.addWidget(_texto("<small>También puedes sincronizar cuando quieras desde el menú "
                               "de Pandex (clic derecho → Sincronizar Canvas).</small>"))
@@ -698,10 +710,13 @@ class PaginaDescarga(QWizardPage):
     def initializePage(self):
         self.todo.setText(f"Todo lo publicado hasta hoy ({self.estado.archivos_elegidos()} archivos)")
         self.semana.setValue(self.estado.ultima_semana())
+        indice = self.repetidos.findData(bool(self.estado.repetidos_cada_semana))
+        self.repetidos.setCurrentIndex(max(indice, 0))
 
     def validatePage(self):
         self.estado.inicial = "todo" if self.todo.isChecked() else "desde" if self.desde.isChecked() else "nada"
         self.estado.desde = self.semana.value()
+        self.estado.repetidos_cada_semana = bool(self.repetidos.currentData())
         h = self.hora.time()
         self.estado.horario = f"{h.minute()} {h.hour()} * * *" if self.programar.isChecked() else None
         return True
@@ -807,6 +822,7 @@ class AsistenteCanvas(QWizard):
             "secciones": e.secciones(),
             "cursos": reglas,
             "schedule": e.horario,
+            "repetidos_cada_semana": e.repetidos_cada_semana,
         })
         for clave, valor in (("headless", True), ("navegador", "auto"),
                              ("dedupe_por_tamano", True), ("espera_login_segundos", 300)):

@@ -7,10 +7,11 @@ del curso. El código vive en `pandex/canvas/`; `tasks/sync_canvas.py` solo lo c
 |---|---|
 | `nombres.py` | Normalizar texto, nombres válidos en Windows, leer el nº de semana, reconocer «Laboratorio». |
 | `cliente.py` | La API REST de Canvas con las cookies de tu sesión. Paginación y reintentos. |
+| `drive.py` | Descargar archivos y documentos de Google Drive enlazados en Canvas (con soporte para cambiar a tu cuenta institucional). |
 | `navegador.py` | Tu Firefox, Chrome o Edge con Selenium y un perfil propio; el driver va a `DATOS/navegadores`. |
 | `sesion.py` | Iniciar sesión con ese navegador y cerrarlo enseguida. |
 | `historial.py` | Qué archivo de Canvas ya está en tu disco y dónde. |
-| `estructura.py` | Leer cursos y módulos: semanas, secciones, parejas teoría/lab. |
+| `estructura.py` | Leer cursos y módulos: semanas, secciones, parejas teoría/lab, páginas y enlaces a Google Drive. |
 | `destinos.py` | A qué carpeta va cada archivo y si ya lo tienes (índice de duplicados). |
 | `sincronizar.py` | La tarea completa, por fases. |
 | `adoptar.py` | Usar una carpeta que ya tenías: emparejar, leer tu estilo, reordenar, deshacer. |
@@ -18,26 +19,38 @@ del curso. El código vive en `pandex/canvas/`; `tasks/sync_canvas.py` solo lo c
 
 ## Cómo lee Canvas
 
-Un curso de Canvas tiene **módulos** (`Semana 3`, `Sílabo y anexo`…). Cada módulo es una
-lista de ítems: archivos, enlaces, tareas y **subencabezados** (`Material de clase`,
-`Actividades`…) que agrupan a los ítems que vienen después. Pandex solo baja los ítems de
-tipo **archivo** de los módulos **publicados**.
+Un curso de Canvas tiene **módulos** (`Semana 3`, `Sílabo y anexo`, `Material adicional`…). Cada
+módulo es una lista de ítems: archivos, enlaces externos (`ExternalUrl`), páginas (`Page`), tareas
+(`Assignment`) y **subencabezados** (`Material de clase`, `Actividades`, `Material adicional`…) que
+agrupan a los ítems que vienen después. Pandex baja:
+
+- los ítems de tipo **archivo** de los módulos **publicados** (si un módulo tiene más de 10 ítems y
+  Canvas trunca la lista en línea, pide el listado completo a `items_url`);
+- los archivos de Canvas y de **Google Drive** (`drive.google.com`, `docs.google.com`) enlazados
+  como enlaces externos o dentro de páginas y tareas del módulo;
+- los subencabezados y módulos de **Material adicional** (`Material adicional`, `Material
+  complementario`, `Material de apoyo`, `Additional Material`…).
+
+Si un enlace de Google Drive es exclusivo para cuentas de tu universidad y la cuenta predeterminada
+del navegador es tu cuenta personal (`authuser=0`), Pandex prueba primero las demás cuentas ya
+abiertas en su perfil (`authuser=1, 2…`) y, si hace falta, te abre el navegador para que cambies a
+tu cuenta institucional.
 
 La semana sale del **nombre del módulo** (`Semana 7`, `Sem 7`, `Week 07`, `Week_07`, `Wk 7`).
-Los módulos sin número de semana (`Sílabo`, `Syllabus`, `Semester Overview`…) van a una carpeta
-con su nombre, **sin** `Teoría` ni `Lab` dentro: el sílabo y los anexos valen para las dos mitades
-del curso. Si teoría y laboratorio traen en uno de esos módulos archivos distintos con el mismo
-nombre, solo se guarda el primero (el resumen lo lista entre los que «ya tenías»); renombra uno a
-mano si quieres los dos.
+Los módulos sin número de semana (`Sílabo`, `Syllabus`, `Material adicional`, `Semester Overview`…)
+van a una carpeta con su nombre, **sin** `Teoría` ni `Lab` dentro: el sílabo y los anexos valen para
+las dos mitades del curso. Si teoría y laboratorio traen en uno de esos módulos archivos distintos
+con el mismo nombre, solo se guarda el primero (el resumen lo lista entre los que «ya tenías»);
+renombra uno a mano si quieres los dos.
 
 Muchas universidades separan **teoría y laboratorio en dos cursos** de Canvas
-(`Programación I - Teoría 1` y `Programación I - Laboratorio 14`, o en inglés `Lecture 1`/`Theory 1`
-y `Laboratory 2`/`Lab 2`). El asistente los reconoce porque sus nombres solo difieren en esa parte,
-y les da una sola carpeta con `Teoría` (o `Lecture`/`Theory` si tus cursos están en inglés) y `Lab`
-dentro de cada semana. Si ya tenías carpetas con otro nombre (`teo`, `Theory`, `Lecture`,
-`Laboratorio`, `Laboratory`, `Week_01`, `Class Material`, `Syllabus`…), las reutiliza sin crear
-duplicados. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 11`, `Lec. 1 - Lab. 11`) es uno
-solo.
+(`Programación I - Teoría 1` y `Programación I - Laboratorio 14` o `Laboratorio 1.01`, o en inglés
+`Lecture 1`/`Theory 1` y `Laboratory 2`/`Lab 2`). El asistente los reconoce porque sus nombres solo
+difieren en esa parte, y les da una sola carpeta con `Teoría` (o `Lecture`/`Theory` si tus cursos
+están en inglés) y `Lab` dentro de cada semana. Si ya tenías carpetas con otro nombre (`teo`,
+`Theory`, `Lecture`, `Laboratorio`, `Laboratory`, `Week_01`, `Class Material`, `Syllabus`…), las
+reutiliza sin crear duplicados. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 11`,
+`Lec. 1 - Lab. 11`) es uno solo.
 
 ## Las fases de una sincronización
 
@@ -65,11 +78,12 @@ Una sincronización sin novedades tarda unos 6 segundos. Cada fase queda cronome
 
 ## ¿Ya lo tienes? (duplicados)
 
-Antes de bajar algo, Pandex revisa **la carpeta entera del curso** (todas las semanas y
-subcarpetas), no solo el destino, porque es común tener el mismo archivo en otra semana, en
-otra sección o renombrado a mano. Lo salta si:
+Antes de bajar algo, Pandex revisa la carpeta del curso (o solo la carpeta destino si activaste
+**Descargar siempre (en cada semana)** para archivos repetidos). Lo salta si:
 
-- **coincide el nombre completo**, ignorando tildes, espacios, signos y mayúsculas; o
+- **coincide el nombre completo**, ignorando tildes, espacios, signos y mayúsculas (si está en otra
+  carpeta/semana y pesa distinto, p. ej. `Sem 1/Ejercicios.pdf` y `Sem 2/Ejercicios.pdf`, se sabe
+  que son archivos distintos y se bajan ambos); o
 - **coincide el tamaño exacto en bytes**, aunque lo hayas renombrado.
 
 Para no saltar de más:
@@ -81,6 +95,9 @@ Para no saltar de más:
 - **Entre teoría y laboratorio, el nombre solo no basta**: cada docente sube su propio
   `semana 9.pptx` y son materiales distintos. Entre las dos mitades, un archivo solo se salta
   si además pesa exactamente lo mismo (el docente de lab volvió a subir el de teoría).
+- **Archivos repetidos todas las semanas (p. ej. el PDF de la AP en Fundamentos del Cálculo):** en el
+  asistente («Descarga inicial») o en **Configuración → Tareas → Sincronizar Canvas** puedes elegir
+  entre **Descargar solo una vez** (por defecto) o **Descargar siempre (en cada semana)**.
 
 Cada decisión queda en el registro con su motivo y la ruta del archivo que ya tenías:
 `ya lo tenías (mismo nombre) · Programación · Clase 3.pdf → …\Sem 3\Teoría\Clase 3.pdf`.
@@ -152,6 +169,7 @@ El asistente escribe todo esto en `config.json → tareas → sync_canvas`. Se p
 | `secciones` | `{}` | Subencabezado de Canvas → carpeta. La etiqueta vale como prefijo (`"material de clase"` cubre «Material de clases») y gana la más larga. |
 | `schedule` | `null` | Horario cron (p. ej. `"0 19 * * *"`). |
 | `dedupe_por_tamano` | `true` | Saltar archivos con el mismo tamaño aunque cambie el nombre. |
+| `repetidos_cada_semana` | `false` | `false`: si un mismo archivo se publica todas las semanas (p. ej. el PDF de la AP), se baja solo una vez. `true`: se baja en la carpeta de cada semana. Se elige en el asistente o en Configuración → Tareas → Sincronizar Canvas (y también se puede poner por curso). |
 | `headless` | `true` | Probar primero sin ventana con la sesión guardada. |
 | `navegador` | `"auto"` | Con qué navegador inicias sesión: `"auto"` (el que ya usabas con Pandex; si es la primera vez, tu predeterminado), `"firefox"`, `"chrome"` o `"edge"`. Se elige en Configuración → Tareas → Sincronizar Canvas. Pandex nunca descarga un navegador. |
 | `espera_login_segundos` | `300` | Cuánto esperar a que inicies sesión en la ventana. |
