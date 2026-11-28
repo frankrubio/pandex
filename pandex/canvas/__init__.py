@@ -3,6 +3,7 @@
 ===================  ==========================================================
 ``nombres``          normalizar texto, nombres válidos en Windows, nº de semana
 ``cliente``          la API REST de Canvas con las cookies de tu sesión
+``drive``            descargar enlaces de Google Drive (y cambio a cuenta institucional)
 ``navegador``        tu Firefox, Chrome o Edge con Selenium (perfil propio)
 ``sesion``           iniciar sesión con ese navegador y cerrarlo enseguida
 ``historial``        qué archivo de Canvas ya está en tu disco y dónde

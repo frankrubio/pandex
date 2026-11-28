@@ -54,6 +54,7 @@ NOMBRE_SI = [
                 r"|\bsummar(y|ies)\b|\boverview\b|\bnotes\b|\breview\b|\brecap\b"),
     ("material de clase", r"\bclases?\b|\bsesion(es)?\b|\bteo(ria)?\b|\bsemana\d*\b"
                           r"|\bcapitulo\b|\bpresentacion\b|\btema\b|\bunidad\b"
+                          r"|\badicional(es)?\b|\bcomplementarios?\b|\bsupplementary\b|\badditional\b"
                           r"|\blectures?\b|\bclass(es)?\b|\bsessions?\b|\btheory\b|\bweeks?\d*\b|\bwk\d*\b"
                           r"|\bchapters?\b|\bslides?\b|\bpresentations?\b|\btopics?\b|\bunits?\b|\bmodules?\b"),
     ("lectura", r"\blecturas?\b|\bfuentes?\b|\blibros?\b|\bglosario\b"

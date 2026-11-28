@@ -701,6 +701,7 @@ class DialogoConfiguracion(QDialog):
                 interno.addWidget(cron)
             if tarea.id == "sync_canvas":
                 interno.addLayout(self._fila_navegador(opciones.get("navegador", "auto")))
+                interno.addLayout(self._fila_repetidos(bool(opciones.get("repetidos_cada_semana", False))))
                 interno.addLayout(self._fila_reconectar())
             filas.addWidget(tarjeta)
             self.filas[tarea.id] = (activa, cron)
@@ -713,6 +714,23 @@ class DialogoConfiguracion(QDialog):
         scroll.setStyleSheet("QScrollArea, QScrollArea > QWidget > QWidget { background: transparent; }")
         caja.addWidget(scroll, 1)
         return pagina
+
+    def _fila_repetidos(self, actual):
+        """Elegir si bajar un archivo repetido cada semana (p. ej. el PDF de la AP) siempre o solo una vez."""
+        fila = QHBoxLayout()
+        fila.addWidget(QLabel("Archivos repetidos cada semana"))
+        self.repetidos_canvas = QComboBox()
+        self.repetidos_canvas.addItem("Descargar solo una vez", False)
+        self.repetidos_canvas.addItem("Descargar siempre (en cada semana)", True)
+        indice = self.repetidos_canvas.findData(bool(actual))
+        self.repetidos_canvas.setCurrentIndex(max(indice, 0))
+        self.repetidos_canvas.setToolTip(
+            "Si en un curso suben el mismo archivo todas las semanas (p. ej. el PDF de la AP),\n"
+            "elige si guardarlo solo en la primera semana o en la carpeta de cada semana."
+        )
+        fila.addWidget(self.repetidos_canvas)
+        fila.addStretch()
+        return fila
 
     def _fila_reconectar(self):
         """Si renombraste o moviste tu carpeta de cursos, Pandex se vuelve a adaptar (spec 009)."""
@@ -900,6 +918,8 @@ class DialogoConfiguracion(QDialog):
                 opciones["schedule"] = cron.valor()
         if getattr(self, "navegador_canvas", None) is not None:
             self.config.tarea("sync_canvas")["navegador"] = self.navegador_canvas.currentData()
+        if getattr(self, "repetidos_canvas", None) is not None:
+            self.config.tarea("sync_canvas")["repetidos_cada_semana"] = bool(self.repetidos_canvas.currentData())
 
         if self.inicio.isChecked() != accesos.arranca_con_el_sistema():
             try:

@@ -7,6 +7,7 @@ from pathlib import Path
 INVALIDOS_WINDOWS = r'<>:"/\|?*'
 RE_SEMANA = re.compile(r"(?<![a-z])(?:sem(?:ana)?|week|wk)[\s._-]*(\d{1,2})(?!\d)", re.IGNORECASE)
 RE_LAB = re.compile(r"(?<![a-z])lab(?:oratorio|oratory|s)?(?![a-z])")
+RE_TEORIA = re.compile(r"(?<![a-z])(?:teor[ií]a|teo|theory|theo|lectures?|lec)(?![a-z])")
 
 
 def normalizar(texto):
@@ -116,3 +117,8 @@ def numero_de_semana(texto):
 def es_laboratorio(nombre_curso):
     """«Laboratorio 14» o «Lab. 11» como palabra; no el «lab» de «colaborativo»."""
     return RE_LAB.search(str(nombre_curso).lower()) is not None
+
+
+def es_teoria(nombre_curso):
+    """«Teoría 1», «Teo. 1», «Theory 1» o «Lecture 1» como palabra."""
+    return RE_TEORIA.search(str(nombre_curso).lower()) is not None

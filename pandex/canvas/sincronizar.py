@@ -26,12 +26,13 @@ from pathlib import Path
 from .. import horas, onedrive
 from ..rutas import DATOS
 from ..tareas import Cancelada, fue_cancelada, si_cancelaron
-from . import nombres, sesion
+from . import drive, nombres, sesion
 from .cliente import Canvas, CanvasError, SinConexion
 from .destinos import (
     IndiceCurso,
     buscar_subcarpeta,
     carpeta_destino,
+    es_material_adicional,
     mitad_de,
     modo_de,
     ruta_vetada,
@@ -91,19 +92,20 @@ class Descarga:
     carpeta_curso: Path = None
 
 
-def candidatos_de(parejas, modulos, semana_hoy=None, log=None):
+def candidatos_de(parejas, modulos, semana_hoy=None, log=None, repetidos_cada_semana=False):
     """Los archivos de los módulos que corresponden a cada curso configurado.
 
     ``parejas`` son ``(regla, curso)`` y ``modulos`` los módulos de cada pareja,
-    en el mismo orden. Un archivo enlazado en varios módulos cuenta una vez.
+    en el mismo orden. Un archivo enlazado en varios módulos cuenta una vez, salvo
+    que ``repetidos_cada_semana`` esté activo (entonces cuenta una vez por semana).
     """
     vistos, salida = set(), []
     for (regla, curso), mods in zip(parejas, modulos):
         lista = modo_de(regla) == "lista"
         esperada = normalizar(regla.get("seccion_unica", ""))
+        repetir = bool(regla.get("repetidos_cada_semana", repetidos_cada_semana))
+        otros = regla.get("otros_modulos", True)
         for item in items_de_modulos(mods):
-            if item.file_id in vistos:
-                continue
             if lista:
                 seccion = item.seccion if item.seccion is not None else item.modulo
                 if not normalizar(seccion).startswith(esperada):
@@ -115,9 +117,16 @@ def candidatos_de(parejas, modulos, semana_hoy=None, log=None):
                 semana = semana_hoy
             else:
                 semana = numero_de_semana(item.modulo)
-                if semana is None and not regla.get("otros_modulos"):
+                if semana is None and not otros and not es_material_adicional(item.modulo):
                     continue
-            vistos.add(item.file_id)
+            clave_visto = (
+                (regla.get("carpeta"), semana, normalizar(item.seccion or ""), item.file_id)
+                if repetir
+                else item.file_id
+            )
+            if clave_visto in vistos:
+                continue
+            vistos.add(clave_visto)
             salida.append(Candidato(regla, curso, alias_curso(regla, curso), item, semana))
     return salida
 
@@ -131,7 +140,19 @@ def metadatos(canvas, candidatos, historial=None):
     if not candidatos:
         return {}
     metas = {}
-    cursos = {c.curso["id"] for c in candidatos}
+    de_canvas = []
+    for c in candidatos:
+        if c.item.url_externa:
+            metas[c.file_id] = {"nombre": drive.nombre_inicial(c.item.titulo, c.item.url_externa), "tamano": None}
+            continue
+        conocida = historial.meta_conocida(c.file_id) if historial is not None else None
+        if conocida is not None:
+            metas[c.file_id] = conocida
+            continue
+        de_canvas.append(c)
+    if not de_canvas:
+        return metas
+    cursos = {c.curso["id"] for c in de_canvas}
     probar = [cid for cid in cursos if historial is None or not historial.listado_prohibido(cid)]
     with ThreadPoolExecutor(HILOS_API) as ex:
         for cid, listado in zip(probar, ex.map(canvas.archivos_del_curso, probar)):
@@ -140,14 +161,17 @@ def metadatos(canvas, candidatos, historial=None):
                     historial.prohibir_listado(cid)
             else:
                 metas.update(listado)
-        faltan = [c for c in candidatos if c.file_id not in metas]
-        futuros = {ex.submit(canvas.archivo, c.curso["id"], c.file_id): c for c in faltan}
+        por_id = {}
+        for c in de_canvas:
+            if c.file_id not in metas and c.file_id not in por_id:
+                por_id[c.file_id] = c
+        futuros = {ex.submit(canvas.archivo, c.curso["id"], c.file_id): c for c in por_id.values()}
         for futuro in as_completed(futuros):
             metas[futuros[futuro].file_id] = futuro.result()
     return metas
 
 
-def _version_nueva(c, previo, tamano, historial):
+def _version_nueva(c, previo, tamano, historial, indice=None):
     """¿El archivo con ese nombre que ya tienes es otra versión de este? (spec 013, CAM-01/03/04)
 
     Solo si Pandex lo anotó con **otro id** y **otro tamaño**: un archivo tuyo que el historial
@@ -156,17 +180,17 @@ def _version_nueva(c, previo, tamano, historial):
     motivo, ruta = previo
     if motivo != "mismo nombre":
         return False
-    anotado = historial.de_ruta(ruta)
+    anotado = historial.de_ruta(ruta) or (indice.de_ruta(ruta) if indice is not None else None)
     return bool(anotado and anotado[0] != str(c.file_id) and anotado[1] and tamano and anotado[1] != tamano)
 
 
-def _nombre_libre(destino, nombre, tamano, historial):
+def _nombre_libre(destino, nombre, tamano, historial, indice=None):
     """``(nombre libre, None)`` con ``(v2)``, ``(v3)``… si hace falta; o ``(None, ruta)`` si una
     versión que ya tienes pesa lo mismo. Nunca un nombre ocupado: sincronizar solo crea."""
     base, ext = Path(nombre).stem, Path(nombre).suffix
     candidato, n = destino / nombre, 1
-    while candidato.exists():
-        anotado = historial.de_ruta(candidato)
+    while candidato.exists() or (indice is not None and indice.ocupada(candidato)):
+        anotado = historial.de_ruta(candidato) or (indice.de_ruta(candidato) if indice is not None else None)
         if anotado and anotado[1] and anotado[1] == tamano:
             return None, candidato
         n += 1
@@ -186,6 +210,7 @@ class Sincronizacion:
         self.formato = self.p.get("formato_semana", "Sem {n}")
         nombres.ESTILO_CARPETAS = nombres.estilo_de(self.p)
         self.dedupe_por_tamano = bool(self.p.get("dedupe_por_tamano", True))
+        self.repetidos_cada_semana = bool(self.p.get("repetidos_cada_semana", False))
         self._indices = {}
         self._carpetas = {}
         self._fases = {}
@@ -264,7 +289,7 @@ class Sincronizacion:
 
             # ---- 3. qué no conocemos todavía, y sus datos (en paralelo)
             t = time.monotonic()
-            desconocidos = [c for c in candidatos if historial.conocido(c.file_id) is None]
+            desconocidos = [c for c in candidatos if self._conocido_en_historial(c, historial) is None]
             self._res["ya"] += len(candidatos) - len(desconocidos)
             metas = metadatos(canvas, desconocidos, historial)
             self._fase("consultas", t, canvas)
@@ -295,7 +320,33 @@ class Sincronizacion:
         self._pedidos[nombre] = total - self._pedidos_antes
         self._pedidos_antes = total
 
+    def _repetidos_de(self, regla):
+        return bool(regla.get("repetidos_cada_semana", self.repetidos_cada_semana))
+
+    def _conocido_en_historial(self, c, historial):
+        if not self._repetidos_de(c.regla):
+            return historial.conocido(c.file_id)
+        carpeta = self._carpeta_curso(c.regla, crear=False)
+        destino = carpeta_destino(carpeta, c.regla, c.item, c.semana, self.secciones, self.formato, crear=False)
+        if destino is None:
+            return None
+        return historial.conocido(c.file_id, destino=destino)
+
     # ------------------------------------------------------------------ fase 2
+
+    def _completar_paginas_y_tareas(self, canvas, curso_id, mods):
+        leer_pagina = getattr(canvas, "pagina", None)
+        leer_tarea = getattr(canvas, "tarea_canvas", None)
+        for mod in mods:
+            for item in mod.get("items") or []:
+                detalles = item.get("content_details") or {}
+                if detalles.get("locked_for_user") or item.get("body") or item.get("description"):
+                    continue
+                tipo = item.get("type")
+                if tipo == "Page" and item.get("page_url") and callable(leer_pagina):
+                    item["body"] = leer_pagina(curso_id, item["page_url"])
+                elif tipo == "Assignment" and item.get("content_id") and callable(leer_tarea):
+                    item["description"] = leer_tarea(curso_id, item["content_id"])
 
     def _candidatos(self, canvas, parejas):
         """Los archivos de los módulos que corresponden a cada curso configurado."""
@@ -304,7 +355,9 @@ class Sincronizacion:
             modulos = []
             for (regla, curso), futuro in zip(parejas, futuros):
                 try:
-                    modulos.append(futuro.result())
+                    mods = futuro.result()
+                    self._completar_paginas_y_tareas(canvas, curso["id"], mods)
+                    modulos.append(mods)
                 except SinConexion:
                     raise
                 except CanvasError as exc:
@@ -312,7 +365,7 @@ class Sincronizacion:
                         (alias_curso(regla, curso), f"no pude leer los módulos ({exc})"))
                     modulos.append([])
 
-        return candidatos_de(parejas, modulos, self.semana_hoy, self.ctx.log)
+        return candidatos_de(parejas, modulos, self.semana_hoy, self.ctx.log, self.repetidos_cada_semana)
 
     def _aplicar_descarga_inicial(self, candidatos, historial):
         """Lo que elegiste no bajar en la configuración inicial se anota y se salta."""
@@ -334,16 +387,19 @@ class Sincronizacion:
 
     # ------------------------------------------------------------------ fase 4
 
-    def _carpeta_curso(self, regla):
+    def _carpeta_curso(self, regla, crear=True):
         nombre = regla["carpeta"]
-        if nombre not in self._carpetas:
-            carpeta = buscar_subcarpeta(self.raiz, nombre)
-            if carpeta is None:
-                carpeta = self.raiz / nombres.nombre_de_curso(nombre)
+        if nombre in self._carpetas:
+            return self._carpetas[nombre]
+        carpeta = buscar_subcarpeta(self.raiz, nombre)
+        if carpeta is None:
+            carpeta = self.raiz / nombres.nombre_de_curso(nombre)
+            if crear:
                 carpeta.mkdir(parents=True, exist_ok=True)
                 self.ctx.log(f"creé la carpeta de curso {carpeta}")
+        if crear or carpeta.exists():
             self._carpetas[nombre] = carpeta
-        return self._carpetas[nombre]
+        return carpeta
 
     def _indice(self, carpeta, prohibidas):
         """Teoría y lab de un curso comparten carpeta: se indexa una vez por corrida."""
@@ -373,10 +429,15 @@ class Sincronizacion:
             indice = self._indice(carpeta, prohibidas)
             meta = metas.get(c.file_id) or {}
             nombre = nombre_destino(c.item.titulo, meta.get("nombre"))
+            repetir = self._repetidos_de(regla)
+            destino_previo = carpeta_destino(carpeta, regla, c.item, c.semana, self.secciones,
+                                             self.formato, crear=False)
 
-            previo = indice.buscar(nombre, meta.get("tamano"), self.dedupe_por_tamano,
-                                   self._ajena(regla, carpeta))
-            version = bool(previo) and _version_nueva(c, previo, meta.get("tamano"), historial)
+            previo = indice.buscar(
+                nombre, meta.get("tamano"), self.dedupe_por_tamano,
+                self._ajena(regla, carpeta), destino=destino_previo, repetidos_cada_semana=repetir,
+            )
+            version = bool(previo) and _version_nueva(c, previo, meta.get("tamano"), historial, indice)
             if version:
                 previo = None  # el docente la volvió a subir cambiada: se baja aparte (spec 013)
             if previo:
@@ -395,7 +456,7 @@ class Sincronizacion:
                 self.ctx.log(f"ruta protegida, no escribo: {destino}", "warning")
                 continue
             if version:
-                libre, igual = _nombre_libre(destino, nombre, meta.get("tamano"), historial)
+                libre, igual = _nombre_libre(destino, nombre, meta.get("tamano"), historial, indice)
                 if igual is not None:  # esa versión ya la tienes
                     self._res["ya"] += 1
                     historial.anotar(c.file_id, igual, meta.get("tamano"))
@@ -407,7 +468,7 @@ class Sincronizacion:
 
             # se reserva ya en el índice: si otro ítem de esta corrida trae el mismo
             # archivo (p. ej. teoría y lab), no se baja dos veces
-            indice.agregar(destino / nombre, meta.get("tamano"))
+            indice.agregar(destino / nombre, meta.get("tamano"), c.file_id)
             descargas.append(Descarga(c, nombre, destino, meta.get("tamano"), carpeta))
         return descargas
 
@@ -427,12 +488,22 @@ class Sincronizacion:
         def cancelada():
             return fue_cancelada(self.ctx)
 
-        def bajar(d):
-            tmp = TEMPORAL / f"{d.candidato.file_id}.part"
+        def bajar(i, d):
+            tmp = TEMPORAL / f"{d.candidato.file_id}_{i}.part"
             es_html = d.nombre.lower().endswith((".html", ".htm"))
             try:
                 if cancelada():
                     raise Cancelada()
+                if d.candidato.item.url_externa:
+                    nombre_real, escritos = drive.descargar(
+                        d.candidato.item.url_externa, tmp, ctx=self.ctx,
+                        navegador=self.p.get("navegador", "auto"),
+                        espera_login=self.p.get("espera_login_segundos", 300),
+                        parar=cancelada, titulo=d.candidato.item.titulo,
+                    )
+                    if nombre_real:
+                        d.nombre = nombre_destino(d.candidato.item.titulo, nombre_real)
+                    return tmp, escritos, None
                 escritos = canvas.descargar(d.candidato.curso["id"], d.candidato.file_id,
                                             tmp, espera_html=es_html, parar=cancelada)
                 if d.tamano and escritos != d.tamano:
@@ -443,7 +514,7 @@ class Sincronizacion:
                 return tmp, 0, exc
 
         with ThreadPoolExecutor(min(HILOS_DESCARGA, len(descargas))) as ex:
-            futuros = {ex.submit(bajar, d): d for d in descargas}
+            futuros = {ex.submit(bajar, i, d): d for i, d in enumerate(descargas)}
             for hechos, futuro in enumerate(as_completed(futuros), start=1):
                 d = futuros[futuro]
                 tmp, escritos, error = futuro.result()

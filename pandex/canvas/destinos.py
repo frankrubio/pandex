@@ -15,6 +15,8 @@ exista con un nombre parecido (``"Sem 3"`` = ``"Semana 3"``, ``"Lab"`` =
 ``"Laboratorio"`` si así se configuró) y solo se crea si no hay ninguna.
 """
 
+import os
+
 from . import nombres
 from .nombres import limpiar_nombre, normalizar
 
@@ -22,6 +24,14 @@ from .nombres import limpiar_nombre, normalizar
 # carpetas
 # --------------------------------------------------------------------------
 
+_ADICIONAL = (
+    "materialadicional", "materialesadicionales", "materialcomplementario",
+    "materialescomplementarios", "materialdeapoyo", "materialextra",
+    "recursosadicionales", "recursocomplementario", "recursoscomplementarios",
+    "lecturaadicional", "lecturasadicionales", "lecturacomplementaria", "lecturascomplementarias",
+    "additionalmaterial", "additionalmaterials", "supplementarymaterial", "supplementarymaterials",
+    "extramaterial", "extramaterials", "additionalresource", "additionalresources",
+)
 
 # Abreviaturas y equivalentes español ↔ inglés que representan la misma carpeta.
 _EQUIVALENTES = {
@@ -44,7 +54,14 @@ _EQUIVALENTES = {
     "courseinformation": "informaciondelcurso", "courseinfo": "informaciondelcurso",
     "exercise": "ejercicios", "exercises": "ejercicios", "ejercicio": "ejercicios",
     "guide": "guias", "guides": "guias", "guia": "guias",
+    **{k: "materialadicional" for k in _ADICIONAL},
 }
+
+
+def es_material_adicional(texto):
+    """True si el subencabezado o módulo es de «Material adicional» o «Material complementario»."""
+    clave = normalizar(texto)
+    return bool(clave) and clave.startswith(_ADICIONAL)
 
 
 def clave_carpeta(nombre):
@@ -103,12 +120,17 @@ def carpeta_de_seccion(seccion, secciones):
 
     El mapa va de una etiqueta a una carpeta (``"material de clase": "Material de
     clase"``) y la etiqueta vale como prefijo: también cubre ``"Material de clases"``.
-    Si varias etiquetas sirven, gana la más larga (la más específica).
+    Si varias etiquetas sirven, gana la más larga (la más específica). También reconoce
+    «Material adicional» / «Material complementario» aunque no esté en el mapa.
     """
     clave = normalizar(seccion)
+    if not clave:
+        return None
     for etiqueta in sorted(secciones, key=lambda e: -len(normalizar(e))):
         if clave.startswith(normalizar(etiqueta)):
             return secciones[etiqueta]
+    if es_material_adicional(seccion):
+        return "Material adicional"
     return None
 
 
@@ -142,18 +164,22 @@ def carpeta_destino(carpeta, regla, item, semana, secciones, formato="Sem {n}", 
     # Un módulo sin semana (Sílabo y anexo, Recursos…) es del curso entero: sirve a las
     # dos mitades, así que no se guarda dentro de «Teoría» ni de «Lab».
     en_mitad = bool(fija) and semana is not None
+    sin_subencabezado = not (item.seccion or "").strip()
 
     if regla.get("crear_secciones"):
         # lo que arma el asistente: copia la organización de Canvas tal cual
         destino = base()
         if en_mitad:
             destino = sub(destino, fija, alias_fija)
-        if not (item.seccion or "").strip():
+        if sin_subencabezado:
             return destino
         return sub(destino, carpeta_de_seccion(item.seccion, secciones) or limpiar_nombre(item.seccion))
 
-    # modo clásico (configuraciones escritas a mano): solo las secciones del mapa
-    seccion = item.seccion if item.seccion is not None else item.modulo
+    # modo clásico (configuraciones escritas a mano): solo las secciones del mapa (y Material adicional)
+    if sin_subencabezado:
+        destino = base()
+        return sub(destino, fija, alias_fija) if en_mitad else destino
+    seccion = item.seccion
     nombre_seccion = carpeta_de_seccion(seccion, secciones)
     if not fija and not nombre_seccion:
         return None  # se descarta ANTES de crear nada: si no, quedan carpetas vacías
@@ -162,11 +188,14 @@ def carpeta_destino(carpeta, regla, item, semana, secciones, formato="Sem {n}", 
         return sub(destino, nombre_seccion)
     if en_mitad:
         destino = sub(destino, fija, alias_fija)
-    # dentro de la mitad (o del módulo común) se usa la carpeta de sección solo si ya la tienes
+    # dentro de la mitad (o del módulo común) se usa la carpeta de sección si ya la tienes
+    # o si es «Material adicional»
     if nombre_seccion:
         propia = buscar_subcarpeta(destino, nombre_seccion)
         if propia is not None:
             return propia
+        if es_material_adicional(seccion):
+            return sub(destino, nombre_seccion)
     return destino
 
 
@@ -211,24 +240,32 @@ def mitad_de(ruta, carpeta, hermanas):
 # --------------------------------------------------------------------------
 
 
+def _clave_ruta(ruta):
+    return os.path.normcase(os.path.normpath(str(ruta)))
+
+
 class IndiceCurso:
     """Todo lo que ya está en disco dentro de la carpeta de un curso.
 
-    Se compara contra el curso entero (no solo la carpeta destino) porque es
-    común tener el mismo archivo en otra semana, otra sección o renombrado a mano.
-    Dos reglas para no saltar de más:
+    Se compara contra el curso entero (o solo la carpeta destino si se eligió bajar
+    los archivos repetidos en cada semana). Dos reglas para no saltar de más:
 
     - el nombre se compara **con extensión**: la misma clase en .pptx y en .pdf
       son dos archivos que quieres;
     - el tamaño solo cuenta **desde 4 KB**: los accesos .url pesan todos casi lo
-      mismo y chocarían entre sí.
+      mismo y chocarían entre sí;
+    - dos archivos con el mismo nombre genérico en **distintas carpetas** (p. ej.
+      ``Sem 1/Ejercicios.pdf`` y ``Sem 2/Ejercicios.pdf``) que tienen **distinto
+      tamaño** son archivos distintos y no se saltan.
     """
 
     TAMANO_MINIMO = 4096
 
     def __init__(self, carpeta, excluir=(), tamano_minimo=None):
-        self.por_nombre = {}   # nombre normalizado -> [(ruta, tamaño)]
-        self.por_tamano = {}   # tamaño exacto -> ruta
+        self.por_nombre = {}          # nombre normalizado -> [(ruta, tamaño)]
+        self.por_tamano = {}          # tamaño exacto -> primera ruta
+        self._rutas_por_tamano = {}   # tamaño exacto -> [rutas]
+        self.por_ruta = {}            # ruta normalizada -> (file_id, tamaño)
         self.tamano_minimo = self.TAMANO_MINIMO if tamano_minimo is None else int(tamano_minimo)
         vetadas = {normalizar(x) for x in excluir}
         for ruta in carpeta.rglob("*"):
@@ -238,7 +275,7 @@ class IndiceCurso:
                 continue
             self.agregar(ruta)
 
-    def agregar(self, ruta, tamano=None):
+    def agregar(self, ruta, tamano=None, file_id=None):
         es_md = ruta.suffix.lower() == ".md"
         if tamano is None and not es_md:
             try:
@@ -246,27 +283,46 @@ class IndiceCurso:
             except OSError:
                 tamano = None
         self.por_nombre.setdefault(normalizar(ruta.name), []).append((ruta, tamano))
+        if file_id is not None:
+            self.por_ruta[_clave_ruta(ruta)] = (str(file_id), tamano)
         if es_md:
             # los .md que genera «Convertir a Markdown» no vienen de Canvas: su
             # peso podría coincidir con el de un PDF nuevo
             return
         if tamano and tamano >= self.tamano_minimo:
             self.por_tamano.setdefault(tamano, ruta)
+            self._rutas_por_tamano.setdefault(tamano, []).append(ruta)
 
-    def buscar(self, nombre, tamano=None, por_tamano=True, ajena=None):
+    def de_ruta(self, ruta):
+        """``(file_id, tamano)`` de un archivo reservado en esta corrida, o None."""
+        return self.por_ruta.get(_clave_ruta(ruta))
+
+    def ocupada(self, ruta):
+        return ruta.exists() or _clave_ruta(ruta) in self.por_ruta
+
+    def buscar(self, nombre, tamano=None, por_tamano=True, ajena=None,
+               destino=None, repetidos_cada_semana=False):
         """``(motivo, ruta)`` si ya lo tienes, o None.
 
         ``ajena(ruta)`` dice si esa ruta es de la otra mitad del curso (teoría vs.
         laboratorio). Ahí el nombre solo no basta: cada docente sube su propio
         «semana 9.pptx» y son materiales distintos. Cuenta si además pesa igual.
         """
+        clave_destino = _clave_ruta(destino) if destino is not None else None
         for previo, peso in self.por_nombre.get(normalizar(nombre), ()):
+            misma_carpeta = clave_destino is None or _clave_ruta(previo.parent) == clave_destino
+            if repetidos_cada_semana and not misma_carpeta:
+                continue
             if ajena is None or not ajena(previo):
+                if not misma_carpeta and tamano and peso and peso != tamano:
+                    continue
                 return "mismo nombre", previo
             if tamano and peso == tamano:
                 return "mismo nombre y tamaño", previo
         if por_tamano and tamano and tamano >= self.tamano_minimo:
-            previo = self.por_tamano.get(tamano)
-            if previo is not None:
+            for previo in self._rutas_por_tamano.get(tamano, ()):
+                misma_carpeta = clave_destino is None or _clave_ruta(previo.parent) == clave_destino
+                if repetidos_cada_semana and not misma_carpeta:
+                    continue
                 return "mismo contenido (bytes idénticos)", previo
         return None

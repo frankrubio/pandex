@@ -34,6 +34,8 @@ class CanvasFalso:
     cursos_ = []
     modulos_ = {}
     archivos = {}
+    paginas = {}
+    tareas = {}
     fallar = set()       # estas descargas fallan
     prohibidos = set()   # Canvas responde 403 (el archivo aún no se abre)
     incompletos = set()  # estas llegan con menos bytes
@@ -46,6 +48,7 @@ class CanvasFalso:
     @classmethod
     def reiniciar(cls, cursos, modulos, archivos):
         cls.cursos_, cls.modulos_, cls.archivos = cursos, modulos, archivos
+        cls.paginas, cls.tareas = {}, {}
         cls.fallar, cls.incompletos, cls.prohibidos = set(), set(), set()
         cls.contar_cero()
 
@@ -68,6 +71,12 @@ class CanvasFalso:
     def modulos(self, curso_id):
         self._contar("modulos")
         return self.modulos_.get(curso_id, [])
+
+    def pagina(self, curso_id, page_url):
+        return self.paginas.get((curso_id, page_url), "")
+
+    def tarea_canvas(self, curso_id, assignment_id):
+        return self.tareas.get((curso_id, assignment_id), "")
 
     def archivos_del_curso(self, _curso_id):
         self._contar("listado")
