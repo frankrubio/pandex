@@ -1,13 +1,22 @@
 # Cambios
 
+Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
+cuando buscas actualizaciones desde el menú.
+
+## 2.7.1
+
+- **Adaptado a nombres en inglés (`Semester`, `Week`, `Course`, `Lecture`, `Theory`, `Laboratory`…).**
+  Pandex ahora reconoce semanas como `Week 01`, `Week_01`, `Wk 3` o `W03` (sin confundir `Semester`
+  ni `Course` con una semana), empareja cursos `Lecture`/`Theory` + `Laboratory`/`Lab`, reutiliza
+  tus carpetas en inglés (`Class Material`, `Activities`, `Assignments`, `Readings`, `Syllabus`…),
+  actualiza mitades y secciones al reconectar tu carpeta y clasifica material de estudio en inglés
+  en «Convertir a Markdown».
+
 ## 2.6.8
 
 - **Plugins personales preparados para seguir al actualizar o desinstalar Pandex.**
   Se agregó la base segura de manifiestos y paquetes, rutas fuera del repositorio y conservación
   de plugins personales.
-
-Cada versión, en lenguaje simple. Pandex muestra la sección de la versión nueva
-cuando buscas actualizaciones desde el menú.
 
 ## 2.7.0
 

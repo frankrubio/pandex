@@ -23,17 +23,21 @@ lista de ítems: archivos, enlaces, tareas y **subencabezados** (`Material de cl
 `Actividades`…) que agrupan a los ítems que vienen después. Pandex solo baja los ítems de
 tipo **archivo** de los módulos **publicados**.
 
-La semana sale del **nombre del módulo** (`Semana 7`, `Sem 7`, `Week 07`). Los módulos sin
-número de semana van a una carpeta con su nombre, **sin** `Teoría` ni `Lab` dentro: el sílabo y
-los anexos valen para las dos mitades del curso. Si teoría y laboratorio traen en uno de esos
-módulos archivos distintos con el mismo nombre, solo se guarda el primero (el resumen lo lista
-entre los que «ya tenías»); renombra uno a mano si quieres los dos.
+La semana sale del **nombre del módulo** (`Semana 7`, `Sem 7`, `Week 07`, `Week_07`, `Wk 7`).
+Los módulos sin número de semana (`Sílabo`, `Syllabus`, `Semester Overview`…) van a una carpeta
+con su nombre, **sin** `Teoría` ni `Lab` dentro: el sílabo y los anexos valen para las dos mitades
+del curso. Si teoría y laboratorio traen en uno de esos módulos archivos distintos con el mismo
+nombre, solo se guarda el primero (el resumen lo lista entre los que «ya tenías»); renombra uno a
+mano si quieres los dos.
 
 Muchas universidades separan **teoría y laboratorio en dos cursos** de Canvas
-(`Programación I - Teoría 1` y `Programación I - Laboratorio 14`). El asistente los reconoce
-porque sus nombres solo difieren en esa parte, y les da una sola carpeta con `Teoría` y `Lab`
-dentro de cada semana. Si ya tenías carpetas con otro nombre (`teo`, `Laboratorio`…), las reutiliza:
-`teo`/`teor`/`Teoría` cuentan como la misma, y `lab`/`labo`/`Laboratorio` también. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 11`) es uno solo.
+(`Programación I - Teoría 1` y `Programación I - Laboratorio 14`, o en inglés `Lecture 1`/`Theory 1`
+y `Laboratory 2`/`Lab 2`). El asistente los reconoce porque sus nombres solo difieren en esa parte,
+y les da una sola carpeta con `Teoría` (o `Lecture`/`Theory` si tus cursos están en inglés) y `Lab`
+dentro de cada semana. Si ya tenías carpetas con otro nombre (`teo`, `Theory`, `Lecture`,
+`Laboratorio`, `Laboratory`, `Week_01`, `Class Material`, `Syllabus`…), las reutiliza sin crear
+duplicados. Un curso cuyo nombre trae las dos cosas (`Teo. 1 - Lab. 11`, `Lec. 1 - Lab. 11`) es uno
+solo.
 
 ## Las fases de una sincronización
 

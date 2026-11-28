@@ -13,6 +13,9 @@ from datetime import datetime
 from pathlib import Path
 
 from . import adoptar
+from .destinos import clave_carpeta
+from .estructura import _TIPOS_LAB, _TIPOS_TEORIA
+from .nombres import normalizar
 
 
 class ErrorReconectar(Exception):
@@ -91,8 +94,32 @@ def adaptar(params, nueva):
 
     conv = adoptar.detectar_convenciones([parejas[a] for a in vistos if a in parejas])
     if conv.detectada:
-        nuevos["formato_semana"] = conv.formato_semana
+        if conv.semana_detectada:
+            nuevos["formato_semana"] = conv.formato_semana
         nuevos["estilo_carpetas"] = "propio"
+        if conv.teoria_detectada or conv.lab_detectada:
+            for regla in reglas:
+                clave_fija = clave_carpeta(regla.get("subcarpeta_fija") or "")
+                tipo = normalizar(regla.get("tipo") or "")
+                es_lab = tipo in _TIPOS_LAB or clave_fija == "lab"
+                es_teo = tipo in _TIPOS_TEORIA or clave_fija == "teoria"
+                if es_teo and conv.teoria_detectada:
+                    regla["subcarpeta_fija"] = conv.teoria
+                    if conv.alias_teoria or "alias_subcarpeta" in regla:
+                        regla["alias_subcarpeta"] = list(conv.alias_teoria)
+                elif es_lab and conv.lab_detectada:
+                    regla["subcarpeta_fija"] = conv.lab
+                    if conv.alias_lab or "alias_subcarpeta" in regla:
+                        regla["alias_subcarpeta"] = list(conv.alias_lab)
+        if conv.secciones and nuevos.get("secciones"):
+            nuevos["secciones"] = {
+                etiqueta: next(
+                    (s for s in conv.secciones
+                     if adoptar._misma_seccion(carpeta, s) or adoptar._misma_seccion(etiqueta, s)),
+                    carpeta,
+                )
+                for etiqueta, carpeta in nuevos["secciones"].items()
+            }
         informe.estilo = f"Tu estilo: {conv.describir()}."
     nuevos.pop("carpetas_sin_tildes", None)
     return nuevos, informe

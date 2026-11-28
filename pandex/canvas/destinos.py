@@ -23,13 +23,32 @@ from .nombres import limpiar_nombre, normalizar
 # --------------------------------------------------------------------------
 
 
-# Abreviaturas que se escriben distinto pero son la misma mitad del curso.
-_EQUIVALENTES = {"teo": "teoria", "teor": "teoria", "teorico": "teoria",
-                 "laboratorio": "lab", "labo": "lab"}
+# Abreviaturas y equivalentes español ↔ inglés que representan la misma carpeta.
+_EQUIVALENTES = {
+    "teo": "teoria", "teor": "teoria", "teorico": "teoria", "teorica": "teoria",
+    "theory": "teoria", "theo": "teoria", "lecture": "teoria", "lectures": "teoria", "lec": "teoria",
+    "laboratorio": "lab", "laboratorios": "lab", "labo": "lab",
+    "laboratory": "lab", "laboratories": "lab", "labs": "lab",
+    "syllabus": "silabo", "silabos": "silabo",
+    "classmaterial": "materialdeclase", "classmaterials": "materialdeclase",
+    "coursematerial": "materialdeclase", "coursematerials": "materialdeclase",
+    "lecturematerial": "materialdeclase", "lecturenotes": "materialdeclase",
+    "materialdeclases": "materialdeclase",
+    "activity": "actividades", "activities": "actividades", "actividad": "actividades",
+    "assignment": "tareas", "assignments": "tareas", "homework": "tareas", "tarea": "tareas",
+    "reading": "lecturas", "readings": "lecturas", "lectura": "lecturas",
+    "resource": "recursos", "resources": "recursos", "recurso": "recursos",
+    "evaluation": "evaluaciones", "evaluations": "evaluaciones",
+    "exam": "evaluaciones", "exams": "evaluaciones", "examen": "evaluaciones", "examenes": "evaluaciones",
+    "evaluacion": "evaluaciones",
+    "courseinformation": "informaciondelcurso", "courseinfo": "informaciondelcurso",
+    "exercise": "ejercicios", "exercises": "ejercicios", "ejercicio": "ejercicios",
+    "guide": "guias", "guides": "guias", "guia": "guias",
+}
 
 
 def clave_carpeta(nombre):
-    """``normalizar`` más las abreviaturas conocidas: ``"teo"`` = ``"Teoría"``, ``"Laboratorio"`` = ``"lab"``."""
+    """``normalizar`` más las abreviaturas y equivalentes conocidos: ``"teo"``/``"Lecture"`` = ``"Teoría"``."""
     clave = normalizar(nombre)
     return _EQUIVALENTES.get(clave, clave)
 
@@ -69,7 +88,14 @@ def nombre_semana(n, formato="Sem {n}"):
 
 
 def alias_semana(n):
-    return [f"Sem {n}", f"Semana {n}", f"Sem {n:02d}", f"Semana {n:02d}", f"Week {n}"]
+    return [
+        f"Sem {n}", f"Sem {n:02d}",
+        f"Semana {n}", f"Semana {n:02d}",
+        f"S{n}", f"S{n:02d}",
+        f"Week {n}", f"Week {n:02d}",
+        f"Wk {n}", f"Wk {n:02d}",
+        f"W{n}", f"W{n:02d}",
+    ]
 
 
 def carpeta_de_seccion(seccion, secciones):

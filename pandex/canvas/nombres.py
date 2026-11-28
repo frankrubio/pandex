@@ -5,8 +5,8 @@ import unicodedata
 from pathlib import Path
 
 INVALIDOS_WINDOWS = r'<>:"/\|?*'
-RE_SEMANA = re.compile(r"(?:sem(?:ana)?|week)\s*(\d{1,2})", re.IGNORECASE)
-RE_LAB = re.compile(r"\blab(?:oratorio)?\b")
+RE_SEMANA = re.compile(r"(?<![a-z])(?:sem(?:ana)?|week|wk)[\s._-]*(\d{1,2})(?!\d)", re.IGNORECASE)
+RE_LAB = re.compile(r"(?<![a-z])lab(?:oratorio|oratory|s)?(?![a-z])")
 
 
 def normalizar(texto):

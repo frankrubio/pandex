@@ -119,6 +119,11 @@ class Estado:
         """``"propio"`` solo si leyó tu estilo en carpetas que ya tenías; si no, ``"guiones_bajos"``."""
         return "propio" if self.modo == "existente" and self.convenciones.detectada else "guiones_bajos"
 
+    def convenciones_iniciales(self):
+        """Valores por defecto acordes al idioma de tus cursos y módulos en Canvas."""
+        resumenes = [r for g in self.elegidos for r in g.resumenes] or self.resumenes
+        return adoptar.convenciones_de_canvas(resumenes, self.modulos)
+
     def reglas(self):
         """Los cursos tal como quedan en config.json."""
         conv = self.convenciones
@@ -482,7 +487,7 @@ class PaginaCarpeta(QWizardPage):
                 return False
             self.estado.modo = "existente"
             self.estado.raiz = raiz
-        self.estado.convenciones = adoptar.Convenciones()
+        self.estado.convenciones = self.estado.convenciones_iniciales()
         self.estado.plan = None
         return True
 
@@ -542,7 +547,15 @@ class PaginaAdoptar(QWizardPage):
 
     def _mostrar_convenciones(self):
         carpetas = [c for c in self._elegidas() if c is not None]
-        self.estado.convenciones = adoptar.detectar_convenciones(carpetas)
+        conv = adoptar.detectar_convenciones(carpetas)
+        base = self.estado.convenciones_iniciales()
+        if not conv.semana_detectada:
+            conv.formato_semana = base.formato_semana
+        if not conv.teoria_detectada:
+            conv.teoria = base.teoria
+        if not conv.lab_detectada:
+            conv.lab = base.lab
+        self.estado.convenciones = conv
         self.convenciones.setText(f"Así organizas tus carpetas: {self.estado.convenciones.describir()}. "
                                   "Lo nuevo seguirá ese estilo.")
 

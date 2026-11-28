@@ -31,36 +31,41 @@ from pathlib import Path
 FORMATOS_ESTUDIO = {".pdf", ".docx", ".pptx", ".xlsx", ".xls", ".epub"}
 
 NOMBRE_NO = [
-    ("actividad previa", r"\bap\d*\b|\bactividad(es)? previas?\b"),
-    ("tarea", r"\bta\d*\b|\btareas?\d*\b|\benunciados?\b"),
+    ("actividad previa", r"\bap\d*\b|\bactividad(es)? previas?\b|\bpre ?class\b"),
+    ("tarea", r"\b(ta|hw)\d*\b|\btareas?\d*\b|\benunciados?\b|\bhomeworks?\b|\bassignments?\d*\b"),
     ("evaluación", r"\b(ed|ea|pc|ep|ef)\d*\b|\bevaluacion(es)?\b|\bexamen(es)?\b"
-                   r"|\beva\d*\b|\bpractica calificada\b|\bsolucionario\b"),
+                   r"|\beva\d*\b|\bpractica calificada\b|\bsolucionario\b"
+                   r"|\bevaluations?\b|\bexams?\b|\bmidterms?\b|\bquiz(zes)?\b|\banswer keys?\b"),
     ("preguía de ejercicios", r"\bpre ?guias?\b"),
     ("administrativo", r"\bsilabos?\b|\bsyllabus\b|\bhorarios?\b|\bcronogramas?\b"
-                       r"|\bplantillas?\b|\bformatos?\b|\bconsentimientos?\b|\brubricas?\b"),
+                       r"|\bplantillas?\b|\bformatos?\b|\bconsentimientos?\b|\brubricas?\b"
+                       r"|\bschedules?\b|\btemplates?\b|\brubrics?\b|\bconsents?\b"),
 ]
 # una lista de ejercicios es trabajo por hacer; "teoría y ejercicios" sí se estudia.
 # En plural: «Traducción y ejercicio de Writing…» es una clase, no una lista.
 # «Problema_Fun_Cuadratica» es un enunciado; «VRD_el PROBLEMA de investigación», no.
-EJERCICIOS = re.compile(r"\bejercicios\b|^problemas?\b")
-CON_TEORIA = re.compile(r"\bteo(ria)?\b")
+EJERCICIOS = re.compile(r"\bejercicios\b|^problemas?\b|\bexercises\b|\bproblem sets?\b|\bworksheets?\b")
+CON_TEORIA = re.compile(r"\bteo(ria)?\b|\btheory\b|\blectures?\b")
 
 NOMBRE_SI = [
-    ("guía", r"\bguias?\b"),
+    ("guía", r"\bguias?\b|\bguides?\b|\bhandouts?\b"),
     ("resumen", r"\bresumen(es)?\b|\bsintesis\b|\btoolkit\b|\barsenal\b|\bcheat ?sheet\b"
                 r"|\bformulario\b|\binfografia\b|\bmapa conceptual\b|\bapuntes\b"
-                r"|\bsummary\b|\boverview\b"),
+                r"|\bsummar(y|ies)\b|\boverview\b|\bnotes\b|\breview\b|\brecap\b"),
     ("material de clase", r"\bclases?\b|\bsesion(es)?\b|\bteo(ria)?\b|\bsemana\d*\b"
-                          r"|\bcapitulo\b|\bpresentacion\b|\btema\b|\bunidad\b"),
-    ("lectura", r"\blecturas?\b|\bfuentes?\b|\blibros?\b|\bglosario\b"),
+                          r"|\bcapitulo\b|\bpresentacion\b|\btema\b|\bunidad\b"
+                          r"|\blectures?\b|\bclass(es)?\b|\bsessions?\b|\btheory\b|\bweeks?\d*\b|\bwk\d*\b"
+                          r"|\bchapters?\b|\bslides?\b|\bpresentations?\b|\btopics?\b|\bunits?\b|\bmodules?\b"),
+    ("lectura", r"\blecturas?\b|\bfuentes?\b|\blibros?\b|\bglosario\b"
+                r"|\breadings?\b|\bsources?\b|\bbooks?\b|\btextbooks?\b|\bglossary\b"),
 ]
 # «Trigonometry_Toolkit», «Calculus_Function_Arsenal_(5)»: así nombra NotebookLM
 # a sus presentaciones-resumen, que no dicen «resumen» en ningún lado
 TITULO_NOTEBOOKLM = re.compile(r"^[A-Z][a-z]+(?:_[A-Z][a-z]+)+(?:_?\(\d+\))?$")
 
-CARPETA_PROPIA = ("trabajo", "entrega")
-CARPETA_NO = ("actividad", "tarea", "evaluacion", "examen", "informacion del curso",
-              "syllabus", "silabo")
+CARPETA_PROPIA = ("trabajo", "entrega", "submission", "my work", "deliverable")
+CARPETA_NO = ("actividad", "activit", "tarea", "assignment", "homework", "evaluacion", "evaluation",
+              "examen", "exam", "quiz", "informacion del curso", "course info", "syllabus", "silabo")
 
 
 def normalizar(texto):
